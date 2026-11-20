@@ -1,0 +1,121 @@
+name: ci
+
+# Builds what changed. On main, also releases every version the Hub doesn't have yet
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+# Every package builds with this. There's no build.zig.zon at the top to read it from
+env:
+  ZIG_VERSION: 0.18.0-dev.1244+b5ffcbd70
+
+permissions:
+  contents: read
+
+# Only pull requests cancel older runs. Pushes each get their own, so a release is never cut off
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}-${{ github.actor }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build changed packages
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      PKG_CONFIG: no-pkg-config
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v7
+        with:
+          # The whole history, so the script can diff against the base
+          fetch-depth: 0
+
+      - name: install zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+          cache-key: mods
+
+      - name: install node
+        uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: build and test
+        shell: bash
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: node scripts/ci.mjs --base "$BASE"
+
+  release:
+    name: release new versions
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    env:
+      PKG_CONFIG: no-pkg-config
+    steps:
+      # The Hub says what's released already
+      - name: checkout repository
+        uses: actions/checkout@v7
+
+      - name: install zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+          cache-key: release
+
+      - name: install node
+        uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: build
+        id: build
+        shell: bash
+        run: |
+          status=0
+          node scripts/release.mjs build || status=$?
+          echo "count=$(node -p 'JSON.parse(require("fs").readFileSync("release/releases.json", "utf8")).length')" >> "$GITHUB_OUTPUT"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: publish to the Hub
+        id: publish
+        if: steps.build.outputs.count != '0'
+        shell: bash
+        env:
+          HUB_TOKEN: ${{ secrets.HUB_TOKEN }}
+        run: |
+          status=0
+          node scripts/release.mjs publish || status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: tag released versions
+        if: steps.build.outputs.count != '0'
+        shell: bash
+        run: node scripts/release.mjs tag
+
+      - name: fail if a package didn't build
+        if: steps.build.outputs.status != '0'
+        shell: bash
+        run: |
+          echo "::error::Some packages didn't build, see the build step"
+          exit 1
+
+      - name: fail if a package didn't publish
+        if: steps.publish.outputs.status != '' && steps.publish.outputs.status != '0'
+        shell: bash
+        run: |
+          echo "::error::Some packages didn't publish, see the publish step"
+          exit 1

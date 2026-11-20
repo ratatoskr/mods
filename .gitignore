@@ -1,0 +1,13 @@
+# Zig
+.zig-cache/
+zig-out/
+zig-pkg/
+
+# JavaScript plugins
+node_modules/
+dist/
+.wraith/
+*.zip
+
+# Release zips
+/release/
