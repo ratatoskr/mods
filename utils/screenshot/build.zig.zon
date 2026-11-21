@@ -1,0 +1,17 @@
+.{
+    .name = .screenshot,
+    .version = "0.0.1",
+    .dependencies = .{
+        .wraith = .{
+            .url = "git+https://github.com/ratatoskr/wraith#849c0f796d44533a476f2cfce51c4bb4a5f1e30f",
+            .hash = "wraith-0.0.0-sZo_93YKUwB7qTz2L4fHrOiXMziWx7p6Efpr1iFYXJ2o",
+        },
+        .tinyexr = .{
+            .url = "git+https://github.com/syoyo/tinyexr?ref=v3.4.0#e48a52fb3711da47494e518a229f04aa5ae8e0ac",
+            .hash = "N-V-__8AACk66wJ6iA7dDjuutCtO13EKnXuFHC0VYXodPK52",
+        },
+    },
+    .minimum_zig_version = "0.18.0-dev.1244+b5ffcbd70",
+    .paths = .{""},
+    .fingerprint = 0x58991e41f1c358f7,
+}
