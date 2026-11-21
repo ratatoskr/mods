@@ -9,105 +9,56 @@ pub const panic = sdk.panic;
 
 const log = sdk.log.scoped(.screenshot);
 
-pub const Settings = struct {
-    key: ?sdk.keybinds.Chord = .{ .key = .f10 },
-    include_overlay: bool = false,
-    clipboard: bool = true,
-    exr: bool = true,
-    folder: []const u8 = "",
+const W = sdk.api.wraith;
+
+/// Its settings, in Wraith's Settings under its name. Its key is in Keybinds.
+const Options = struct {
+    include_overlay: bool,
+    clipboard: bool,
+    exr: bool,
+    /// Empty is `Pictures\Wraith`.
+    folder: []const u8,
 };
 
 const default_folder = "Wraith";
 
-const SettingsWindow = struct {
-    window: sdk.ui.Window = .{ .title = "Screenshot##screenshot" },
-    plugin: *Plugin = undefined,
-
-    pub fn draw(self: *SettingsWindow) void {
-        const p = self.plugin;
-        const v = &p.settings.value;
-        var changed = false;
-        if (sdk.ui.chordInput("Key", &v.key, .{ .none = "No key" })) {
-            p.applyKey();
-            changed = true;
-        }
-        if (sdk.ui.checkbox("Include the overlay", &v.include_overlay)) changed = true;
-        if (sdk.ui.checkbox("Copy to the clipboard", &v.clipboard)) changed = true;
-        if (sdk.ui.checkbox("Save an EXR too in HDR games", &v.exr)) changed = true;
-        sdk.ui.text("Folder", .{});
-        sdk.ui.sameLine();
-        if (v.folder.len > 0) sdk.ui.textDisabled("{s}", .{v.folder}) else sdk.ui.textDisabled("Pictures\\" ++ default_folder, .{});
-        {
-            const off = sdk.ui.disabled(p.browsing);
-            defer off.end();
-            if (sdk.ui.button("Browse...")) p.browse();
-        }
-        if (v.folder.len > 0) {
-            sdk.ui.sameLine();
-            if (sdk.ui.button("Default")) {
-                v.folder = "";
-                changed = true;
-            }
-        }
-        if (changed) p.settings.save() catch |err| log.err("Couldn't save the settings: {t}", .{err});
-    }
-};
-
 pub const Plugin = struct {
     ctx: *sdk.Context = undefined,
-    settings: *sdk.Config(Settings) = undefined,
     presses: sdk.keybinds.Presses = undefined,
-    window: SettingsWindow = .{},
-    /// The folder dialog's up.
-    browsing: bool = false,
+    include_overlay: W.Setting = undefined,
+    clipboard: W.Setting = undefined,
+    exr: W.Setting = undefined,
+    folder: W.Setting = undefined,
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
-        self.settings = try ctx.config(Settings);
-        self.window.plugin = self;
-        try ctx.addWindow(&self.window);
-        ctx.settingsWindow(&self.window.window.open);
+        const settings = ctx.wraith.settings();
+        self.include_overlay = try settings.add(.{ .id = "include_overlay", .name = "Include the overlay", .kind = .toggle }, null);
+        self.clipboard = try settings.add(.{ .id = "clipboard", .name = "Copy to the clipboard", .kind = .toggle, .has_default = true, .default_value = .{ .toggle = true } }, null);
+        self.exr = try settings.add(.{ .id = "exr", .name = "Save an EXR too in HDR games", .help = "Keeps the full HDR range, next to the PNG.", .kind = .toggle, .has_default = true, .default_value = .{ .toggle = true } }, null);
+        self.folder = try settings.add(.{ .id = "folder", .name = "Folder", .help = "Where screenshots go.", .kind = .path, .placeholder = "Pictures\\" ++ default_folder }, null);
         self.presses = .init(ctx.io);
-        if (self.settings.value.key) |chord| try self.presses.bind(action(chord));
+        try self.presses.bind(.{ .id = "take", .name = "Take screenshot", .chord = sdk.keybinds.chord(.{ .key = .f10 }) });
         try ctx.spawn(takeShots, .{ self, ctx.io });
     }
 
-    fn action(chord: sdk.keybinds.Chord) sdk.api.wraith.Action {
-        return .{ .id = "take", .name = "Take screenshot", .chord = sdk.keybinds.chord(chord) };
-    }
-
-    fn applyKey(self: *Plugin) void {
-        const chord = self.settings.value.key orelse return self.presses.unbind();
-        self.presses.rebind(action(chord)) catch |err| log.err("Couldn't set the key: {t}", .{err});
-    }
-
-    fn browse(self: *Plugin) void {
-        self.browsing = true;
-        self.ctx.spawn(pickFolder, .{self}) catch |err| {
-            self.browsing = false;
-            log.err("Couldn't open the folder picker: {t}", .{err});
+    /// As they are now, the folder copied into `allocator`.
+    fn readOptions(self: *Plugin, allocator: std.mem.Allocator) !Options {
+        return .{
+            .include_overlay = (try self.include_overlay.get()).toggle,
+            .clipboard = (try self.clipboard.get()).toggle,
+            .exr = (try self.exr.get()).toggle,
+            .folder = try allocator.dupe(u8, (try self.folder.get()).text),
         };
     }
-
-    fn pickFolder(self: *Plugin) !void {
-        defer self.browsing = false;
-        const picked = sdk.tasks.wait(self.ctx.wraith.ui().pickFolder(.{
-            .title = .init("Where screenshots go"),
-            .folder = .init(self.settings.value.folder),
-        })) catch |err| switch (err) {
-            error.Canceled, error.Gone => return err,
-            else => return log.err("Couldn't pick a folder: {t}", .{err}),
-        };
-        const folder = picked orelse return;
-        // Kept in the settings' arena so a screenshot being saved keeps its copy
-        self.settings.value.folder = try self.settings.arena.allocator().dupe(u8, folder);
-        self.settings.save() catch |err| log.err("Couldn't save the settings: {t}", .{err});
-    }
-
     fn takeShots(self: *Plugin, io: std.Io) !void {
         while (true) {
             try self.presses.next(io);
-            const options = self.settings.value;
+            const options = self.readOptions(self.ctx.allocator) catch |err| {
+                log.err("Couldn't read the settings: {t}", .{err});
+                continue;
+            };
+            defer self.ctx.allocator.free(options.folder);
             const point: sdk.api.wraith.CapturePoint = if (options.include_overlay) .after_overlay else .before_overlay;
             const capture = sdk.tasks.wait(self.ctx.wraith.frame().capture(point)) catch |err| switch (err) {
                 error.Canceled, error.Gone => return err,
@@ -142,7 +93,7 @@ pub const Plugin = struct {
 };
 
 /// A PNG always, and an EXR with the full range for HDR if asked. Worker only.
-fn save(allocator: std.mem.Allocator, io: std.Io, capture: sdk.api.wraith.Capture, options: Settings) !void {
+fn save(allocator: std.mem.Allocator, io: std.Io, capture: sdk.api.wraith.Capture, options: Options) !void {
     const linear = try sdk.images.linearFromCapture(allocator, .{
         .width = capture.width,
         .height = capture.height,

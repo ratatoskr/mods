@@ -6,8 +6,9 @@
   "title": "Trails Horizon",
   "summary": "Trails beyond the horizon plugin",
   "author": "Asgard",
+  "arches": ["x64"],
   "game": {
     "exes": ["kai.exe"],
-    "ids": ["ssteam-3316940"]
+    "ids": ["steam-3316940", "gog-1501307817"]
   }
 }
