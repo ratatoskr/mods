@@ -91,7 +91,7 @@ pub const Plugin = struct {
 
     fn pickFolder(self: *Plugin) !void {
         defer self.browsing = false;
-        const picked = sdk.tasks.wait(self.ctx.owner.root.ui().pickFolder(.{
+        const picked = sdk.tasks.wait(self.ctx.wraith.ui().pickFolder(.{
             .title = .init("Where screenshots go"),
             .folder = .init(self.settings.value.folder),
         })) catch |err| switch (err) {
@@ -109,7 +109,7 @@ pub const Plugin = struct {
             try self.presses.next(io);
             const options = self.settings.value;
             const point: sdk.api.wraith.CapturePoint = if (options.include_overlay) .after_overlay else .before_overlay;
-            const capture = sdk.tasks.wait(self.ctx.owner.root.frame().capture(point)) catch |err| switch (err) {
+            const capture = sdk.tasks.wait(self.ctx.wraith.frame().capture(point)) catch |err| switch (err) {
                 error.Canceled, error.Gone => return err,
                 else => {
                     _ = self.toast(0, .failure, "Couldn't capture the frame");
@@ -134,7 +134,7 @@ pub const Plugin = struct {
 
     /// Replaces toast `id` if it's still up. Gives the one showing.
     fn toast(self: *Plugin, id: u32, kind: sdk.api.wraith.ToastKind, text: []const u8) u32 {
-        const ui = self.ctx.owner.root.ui();
+        const ui = self.ctx.wraith.ui();
         const t: sdk.api.wraith.Toast = .{ .kind = kind, .title = "Screenshot", .text = text, .seconds = if (kind == .info) 0 else 4 };
         if (id != 0 and ui.updateToast(id, t)) return id;
         return ui.toast(t);
