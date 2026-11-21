@@ -7,7 +7,7 @@
             .hash = "wraith-0.0.0-sZo_9_RCVAA1_FFwMKQKnWG_THfeU2NDP3JUbbUtRPtS",
         },
     },
-    .minimum_zig_version = "0.18.0-dev.1244+b5ffcbd70",
+    .minimum_zig_version = "0.18.0-dev.1260+833623422",
     .paths = .{""},
     .fingerprint = 0x58991e41f1c358f7,
 }

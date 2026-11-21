@@ -11,7 +11,7 @@
             .hash = "N-V-__8AACk66wJ6iA7dDjuutCtO13EKnXuFHC0VYXodPK52",
         },
     },
-    .minimum_zig_version = "0.18.0-dev.1244+b5ffcbd70",
+    .minimum_zig_version = "0.18.0-dev.1260+833623422",
     .paths = .{""},
     .fingerprint = 0x58991e41f1c358f7,
 }
