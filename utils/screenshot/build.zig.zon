@@ -1,6 +1,6 @@
 .{
     .name = .screenshot,
-    .version = "0.0.1",
+    .version = "0.0.2",
     .dependencies = .{
         .wraith = .{
             .url = "git+https://github.com/ratatoskr/wraith#ec629bcb33331e5a2393ae9c7038b9b019f13e03",
