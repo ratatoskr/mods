@@ -2,7 +2,7 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "screenshot",
   "kind": "plugin",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "title": "Screenshot",
   "summary": "Take screenshots in any game as PNG, plus EXR in HDR games.",
   "author": "Asgard",
