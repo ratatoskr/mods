@@ -1,0 +1,32 @@
+[Instance("48 8B 0D ?? ?? ?? ?? BF", Rip)]
+struct DataTableManager {
+    [0x38]
+    ItemTableHolder* items;
+}
+
+struct ItemTableHolder {
+    [0x8]
+    ItemTable* table;
+}
+
+struct ItemTable {
+    [0x10]
+    ItemTableData* data;
+}
+
+struct ItemTableData {
+    [0x54]
+    u32 count;
+
+    [0x148]
+    Item[count] items;
+}
+
+[Size(0xF8)]
+struct Item {
+    [0x0]
+    u32 id;
+
+    [0xD8]
+    cstring name;
+}

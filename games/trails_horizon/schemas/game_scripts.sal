@@ -1,0 +1,10 @@
+[Instance("48 8B 35 ?? ?? ?? ?? 75", Rip), Tweak("Script Variables")]
+struct GameScriptManager {
+    [0x12110] 
+    ScriptVariables variables;
+}
+
+struct ScriptVariables {
+    [0x68] 
+    u16 sp;
+}

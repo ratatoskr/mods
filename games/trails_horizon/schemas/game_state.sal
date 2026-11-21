@@ -1,0 +1,35 @@
+[Instance("48 8B 0D ?? ?? ?? ?? 3D", Rip), Tweak("Money & points")]
+struct GameStateManager {
+    [0x297970] 
+    Sepith sepith;
+
+    [0x297990, Range(0, 9999999)]
+    u32 mira;
+
+    [0x2979A0] 
+    u32 gourmet_points;
+
+    [0x2979A8, ReadOnly]
+    f64 play_time;
+
+    [Sig("E8 ?? ?? ?? ?? 41 8B 47 ?? 41 89 86", Rip)]
+    bool giveMira(u32 amount);
+
+    [Sig("E8 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? F3 0F 10 36", Rip)] 
+    u32 spendMira(u32 amount);
+
+    [Sig("E8 ?? ?? ?? ?? 8B 03 89 44 24", Rip)] 
+    bool spawnItem(u32 itemId, u32 quantity);
+    
+}
+
+struct Sepith {
+    u32 earth;
+    u32 water;
+    u32 fire;
+    u32 wind;
+    u32 time;
+    u32 space;
+    u32 mirage;
+    u32 mass_crystal;
+}
