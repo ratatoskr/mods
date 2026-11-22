@@ -1,0 +1,13 @@
+.{
+    .name = .unity,
+    .version = "0.0.0",
+    .dependencies = .{
+        .wraith = .{
+            .url = "git+https://github.com/ratatoskr/wraith#b3c3211b5c1c309c4b9206333046c5801a6b4a27",
+            .hash = "wraith-0.0.0-sZo_9ySYVwD7xsI2mBuKx5Gn9U69D0ozR6sSYUmOo4uo",
+        },
+    },
+    .minimum_zig_version = "0.18.0-dev.1260+833623422",
+    .paths = .{""},
+    .fingerprint = 0x9659d57b4d720d3,
+}

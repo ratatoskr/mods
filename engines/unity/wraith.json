@@ -1,0 +1,13 @@
+{
+  "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
+  "id": "unity",
+  "kind": "plugin",
+  "version": "0.0.0",
+  "title": "Unity",
+  "summary": "Camera Tools, posing and Unity's main thread for plugins, in Unity games.",
+  "author": "Asgard",
+  "descriptionFile": "README.md",
+  "depends": ["camera", "posing"],
+  "devDepends": { "camera": "../../libs/camera/wraith.json", "posing": "../../libs/posing/wraith.json" },
+  "gameEngine": { "id": "unity" }
+}

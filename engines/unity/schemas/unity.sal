@@ -1,0 +1,22 @@
+// Unity's main thread, where its engine calls work, for plugins in any language. Depend on `unity`
+// and get the `unity` service. Engine calls come from the `managed` area's `icall`, or `[Icall]` in
+// your own schemas.
+
+error UnityError { Failed = 1 }
+
+// On Unity's main thread, once a frame.
+fn void!UnityError UnityFrame();
+
+trait UnitySubscription {
+    // No more calls, from the next frame. Fine to call twice.
+    void cancel();
+}
+
+[Service] trait Unity {
+    // Calls `handler` on Unity's main thread once a frame, as the main camera's about to render,
+    // before Camera Tools moves it. Till it's cancelled or its plugin goes. Nothing's called till
+    // the game's C# is running.
+    UnitySubscription onFrame(keep UnityFrame handler);
+    // The main camera, a `UnityEngine.Camera` object, or 0 if there's none. Main thread only.
+    usize mainCamera();
+}
