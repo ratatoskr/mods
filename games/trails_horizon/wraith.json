@@ -2,7 +2,7 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "trails_horizon",
   "kind": "plugin",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "title": "Trails Horizon",
   "summary": "Trails beyond the horizon plugin",
   "author": "Asgard",

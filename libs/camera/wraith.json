@@ -2,7 +2,7 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "camera",
   "kind": "plugin",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "title": "Camera Tools",
   "summary": "Fly or orbit the camera.",
   "author": "Asgard",

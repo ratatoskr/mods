@@ -2,7 +2,7 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "unity",
   "kind": "plugin",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "title": "Unity",
   "summary": "Camera Tools, posing and Unity's main thread for plugins, in Unity games.",
   "author": "Asgard",
