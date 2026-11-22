@@ -1,23 +1,10 @@
-// Unity's main thread, where its engine calls work, for plugins in any language. Depend on `unity`
-// and get the `unity` service. Engine calls come from the `managed` area's `icall`, or `[Icall]` in
-// your own schemas.
-
-error UnityError { Failed = 1 }
-
-// On Unity's main thread, once a frame.
-fn void!UnityError UnityFrame();
-
-trait UnitySubscription {
-    // No more calls, from the next frame. Fine to call twice.
-    void cancel();
-}
+// Unity's main camera and objects, for plugins in any language. Depend on `unity` and get the
+// `unity` service. Unity's main thread is Wraith's game thread while this plugin's loaded, so
+// `frame.onTick` runs there, where Unity's engine calls and methods work. Engine calls come from the
+// `managed` area's `icall`, or `[Icall]` in your own schemas.
 
 [Service] trait Unity {
-    // Calls `handler` on Unity's main thread once a frame, as the main camera's about to render,
-    // before Camera Tools moves it. Till it's cancelled or its plugin goes. Nothing's called till
-    // the game's C# is running.
-    UnitySubscription onFrame(keep UnityFrame handler);
-    // The main camera, a `UnityEngine.Camera` object, or 0 if there's none. Main thread only.
+    // The main camera, a `UnityEngine.Camera` object, or 0 if there's none. Game thread only.
     usize mainCamera();
     // Like Unity's `FindObjectsOfType`, every component of `class_name`, like `UnityEngine.Light`
     // or one of the game's own. Finding them means Unity looks through everything it has, so each
@@ -28,8 +15,8 @@ trait UnitySubscription {
 }
 
 struct UnityObject {
-    // The component's C# object, for Unity's engine calls and the game's runtime, on Unity's main
-    // thread. On a later frame, check it's still there first: its `m_CachedPtr` field is `native`
+    // The component's C# object, for Unity's engine calls and the game's runtime, on the game
+    // thread. On a later tick, check it's still there first: its `m_CachedPtr` field is `native`
     // till Unity destroys it.
     usize object;
     // Unity's own object for it, which stays the same while it's around

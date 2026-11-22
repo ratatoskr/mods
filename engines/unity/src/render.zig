@@ -2,15 +2,15 @@
 //! has run, Cinemachine included. That's the player loop's `PostLateUpdate.FinishFrameRendering`,
 //! where every render pipeline renders. Unity before 2019 or so might not say where it is, so then
 //! it's each camera's `Camera.FireOnPreCull` or `RenderPipelineManager.BeginCameraRendering`, which
-//! some games never call. Either way it calls the `Unity` service's subscribers, then lets Camera
-//! Tools move the main camera. Posing goes a bit earlier, before skinned meshes follow their bones.
+//! some games never call. Either way it ticks Wraith there, so every plugin's `onTick` runs on the
+//! main thread, then lets Camera Tools move the main camera. Posing goes a bit earlier, before
+//! skinned meshes follow their bones.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
 
 const Engine = @import("engine.zig").Engine;
 const Object = @import("engine.zig").Object;
-const Frames = @import("frames.zig").Frames;
 const Camera = @import("camera.zig").Camera;
 const Posing = @import("posing.zig").Posing;
 const Speed = @import("speed.zig").Speed;
@@ -35,7 +35,8 @@ const BeginCamera = fn (usize, ?*Object, ?*anyopaque) callconv(.c) void;
 
 pub const Render = struct {
     engine: *const Engine = undefined,
-    frames: *Frames = undefined,
+    /// Wraith's ticks, which Unity's main thread drives. Null if Wraith wouldn't hand them over.
+    ticks: ?sdk.frame.TickDriver = null,
     camera: *Camera = undefined,
     posing: ?*Posing = null,
     /// Put on at the start of each frame
@@ -51,13 +52,13 @@ pub const Render = struct {
     /// Which have fired, for the log
     pre_cull_seen: sdk.atomic.Value(bool) = .init(false),
     begin_camera_seen: sdk.atomic.Value(bool) = .init(false),
-    /// Main thread. Unity's frame count the subscribers were last called for.
+    /// Main thread. Unity's frame count it last ticked for.
     last_frame: i32 = -1,
 
     /// Blocks while the game's runtime looks, so not on the render thread.
-    pub fn start(self: *Render, engine: *const Engine, managed: W.Managed, frames: *Frames, camera: *Camera, posing: ?*Posing) !void {
+    pub fn start(self: *Render, engine: *const Engine, managed: W.Managed, ticks: ?sdk.frame.TickDriver, camera: *Camera, posing: ?*Posing) !void {
         self.engine = engine;
-        self.frames = frames;
+        self.ticks = ticks;
         self.camera = camera;
         self.posing = posing;
         if (self.hookSteps(managed)) return else |err| log.info("No player loop to hook ({t}), so it's each camera's render callbacks", .{err});
@@ -160,7 +161,7 @@ pub const Render = struct {
         const frame = e.frame_count();
         if (frame != self.last_frame) {
             self.last_frame = frame;
-            self.frames.fire();
+            if (self.ticks) |t| t.tick();
             // The player loop's step ticks it, when there's one
             if (self.step == null) if (self.scene) |s| s.tick();
         }

@@ -4,7 +4,7 @@
   "kind": "plugin",
   "version": "0.0.1",
   "title": "Unity",
-  "summary": "Camera Tools, posing and Unity's main thread for plugins, in Unity games.",
+  "summary": "Camera Tools, posing and game speed in Unity games, with plugins' ticks on Unity's main thread.",
   "author": "Asgard",
   "descriptionFile": "README.md",
   "depends": ["camera", "posing"],

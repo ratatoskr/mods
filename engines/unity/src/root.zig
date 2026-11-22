@@ -1,7 +1,8 @@
-//! Unity games, on Mono or IL2CPP. Offers Unity's main thread to plugins in any language through
-//! the `Unity` service, Camera Tools moves the game's main camera, with the built-in render
-//! pipeline, URP or HDRP, posing poses its characters, and game speed goes through Unity's time scale. Everything goes through the game's C#
-//! runtime and Unity's own engine calls, so it works without knowing anything about the game.
+//! Unity games, on Mono or IL2CPP. Drives Wraith's ticks from Unity's main thread, so every
+//! plugin's `onTick` can use Unity's engine calls and methods. Camera Tools moves the game's main
+//! camera, with the built-in render pipeline, URP or HDRP, posing poses its characters, and game
+//! speed goes through Unity's time scale. Everything goes through the game's C# runtime and Unity's
+//! own engine calls, so it works without knowing anything about the game.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
@@ -14,7 +15,6 @@ const Posing = @import("posing.zig").Posing;
 const Speed = @import("speed.zig").Speed;
 const scene_ = @import("scene.zig");
 const Scene = scene_.Scene;
-const frames_ = @import("frames.zig");
 
 pub const std_options: std.Options = .{ .logFn = sdk.logFn };
 pub const panic = sdk.panic;
@@ -26,7 +26,8 @@ pub const Plugin = struct {
     engine: Engine = undefined,
     /// Set once `engine` is, for other threads.
     ready: sdk.atomic.Value(bool) = .init(false),
-    frames: frames_.Frames = .{},
+    /// Taken in `start`, so nobody's ticks run on the render thread first.
+    ticks: ?sdk.frame.TickDriver = null,
     camera: Camera = .{},
     render: Render = .{},
     scene: ?Scene = null,
@@ -41,6 +42,11 @@ pub const Plugin = struct {
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
+        self.ticks = sdk.frame.driveTicks() catch |err| blk: {
+            log.warn("Wraith won't let Unity's main thread tick ({t}), so plugins' ticks stay on the render thread", .{err});
+            break :blk null;
+        };
+        if (self.ticks) |t| if (!t.active()) log.info("Another plugin drives ticks, so Unity's main thread doesn't", .{});
         try ctx.spawn(setUp, .{self});
     }
 
@@ -49,13 +55,21 @@ pub const Plugin = struct {
         self.speed.stop();
         // Before what they use goes
         self.render.stop();
-        self.frames.deinit();
+        self.handBack();
         if (self.posing) |*p| p.deinit();
         if (self.scene) |*s| s.deinit();
     }
 
+    /// Ticks go back to the render thread, or the next driver.
+    fn handBack(self: *Plugin) void {
+        if (self.ticks) |t| t.release();
+        self.ticks = null;
+    }
+
     /// Waits for the game to start its C# runtime, which comes after Wraith's loaded plugins.
     fn setUp(self: *Plugin) !void {
+        // Nothing would tick otherwise
+        errdefer self.handBack();
         const io = self.ctx.io;
         try sdk.frame.toWorker(io);
         const managed = self.ctx.wraith.managed();
@@ -80,7 +94,7 @@ pub const Plugin = struct {
         self.speed.start(managed, self.ctx.wraith.game()) catch |err| log.info("No time scale to change ({t}), so game speed goes by the clocks", .{err});
         self.render.speed = &self.speed;
         self.render.scene = if (self.scene) |*s| s else null;
-        self.render.start(&self.engine, managed, &self.frames, &self.camera, if (self.posing) |*p| p else null) catch |err| {
+        self.render.start(&self.engine, managed, self.ticks, &self.camera, if (self.posing) |*p| p else null) catch |err| {
             log.err("Can't tell when Unity renders: {t}", .{err});
             return err;
         };
@@ -105,11 +119,6 @@ const found_arena = struct {
 
 /// The `Unity` service.
 const Service = struct {
-    pub fn onFrame(self: *Plugin, handler: schema.UnityFrame) schema.UnitySubscription {
-        const s = self.frames.subscribe(handler) orelse return .{};
-        return .init(s, sdk.salamander.rt.implement(schema.UnitySubscription, frames_.Subscriber));
-    }
-
     pub fn mainCamera(self: *Plugin) usize {
         if (!self.ready.load(.acquire)) return 0;
         return @intFromPtr(self.engine.main_camera() orelse return 0);
