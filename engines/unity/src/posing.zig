@@ -1,9 +1,10 @@
 //! Hands posing each character's skeleton, once Unity's animated it and the game's LateUpdate
-//! scripts have run, but before it's skinned and drawn. Characters are the Animators nearest the
-//! camera, from the scene's cached answers, and a skeleton is the transforms under one. Each is
-//! walked once and kept, a few new ones a frame, so a frame's mostly a world matrix per bone. Edits go back as each transform's local position, rotation
-//! and scale. Ones the game doesn't set every frame get the game's own back the next frame, so edits
-//! don't pile up.
+//! scripts have run, but before it's skinned and drawn. Characters are what's skinned: the scene's
+//! SkinnedMeshRenderers, from its cached answers, with each mesh's bones in one ask. Meshes that
+//! share a skeleton, like a body, its hair and clothes, are one character, named after what the
+//! skeleton's under. The nearest to the camera get posing's slots. A frame's mostly a world matrix
+//! per bone. Edits go back as each transform's local position, rotation and scale. Ones the game
+//! doesn't set every frame get the game's own back the next frame, so edits don't pile up.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
@@ -25,11 +26,19 @@ const gpa = std.heap.smp_allocator;
 /// Posing's own limits
 const max_bones = 512;
 const max_actors = 32;
+/// Meshes looked at a pick, nearest first
+const max_meshes = 128;
+/// How far up from a bone it looks for the rest of its skeleton
+const max_climb = 64;
+const word = @sizeOf(usize);
+const array_length = 3 * word;
+const array_items = 4 * word;
 
 /// Unity's engine calls for it, found like `Engine`'s.
 const Calls = struct {
-    child_count: *const fn (*Object) callconv(.c) i32,
-    child: *const fn (*Object, i32) callconv(.c) ?*Object,
+    parent: *const fn (*Object) callconv(.c) ?*Object,
+    /// A SkinnedMeshRenderer's bones, a `Transform[]`
+    bones: *const fn (*Object) callconv(.c) ?*Object,
     get_local_position: *const fn (*Object, *Vec3) callconv(.c) void,
     set_local_position: *const fn (*Object, *const Vec3) callconv(.c) void,
     get_local_rotation: *const fn (*Object, *Quat) callconv(.c) void,
@@ -37,12 +46,10 @@ const Calls = struct {
     get_local_scale: *const fn (*Object, *Vec3) callconv(.c) void,
     set_local_scale: *const fn (*Object, *const Vec3) callconv(.c) void,
     local_to_world: *const fn (*Object, *Mat4) callconv(.c) void,
-    world_to_camera: *const fn (*Object, *Mat4) callconv(.c) void,
-    projection: *const fn (*Object, *Mat4) callconv(.c) void,
 
     const names = .{
-        .child_count = .{ "UnityEngine.Transform", "get_childCount" },
-        .child = .{ "UnityEngine.Transform", "GetChild" },
+        .parent = .{ "UnityEngine.Transform", "GetParent", "get_parentInternal" },
+        .bones = .{ "UnityEngine.SkinnedMeshRenderer", "get_bones" },
         .get_local_position = .{ "UnityEngine.Transform", "get_localPosition_Injected", "INTERNAL_get_localPosition" },
         .set_local_position = .{ "UnityEngine.Transform", "set_localPosition_Injected", "INTERNAL_set_localPosition" },
         .get_local_rotation = .{ "UnityEngine.Transform", "get_localRotation_Injected", "INTERNAL_get_localRotation" },
@@ -50,8 +57,6 @@ const Calls = struct {
         .get_local_scale = .{ "UnityEngine.Transform", "get_localScale_Injected", "INTERNAL_get_localScale" },
         .set_local_scale = .{ "UnityEngine.Transform", "set_localScale_Injected", "INTERNAL_set_localScale" },
         .local_to_world = .{ "UnityEngine.Transform", "get_localToWorldMatrix_Injected", "INTERNAL_get_localToWorldMatrix" },
-        .world_to_camera = .{ "UnityEngine.Camera", "get_worldToCameraMatrix_Injected", "INTERNAL_get_worldToCameraMatrix" },
-        .projection = .{ "UnityEngine.Camera", "get_projectionMatrix_Injected", "INTERNAL_get_projectionMatrix" },
     };
 };
 
@@ -103,46 +108,50 @@ const Track = struct {
     frame: u32,
 };
 
-/// A character, in one of posing's slots. Its objects are held through the game's runtime so the
+/// A character, in one of posing's slots. Its transforms are held through the game's runtime so the
 /// garbage collector leaves them be, and each is checked against its native one before it's used,
 /// in case Unity's destroyed it.
 const Actor = struct {
     used: bool = false,
-    /// The Animator
-    animator: *Object = undefined,
+    /// It's kept by its skeleton's root, the first node
     native: usize = 0,
-    transform: *Object = undefined,
-    transform_native: usize = 0,
-    /// On the Animator and its Transform
-    holds: [2]u32 = .{ 0, 0 },
     name: Name = .{},
-    /// Walking it can take a few frames, carrying on from `stack`
-    walked: bool = false,
     count: u32 = 0,
+    /// Parents before children, the root first
     nodes: [max_bones]*Object = undefined,
     natives: [max_bones]usize = undefined,
     parents: [max_bones]i32 = undefined,
     names: [max_bones]Name = undefined,
-    /// On each node, 0 for the root, which `holds` has
     node_holds: [max_bones]u32 = undefined,
-    stack: [max_bones]Next = undefined,
-    top: u32 = 0,
+
+    fn root(a: *const Actor) *Object {
+        return a.nodes[0];
+    }
+
+    fn find(a: *const Actor, native: usize) ?u32 {
+        for (a.natives[0..a.count], 0..) |n, i| if (n == native) return @intCast(i);
+        return null;
+    }
 };
 
-/// A transform still to walk.
-const Next = struct { node: *Object, native: usize, parent: i32, hold: u32 };
-
+/// One mesh's bones, while picking.
+const Mesh = struct {
+    /// On its bones array and its root, which keep them till they're held themselves
+    holds: [2]u32,
+    /// The mesh's own transform, which sits beside the skeleton under the model
+    transform: *Object,
+    bones: []*Object,
+    natives: []usize,
+    /// What's above all its bones, the bone at the top or what's over the ones at the top
+    root: *Object,
+    root_native: usize,
+    distance: f32,
+};
 /// For the Timings window
 var zone_read: sdk.timing.Zone = .init("Posing: reading bones");
 var zone_hand: sdk.timing.Zone = .init("Posing: handing over");
 var zone_write: sdk.timing.Zone = .init("Posing: writing back");
-var zone_walk: sdk.timing.Zone = .init("Posing: walking new ones");
-
-/// How long a frame can spend walking new characters, as that asks Unity about every bone, and
-/// Unity makes C# objects and strings for ones the game's never touched
-const walk_budget_ns = std.time.ns_per_ms / 2;
-/// Transforms walked a frame however long they take, so it always gets somewhere
-const min_walk = 16;
+var zone_pick: sdk.timing.Zone = .init("Posing: finding characters");
 
 /// What a frame works on, kept off Unity's main thread's stack.
 const Scratch = struct {
@@ -168,7 +177,7 @@ pub const Posing = struct {
     /// Null without posing. Blocks while the game's runtime looks, so not on the render thread.
     pub fn find(engine: *const Engine, scene: *Scene, managed: W.Managed, missing: *[]const u8) !?Posing {
         const service = sdk.salamander.service(schema.Posing, "posing") orelse return null;
-        for ([_]*sdk.timing.Zone{ &zone_read, &zone_hand, &zone_write, &zone_walk }) |z| sdk.timing.list(z);
+        for ([_]*sdk.timing.Zone{ &zone_read, &zone_hand, &zone_write, &zone_pick }) |z| sdk.timing.list(z);
         const calls = try engine_.findCalls(Calls, Calls.names, managed, missing);
         const scratch = try gpa.create(Scratch);
         errdefer gpa.destroy(scratch);
@@ -201,43 +210,26 @@ pub const Posing = struct {
         if (!active and self.tracked.count() == 0) return;
         var found: std.ArrayList(scene_.Found) = .empty;
         defer found.deinit(gpa);
-        const answer = self.scene.objectsOfType(gpa, "UnityEngine.Animator", &found) catch 0;
+        const answer = self.scene.objectsOfType(gpa, "UnityEngine.SkinnedMeshRenderer", &found) catch 0;
         if (answer != self.picked) {
             self.picked = answer;
+            const z = zone_pick.begin();
+            defer z.end();
             self.pick(found.items);
         }
-        // Walking first, on its own clock, so time spent posing can't starve it
-        {
-            const z = zone_walk.begin();
-            defer z.end();
-            const walk_until = sdk.timing.now() + walk_budget_ns;
-            var at_least: usize = min_walk;
-            for (self.actors) |*a| {
-                if (!a.used or a.walked) continue;
-                if (at_least == 0 and sdk.timing.now() >= walk_until) break;
-                at_least -|= self.walk(a, walk_until, at_least);
-            }
-        }
-        for (self.actors) |*a| if (a.used and a.walked) self.pose(a, active);
+        for (self.actors) |*a| if (a.used) self.pose(a, active);
 
         // Whatever wasn't posed this frame has its own back already, or is gone
         var it = self.tracked.iterator();
         while (it.next()) |kv| if (kv.value_ptr.frame != self.frame) self.tracked.removeByPtr(kv.key_ptr);
     }
 
-    /// Main thread, with Unity's main camera, for drawing and picking bones.
-    pub fn camera(self: *Posing, cam: *Object) void {
-        if (!self.service.active()) return;
-        var view: Mat4 = .identity;
-        var projection: Mat4 = .identity;
-        self.calls.world_to_camera(cam, &view);
-        self.calls.projection(cam, &projection);
-        const d3d = toD3d(view, projection);
-        self.service.camera(d3d.view, d3d.projection);
-    }
-
-    /// The Animators nearest the camera. Ones already in a slot keep it, and their skeleton.
+    /// The characters nearest the camera. Ones already in a slot keep it, and their skeleton.
     fn pick(self: *Posing, found: []scene_.Found) void {
+        var arena: std.heap.ArenaAllocator = .init(gpa);
+        defer arena.deinit();
+        const a = arena.allocator();
+
         const e = self.engine;
         var eye: Vec3 = .{};
         if (e.main_camera()) |cam| if (e.transform(cam)) |t| e.get_position(t, &eye);
@@ -247,94 +239,190 @@ pub const Posing = struct {
             }
         };
         std.mem.sort(scene_.Found, found, eye, ByDistance.lessThan);
-        const chosen = found[0..@min(found.len, max_actors)];
-        // Let go of the ones that aren't near any more
-        for (self.actors) |*a| {
-            if (!a.used) continue;
-            const still = for (chosen) |f| {
-                if (f.native == a.native) break true;
-            } else false;
-            if (!still) {
-                self.drop(a);
-            }
+
+        // Each mesh's bones, and what's at the top of them
+        var meshes: std.ArrayList(Mesh) = .empty;
+        defer for (meshes.items) |m| for (m.holds) |h| self.release(h);
+        for (found[0..@min(found.len, max_meshes)]) |f| {
+            var m = (self.meshOf(a, f) catch continue) orelse continue;
+            m.distance = f.position.distance(eye);
+            meshes.append(a, m) catch {
+                for (m.holds) |h| self.release(h);
+                break;
+            };
         }
-        for (chosen) |f| {
-            const have = for (self.actors) |*a| {
-                if (a.used and a.native == f.native) break true;
+        const groups = groupMeshes(a, self, meshes.items) catch return;
+        std.mem.sort(Group, groups, {}, struct {
+            fn nearer(_: void, x: Group, y: Group) bool {
+                return x.distance < y.distance;
+            }
+        }.nearer);
+        const chosen = groups[0..@min(groups.len, max_actors)];
+
+        // Let go of the ones that aren't near any more
+        for (self.actors) |*actor| {
+            if (!actor.used) continue;
+            const still = for (chosen) |g| {
+                if (g.root.root_native == actor.native) break true;
+            } else false;
+            if (!still) self.drop(actor);
+        }
+        for (chosen) |g| {
+            const have = for (self.actors) |*actor| {
+                if (actor.used and actor.native == g.root.root_native) break true;
             } else false;
             if (have) continue;
-            const slot = for (self.actors) |*a| {
-                if (!a.used) break a;
+            const slot = for (self.actors) |*actor| {
+                if (!actor.used) break actor;
             } else break;
-            slot.used = true;
-            slot.holds = .{ self.managed.hold(@intFromPtr(f.object)) catch 0, self.managed.hold(@intFromPtr(f.transform)) catch 0 };
-            slot.animator = f.object;
-            slot.native = f.native;
-            slot.transform = f.transform;
-            slot.transform_native = f.transform_native;
-            slot.name = f.name;
-            slot.walked = false;
-            slot.count = 0;
-            slot.top = 0;
+            self.build(slot, g.root.root, g.root.root_native, g.meshes);
         }
     }
 
-    /// The transforms under its Animator, parents first, till `until` once it's done `at_least`.
-    /// Carries on next time. Gives how many it did.
-    fn walk(self: *Posing, a: *Actor, until: u64, at_least: usize) usize {
-        var done: usize = 0;
-        if (a.count == 0 and a.top == 0) {
-            if (!self.alive(a.transform, a.transform_native)) {
-                self.drop(a);
-                return 0;
-            }
-            a.stack[0] = .{ .node = a.transform, .native = a.transform_native, .parent = -1, .hold = 0 };
-            a.top = 1;
+    /// A transform and what's above it, by native, for telling what's under what.
+    fn above(self: *Posing, a: std.mem.Allocator, node: *Object, native: usize) ![]usize {
+        var out: std.ArrayList(usize) = .empty;
+        try out.append(a, native);
+        var at = node;
+        while (out.items.len < max_climb) {
+            at = self.calls.parent(at) orelse break;
+            try out.append(a, self.scene.nativeOf(at));
         }
-        const s = self.scene;
-        const c = &self.calls;
-        while (a.top > 0 and a.count < max_bones) {
-            if (done >= at_least and sdk.timing.now() >= until) return done;
-            done += 1;
-            a.top -= 1;
-            const at = a.stack[a.top];
-            // It might have gone since the last frame
-            if (!self.alive(at.node, at.native)) {
-                self.release(at.hold);
+        return out.items;
+    }
+
+    /// A SkinnedMeshRenderer's bones, in one ask. Null if it hasn't got a skeleton worth posing.
+    fn meshOf(self: *Posing, a: std.mem.Allocator, f: scene_.Found) !?Mesh {
+        if (!self.alive(f.object, f.native)) return null;
+        // On the stack, where the garbage collector sees it, till they're held
+        const array = self.calls.bones(f.object) orelse return null;
+        const n = @min(std.mem.bytesToValue(usize, @as([*]const u8, @ptrFromInt(@intFromPtr(array) + array_length))[0..word]), max_bones);
+        if (n < 3) return null;
+        // Other asks can set the collector off, so it's held till the bones are
+        const hold = self.managed.hold(@intFromPtr(array)) catch 0;
+        errdefer self.release(hold);
+        const items: [*]const ?*Object = @ptrFromInt(@intFromPtr(array) + array_items);
+        const bones = try a.alloc(*Object, n);
+        const natives = try a.alloc(usize, n);
+        var count: usize = 0;
+        for (items[0..n]) |item| {
+            const b = item orelse continue;
+            const native = self.scene.nativeOf(b);
+            if (native == 0) continue;
+            bones[count] = b;
+            natives[count] = native;
+            count += 1;
+        }
+        if (count < 3) {
+            self.release(hold);
+            return null;
+        }
+        // What's above all of them: the one whose parent isn't another of its bones, or what's over
+        // all of those when there's more than one, like a rig's root that isn't a bone itself
+        var top: ?*Object = null;
+        for (bones[0..count]) |b| {
+            const parent = self.calls.parent(b) orelse {
+                top = if (top) |t| self.commonAbove(t, b) orelse t else b;
                 continue;
-            }
-            const i = a.count;
-            a.nodes[i] = at.node;
-            a.node_holds[i] = at.hold;
-            a.natives[i] = at.native;
-            a.parents[i] = at.parent;
-            a.names[i] = s.nameOf(at.node, at.native);
-            a.count += 1;
-            // Backwards, so the first child comes off first
-            var k = c.child_count(at.node);
-            while (k > 0 and a.top < max_bones) {
-                k -= 1;
-                const child = c.child(at.node, k) orelse continue;
-                const native = s.nativeOf(child);
-                if (native == 0) continue;
-                // Held, as it might wait for the next frame, and Unity may have only just made it
-                a.stack[a.top] = .{ .node = child, .native = native, .parent = @intCast(i), .hold = self.managed.hold(@intFromPtr(child)) catch 0 };
-                a.top += 1;
-            }
+            };
+            if (std.mem.indexOfScalar(usize, natives[0..count], self.scene.nativeOf(parent)) != null) continue;
+            top = if (top) |t| self.commonAbove(t, b) orelse t else b;
         }
-        // What's left past the most bones it takes
-        while (a.top > 0) {
-            a.top -= 1;
-            self.release(a.stack[a.top].hold);
-        }
-        a.walked = true;
-        // Not much of a skeleton, so it's not offered
-        if (a.count < 3) {
-            self.drop(a);
-        }
-        return done;
+        const root = top orelse bones[0];
+        const root_native = self.scene.nativeOf(root);
+        // It may not be one of the bones, so it's held too
+        const root_hold = self.managed.hold(@intFromPtr(root)) catch 0;
+        return .{ .holds = .{ hold, root_hold }, .transform = f.transform, .bones = bones[0..count], .natives = natives[0..count], .root = root, .root_native = root_native, .distance = 0 };
     }
 
+    /// The nearest transform both are, or are under. Null if they're in different trees.
+    fn commonAbove(self: *Posing, x: *Object, y: *Object) ?*Object {
+        var xs: [max_climb]usize = undefined;
+        var objects: [max_climb]*Object = undefined;
+        var n: usize = 0;
+        var at: ?*Object = x;
+        while (at) |t| : (at = self.calls.parent(t)) {
+            if (n == xs.len) break;
+            xs[n] = self.scene.nativeOf(t);
+            objects[n] = t;
+            n += 1;
+        }
+        at = y;
+        var climbed: usize = 0;
+        while (at) |t| : (at = self.calls.parent(t)) {
+            if (std.mem.indexOfScalar(usize, xs[0..n], self.scene.nativeOf(t))) |i| return objects[i];
+            climbed += 1;
+            if (climbed == max_climb) break;
+        }
+        return null;
+    }
+    /// The skeleton under `root`, from all its meshes' bones and what's between them, parents first.
+    fn build(self: *Posing, slot: *Actor, root: *Object, native: usize, meshes: []const *const Mesh) void {
+        slot.* = .{ .used = true, .native = native };
+        _ = self.add(slot, root, native, -1);
+        const model = self.modelOf(root, meshes[0].transform);
+        slot.name = self.scene.nameOf(model, self.scene.nativeOf(model));
+        for (meshes) |m| for (m.bones, m.natives) |b, n| {
+            _ = self.join(slot, b, n);
+        };
+    }
+
+    /// What both the skeleton and its mesh are under, like `mdlCommando`, to name it after. Else
+    /// what the skeleton's under, or its root.
+    fn modelOf(self: *Posing, root: *Object, mesh: *Object) *Object {
+        var mesh_up: [max_climb]usize = undefined;
+        var n: usize = 0;
+        var at: ?*Object = mesh;
+        while (at) |t| : (at = self.calls.parent(t)) {
+            if (n == mesh_up.len) break;
+            mesh_up[n] = self.scene.nativeOf(t);
+            n += 1;
+        }
+        at = self.calls.parent(root);
+        var climbed: usize = 0;
+        while (at) |t| : (at = self.calls.parent(t)) {
+            if (std.mem.indexOfScalar(usize, mesh_up[0..n], self.scene.nativeOf(t)) != null) return t;
+            climbed += 1;
+            if (climbed == max_climb) break;
+        }
+        return self.calls.parent(root) orelse root;
+    }
+
+    /// Adds a bone, and anything between it and what's in already, so each is under its real parent.
+    /// Null if it isn't under the root, or there's no room.
+    fn join(self: *Posing, slot: *Actor, bone: *Object, native: usize) ?u32 {
+        if (slot.find(native)) |i| return i;
+        var chain: [max_climb]struct { node: *Object, native: usize } = undefined;
+        var len: usize = 0;
+        var at = bone;
+        var at_native = native;
+        const parent_index = while (len < max_climb) {
+            chain[len] = .{ .node = at, .native = at_native };
+            len += 1;
+            at = self.calls.parent(at) orelse return null;
+            at_native = self.scene.nativeOf(at);
+            if (slot.find(at_native)) |i| break i;
+        } else return null;
+        // From the top down, so parents come first
+        var parent: u32 = parent_index;
+        while (len > 0) {
+            len -= 1;
+            parent = self.add(slot, chain[len].node, chain[len].native, @intCast(parent)) orelse return null;
+        }
+        return parent;
+    }
+
+    fn add(self: *Posing, slot: *Actor, node: *Object, native: usize, parent: i32) ?u32 {
+        if (slot.count == max_bones) return null;
+        const i = slot.count;
+        slot.nodes[i] = node;
+        slot.natives[i] = native;
+        slot.parents[i] = parent;
+        slot.names[i] = self.scene.nameOf(node, native);
+        slot.node_holds[i] = self.managed.hold(@intFromPtr(node)) catch 0;
+        slot.count += 1;
+        return i;
+    }
     /// Bones the game's destroyed, like effects on a hand, come out, along with what was under them.
     fn dropDead(self: *Posing, a: *Actor) void {
         var to: [max_bones]i32 = undefined;
@@ -361,7 +449,7 @@ pub const Posing = struct {
     fn pose(self: *Posing, a: *Actor, active: bool) void {
         const c = &self.calls;
         const s = self.scratch;
-        if (!self.alive(a.animator, a.native) or !self.alive(a.transform, a.transform_native)) {
+        if (!self.alive(a.root(), a.native)) {
             return self.drop(a);
         }
         for (a.nodes[0..a.count], a.natives[0..a.count]) |t, native| if (!self.alive(t, native)) {
@@ -417,8 +505,6 @@ pub const Posing = struct {
     /// Out of its slot, letting go of what it held.
     fn drop(self: *Posing, a: *Actor) void {
         for (a.node_holds[0..a.count]) |h| self.release(h);
-        for (a.stack[0..a.top]) |n| self.release(n.hold);
-        for (a.holds) |h| self.release(h);
         a.* = .{};
     }
 
@@ -431,18 +517,70 @@ pub const Posing = struct {
     }
 };
 
-/// Unity's view is mirrored, from its left-handed world to an OpenGL camera that looks down -z with
-/// depth from -1 to 1. The gizmo works out which half of its rings faces the camera from the view
-/// and projection, and gets it backwards for that mix, so it'd draw the back halves while picking the
-/// front ones. This gives it D3D's way round, looking down +z with depth from 0 to 1, like most
-/// games. The two together still put everything in the same place on screen.
-fn toD3d(view: Mat4, projection: Mat4) struct { view: Mat4, projection: Mat4 } {
-    const flip: Mat4 = .scaling(.{ .x = 1, .y = 1, .z = -1 });
-    // z' = (z + w) / 2
-    var depth: Mat4 = .identity;
-    depth.m[10] = 0.5;
-    depth.m[14] = 0.5;
-    return .{ .view = view.mul(flip), .projection = flip.mul(projection).mul(depth) };
+/// Meshes that are one character, with the one whose root's the skeleton's.
+const Group = struct {
+    root: *const Mesh,
+    distance: f32,
+    meshes: []const *const Mesh,
+};
+
+/// Meshes go together when one's root is on, or under, another's bones or root, like hair on a head,
+/// or a glow skinned to the same bones as the body. The skeleton's root is the root that isn't under
+/// a different one, the biggest mesh's if they're the same. Whatever order they came in.
+fn groupMeshes(a: std.mem.Allocator, p: *Posing, meshes: []const Mesh) ![]Group {
+    const n = meshes.len;
+    const sets = try a.alloc(std.AutoHashMapUnmanaged(usize, void), n);
+    const ups = try a.alloc([]usize, n);
+    for (meshes, sets, ups) |*m, *set, *up| {
+        set.* = .empty;
+        for (m.natives) |native| try set.put(a, native, {});
+        try set.put(a, m.root_native, {});
+        up.* = try p.above(a, m.root, m.root_native);
+    }
+    const group_of = try a.alloc(usize, n);
+    for (group_of, 0..) |*g, i| g.* = i;
+    for (0..n) |j| for (0..n) |i| {
+        if (i == j) continue;
+        const under = for (ups[j]) |native| {
+            if (sets[i].contains(native)) break true;
+        } else false;
+        if (under) unite(group_of, i, j);
+    };
+
+    const Building = struct { root: ?*const Mesh = null, biggest: ?*const Mesh = null, distance: f32 = std.math.floatMax(f32), meshes: std.ArrayList(*const Mesh) = .empty };
+    const building = try a.alloc(Building, n);
+    @memset(building, .{});
+    for (meshes, 0..) |*m, j| {
+        const g = &building[groupOf(group_of, j)];
+        g.distance = @min(g.distance, m.distance);
+        try g.meshes.append(a, m);
+        if (g.biggest == null or m.bones.len > g.biggest.?.bones.len) g.biggest = m;
+        // Under a different root, like hair's under the body's
+        const under = for (meshes, 0..) |*other, i| {
+            if (i == j or groupOf(group_of, i) != groupOf(group_of, j) or other.root_native == m.root_native) continue;
+            if (std.mem.indexOfScalar(usize, ups[j][1..], other.root_native) != null) break true;
+        } else false;
+        if (!under and (g.root == null or m.bones.len > g.root.?.bones.len)) g.root = m;
+    }
+    var out: std.ArrayList(Group) = .empty;
+    for (building) |g| {
+        // Never left out, whatever shape it's in
+        const root = g.root orelse g.biggest orelse continue;
+        try out.append(a, .{ .root = root, .distance = g.distance, .meshes = g.meshes.items });
+    }
+    return out.items;
+}
+/// Union-find over meshes, which group they're in.
+fn groupOf(group_of: []usize, i: usize) usize {
+    var at = i;
+    while (group_of[at] != at) at = group_of[at];
+    return at;
+}
+
+fn unite(group_of: []usize, i: usize, j: usize) void {
+    const x = groupOf(group_of, i);
+    const y = groupOf(group_of, j);
+    if (x != y) group_of[y] = x;
 }
 
 const testing = std.testing;
@@ -462,35 +600,203 @@ test "a posed matrix goes back to the same local transform" {
     try testing.expect(again.near(l));
 }
 
-test "Unity's camera goes to D3D's way round, landing in the same place" {
-    // OpenGL's perspective, row-vector style, as Unity's memory reads
-    const n: f32 = 0.5;
-    const f: f32 = 100;
-    const a = -(f + n) / (f - n);
-    const b = -2 * f * n / (f - n);
-    const gl: Mat4 = .{ .m = .{ 1.5, 0, 0, 0, 0, 2, 0, 0, 0, 0, a, -1, 0, 0, b, 0 } };
-    // Unity's world is left-handed, so its view mirrors z on the way to the camera's
-    const view = Mat4.translation(.{ .x = -3 }).mul(.scaling(.{ .x = 1, .y = 1, .z = -1 }));
-    const d3d = toD3d(view, gl);
+/// Pretend Unity objects for picking: each has its native at `m_CachedPtr`, a name as a C# string,
+/// a parent, and maybe bones.
+const FakeUnity = struct {
+    const cached_ptr = 2 * @sizeOf(usize);
 
-    // No mirror left, and the projection's D3D's way round, which is what the gizmo goes by
-    const v = d3d.view;
-    const det = v.at(0, 0) * (v.at(1, 1) * v.at(2, 2) - v.at(1, 2) * v.at(2, 1)) -
-        v.at(0, 1) * (v.at(1, 0) * v.at(2, 2) - v.at(1, 2) * v.at(2, 0)) +
-        v.at(0, 2) * (v.at(1, 0) * v.at(2, 1) - v.at(1, 1) * v.at(2, 0));
-    try testing.expect(det > 0);
-    try testing.expect(d3d.projection.at(2, 3) > 0);
+    const Str = extern struct {
+        header: [2]usize = .{ 0, 0 },
+        len: i32 = 0,
+        chars: [24]u16 = @splat(0),
+    };
 
-    // In front of the camera, which is +z in Unity's world
-    const p: Vec3 = .{ .x = 4, .y = 1, .z = 5 };
-    try testing.expect(d3d.view.transformPoint(p).z > 0);
-    // Same spot on screen
-    const before = view.mul(gl).transformPoint(p);
-    const after = d3d.view.mul(d3d.projection).transformPoint(p);
-    try testing.expectApproxEqAbs(before.x, after.x, 1e-5);
-    try testing.expectApproxEqAbs(before.y, after.y, 1e-5);
-    // Depth from 0 at the near plane to 1 at the far one
-    const vp = d3d.view.mul(d3d.projection);
-    try testing.expectApproxEqAbs(0, vp.transformPoint(.{ .x = 3, .z = n }).z, 1e-4);
-    try testing.expectApproxEqAbs(1, vp.transformPoint(.{ .x = 3, .z = f }).z, 1e-4);
+    const Thing = extern struct {
+        header: [2]usize = .{ 0, 0 },
+        native: usize = 0,
+        name: Str = .{},
+        parent: ?*Thing = null,
+        /// A `Transform[]`, for a mesh
+        bones: extern struct { header: [2]usize = .{ 0, 0 }, bounds: usize = 0, len: usize = 0, items: [8]?*Thing = @splat(null) } = .{},
+
+        fn init(self: *Thing, native: usize, label: []const u8, up: ?*Thing) void {
+            self.* = .{ .native = native, .parent = up };
+            self.name.len = @intCast(label.len);
+            for (label, 0..) |ch, i| self.name.chars[i] = ch;
+        }
+
+        fn setBones(self: *Thing, list: []const *Thing) void {
+            self.bones.len = list.len;
+            for (list, 0..) |b, i| self.bones.items[i] = b;
+        }
+
+        fn obj(self: *Thing) *Object {
+            return @ptrCast(self);
+        }
+    };
+
+    fn of(o: *Object) *Thing {
+        return @ptrCast(@alignCast(o));
+    }
+
+    fn name(o: *Object) callconv(.c) ?*Object {
+        return @ptrCast(&of(o).name);
+    }
+
+    fn parent(o: *Object) callconv(.c) ?*Object {
+        return if (of(o).parent) |p| p.obj() else null;
+    }
+
+    fn bones(o: *Object) callconv(.c) ?*Object {
+        return @ptrCast(&of(o).bones);
+    }
+
+    fn noCamera() callconv(.c) ?*Object {
+        return null;
+    }
+};
+
+test "characters are found from their meshes' bones, a body and its hair as one" {
+    const T = FakeUnity.Thing;
+    var world: T = undefined;
+    var model: T = undefined;
+    var body_mesh: T = undefined;
+    var hair_mesh: T = undefined;
+    var armature: T = undefined;
+    var hips: T = undefined;
+    var spine: T = undefined;
+    var head: T = undefined;
+    var hair_root: T = undefined;
+    var hair_tip: T = undefined;
+    var prop: T = undefined;
+    var prop_bone: T = undefined;
+    world.init(1, "World", null);
+    model.init(2, "Model", &world);
+    body_mesh.init(3, "Body", &model);
+    hair_mesh.init(4, "Hair", &model);
+    armature.init(5, "Armature", &model);
+    hips.init(6, "Hips", &armature);
+    spine.init(7, "Spine", &hips);
+    head.init(8, "Head", &spine);
+    hair_root.init(9, "HairRoot", &head);
+    hair_tip.init(10, "HairTip", &hair_root);
+    prop.init(11, "Lamp", &world);
+    prop_bone.init(12, "Shade", &prop);
+    body_mesh.setBones(&.{ &hips, &spine, &head });
+    // The hair's own bones start below the body's, so it's found by what's above it, and what's
+    // between comes from climbing. Nearer, and as big as the body, so order can't decide it
+    hair_mesh.setBones(&.{ &hair_tip, &hair_root, &hair_tip });
+    // Too few bones to pose
+    prop.setBones(&.{ &prop_bone, &prop });
+
+    const engine: Engine = .{
+        .main_camera = FakeUnity.noCamera,
+        .transform = undefined,
+        .get_position = undefined,
+        .set_position = undefined,
+        .get_rotation = undefined,
+        .set_rotation = undefined,
+        .get_fov = undefined,
+        .set_fov = undefined,
+        .frame_count = undefined,
+        .world_to_camera = undefined,
+        .projection = undefined,
+        .local_to_world = undefined,
+    };
+    var scene: Scene = .{ .managed = .{}, .engine = &engine, .calls = .{ .find_objects = undefined, .name = FakeUnity.name }, .cached_ptr = FakeUnity.cached_ptr };
+    defer scene.deinit();
+    var calls: Calls = undefined;
+    calls.parent = FakeUnity.parent;
+    calls.bones = FakeUnity.bones;
+    var actors: [max_actors]Actor = @splat(.{});
+    var posing: Posing = .{ .service = undefined, .calls = calls, .engine = &engine, .scene = &scene, .managed = .{}, .scratch = undefined, .actors = &actors };
+
+    var found = [_]scene_.Found{
+        .{ .object = hair_mesh.obj(), .native = 4, .transform = hair_mesh.obj(), .transform_native = 4, .name = .init("Hair"), .position = .{ .x = 1 } },
+        .{ .object = prop.obj(), .native = 11, .transform = prop.obj(), .transform_native = 11, .name = .init("Lamp"), .position = .{ .x = 2 } },
+        .{ .object = body_mesh.obj(), .native = 3, .transform = body_mesh.obj(), .transform_native = 3, .name = .init("Body"), .position = .{ .x = 3 } },
+    };
+    posing.pick(&found);
+
+    var used: usize = 0;
+    for (actors) |a| used += @intFromBool(a.used);
+    try testing.expectEqual(1, used);
+    const a = &actors[0];
+    try testing.expectEqualStrings("Model", a.name.get());
+    try testing.expectEqual(6, a.native);
+    const want = [_]struct { []const u8, i32 }{ .{ "Hips", -1 }, .{ "Spine", 0 }, .{ "Head", 1 }, .{ "HairRoot", 2 }, .{ "HairTip", 3 } };
+    try testing.expectEqual(want.len, a.count);
+    for (want, 0..) |w, i| {
+        try testing.expectEqualStrings(w[0], a.names[i].get());
+        try testing.expectEqual(w[1], a.parents[i]);
+    }
+
+    // Picked again, it keeps its slot and skeleton
+    posing.pick(&found);
+    try testing.expect(actors[0].used and actors[0].count == want.len);
+}
+
+test "a body and a glow on the same bones, with two tops under a root that isn't a bone, are one" {
+    const T = FakeUnity.Thing;
+    var model: T = undefined;
+    var body_mesh: T = undefined;
+    var glow_mesh: T = undefined;
+    var armature: T = undefined;
+    var root: T = undefined;
+    var base: T = undefined;
+    var pelvis: T = undefined;
+    var spine: T = undefined;
+    var center: T = undefined;
+    var eye: T = undefined;
+    model.init(1, "mdlDroneTech", null);
+    body_mesh.init(2, "Body", &model);
+    glow_mesh.init(3, "Glow", &model);
+    armature.init(4, "Armature", &model);
+    root.init(5, "ROOT", &armature);
+    base.init(6, "base", &root);
+    pelvis.init(7, "pelvis", &base);
+    spine.init(8, "spine", &pelvis);
+    center.init(9, "drone_center_M", &root);
+    eye.init(10, "drone_eye", &center);
+    // The center's first, so taking the first top would leave out the body
+    body_mesh.setBones(&.{ &center, &eye, &base, &pelvis, &spine });
+    glow_mesh.setBones(&.{ &center, &eye, &base, &pelvis, &spine });
+
+    const engine: Engine = .{
+        .main_camera = FakeUnity.noCamera,
+        .transform = undefined,
+        .get_position = undefined,
+        .set_position = undefined,
+        .get_rotation = undefined,
+        .set_rotation = undefined,
+        .get_fov = undefined,
+        .set_fov = undefined,
+        .frame_count = undefined,
+        .world_to_camera = undefined,
+        .projection = undefined,
+        .local_to_world = undefined,
+    };
+    var scene: Scene = .{ .managed = .{}, .engine = &engine, .calls = .{ .find_objects = undefined, .name = FakeUnity.name }, .cached_ptr = FakeUnity.cached_ptr };
+    defer scene.deinit();
+    var calls: Calls = undefined;
+    calls.parent = FakeUnity.parent;
+    calls.bones = FakeUnity.bones;
+    var actors: [max_actors]Actor = @splat(.{});
+    var posing: Posing = .{ .service = undefined, .calls = calls, .engine = &engine, .scene = &scene, .managed = .{}, .scratch = undefined, .actors = &actors };
+
+    var found = [_]scene_.Found{
+        .{ .object = glow_mesh.obj(), .native = 3, .transform = glow_mesh.obj(), .transform_native = 3, .name = .init("Glow"), .position = .{ .x = 1 } },
+        .{ .object = body_mesh.obj(), .native = 2, .transform = body_mesh.obj(), .transform_native = 2, .name = .init("Body"), .position = .{ .x = 2 } },
+    };
+    posing.pick(&found);
+
+    var used: usize = 0;
+    for (actors) |a| used += @intFromBool(a.used);
+    try testing.expectEqual(1, used);
+    const a = &actors[0];
+    try testing.expectEqualStrings("mdlDroneTech", a.name.get());
+    try testing.expectEqualStrings("ROOT", a.names[0].get());
+    try testing.expectEqual(6, a.count);
+    // Every bone's under its real parent
+    for (1..a.count) |i| try testing.expect(a.parents[i] >= 0 and a.parents[i] < i);
 }

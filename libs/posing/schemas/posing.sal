@@ -25,12 +25,9 @@ struct PosingSkeleton {
     // Whether posing wants skeletons at all right now. A game can skip building them when it's false.
     bool active();
 
-    // Every frame, how the world's drawn, row-vector style, so clip = [x y z 1] * view * projection.
-    // For drawing and picking bones, and the gizmo.
-    void camera(Mat4 view, Mat4 projection);
-
     // Every frame for each actor, once the game's done with its skeleton (animation, IK and physics)
     // and before anything follows it, like attached accessories. `matrices` has one per bone, in the
-    // same order, row-vector style, and posing changes them in place.
+    // same order, row-vector style, and posing changes them in place. Posing draws them with the
+    // game's camera from `frame.setView`, which the game's plugin sets too.
     void pose(PosingSkeleton skeleton, Mat4* matrices);
 }

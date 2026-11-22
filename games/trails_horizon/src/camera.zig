@@ -1,5 +1,5 @@
 //! The game's camera, right after the camera manager sets it each frame. Camera Tools gets to move
-//! it, and posing gets to see it.
+//! it, then it's Wraith's view of the game, for posing and anything else drawing over the world.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
@@ -11,13 +11,10 @@ const ApplyHook = sdk.hooks.FnHook(Apply);
 
 pub const Camera = struct {
     tools: ?schema.CameraTools = null,
-    posing: ?schema.Posing = null,
     apply: ApplyHook = undefined,
 
     pub fn start(self: *Camera) !void {
         self.tools = sdk.salamander.service(schema.CameraTools, "camera");
-        self.posing = sdk.salamander.service(schema.Posing, "posing");
-        if (self.tools == null and self.posing == null) return error.NothingWantsTheCamera;
         if (self.tools) |t| t.world(.{ .up = .pos_y, .look = .neg_z, .left_handed = false, .metre = 1 });
         self.apply = try sdk.hooks.createFnWith(Apply, try CameraManager.addresses.applyCamera(), applyCamera, self, .{ .enabled = true });
     }
@@ -26,7 +23,7 @@ pub const Camera = struct {
         hook.original()(manager, dt, index);
         const camera = manager.camera orelse return;
         if (self.tools) |t| steer(t, camera);
-        if (self.posing) |p| p.camera(camera.view, camera.proj);
+        sdk.frame.setView(camera.view, camera.proj);
     }
 
     fn steer(tools: schema.CameraTools, camera: *schema.Camera) void {

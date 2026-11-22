@@ -12,6 +12,7 @@ const sdk = @import("wraith_sdk");
 const Engine = @import("engine.zig").Engine;
 const Object = @import("engine.zig").Object;
 const Camera = @import("camera.zig").Camera;
+const camera_ = @import("camera.zig");
 const Posing = @import("posing.zig").Posing;
 const Speed = @import("speed.zig").Speed;
 const Scene = @import("scene.zig").Scene;
@@ -129,7 +130,6 @@ pub const Render = struct {
         if (self.pose_step == null) if (self.posing) |p| p.run();
         if (self.engine.main_camera()) |camera| {
             self.rendering(camera);
-            if (self.posing) |p| p.camera(camera);
         }
         h.original()();
     }
@@ -166,5 +166,6 @@ pub const Render = struct {
             if (self.step == null) if (self.scene) |s| s.tick();
         }
         self.camera.steer(camera);
+        camera_.publishView(e, camera);
     }
 };

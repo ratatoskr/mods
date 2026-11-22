@@ -15,6 +15,7 @@ const Posing = @import("posing.zig").Posing;
 const Speed = @import("speed.zig").Speed;
 const scene_ = @import("scene.zig");
 const Scene = scene_.Scene;
+const Explorer = @import("explorer.zig").Explorer;
 
 pub const std_options: std.Options = .{ .logFn = sdk.logFn };
 pub const panic = sdk.panic;
@@ -33,6 +34,8 @@ pub const Plugin = struct {
     scene: ?Scene = null,
     posing: ?Posing = null,
     speed: Speed = .{},
+    /// The Workbench's Scene panel
+    explorer: Explorer = .{},
 
     pub const services = .{unity};
 
@@ -51,6 +54,8 @@ pub const Plugin = struct {
     }
 
     pub fn stop(self: *Plugin) void {
+        // Waits for its tick and panel, which use the scene
+        self.explorer.stop();
         // Puts the game's own time scale back
         self.speed.stop();
         // Before what they use goes
@@ -98,6 +103,7 @@ pub const Plugin = struct {
             log.err("Can't tell when Unity renders: {t}", .{err});
             return err;
         };
+        if (self.scene) |*s| self.explorer.start(&self.engine, s, managed, self.camera.tools, self.ticks) catch |err| log.warn("No Scene panel in the Workbench: {t}", .{err});
         log.info("Ready", .{});
         // If neither fires, this Unity renders some other way, which is worth knowing
         try io.sleep(.fromSeconds(10), .awake);
@@ -150,6 +156,7 @@ comptime {
 
 test {
     _ = @import("camera.zig");
+    _ = @import("explorer.zig");
     _ = @import("loop.zig");
     _ = @import("posing.zig");
     _ = @import("speed.zig");

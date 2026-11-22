@@ -7,6 +7,7 @@ const sdk = @import("wraith_sdk");
 const W = sdk.api.wraith;
 const Vec3 = sdk.math.Vec3;
 const Quat = sdk.math.Quat;
+const Mat4 = sdk.math.Mat4;
 
 /// A C# object, like a `Camera` or a `Transform`.
 pub const Object = opaque {};
@@ -22,6 +23,10 @@ pub const Engine = struct {
     get_fov: *const fn (*Object) callconv(.c) f32,
     set_fov: *const fn (*Object, f32) callconv(.c) void,
     frame_count: *const fn () callconv(.c) i32,
+    /// Unity's, read as tuft's row-vector matrices
+    world_to_camera: *const fn (*Object, *Mat4) callconv(.c) void,
+    projection: *const fn (*Object, *Mat4) callconv(.c) void,
+    local_to_world: *const fn (*Object, *Mat4) callconv(.c) void,
 
     /// Each one's class, then its names, newest first. Unity before 2019 had `INTERNAL_` ones.
     const names = .{
@@ -34,6 +39,9 @@ pub const Engine = struct {
         .get_fov = .{ "UnityEngine.Camera", "get_fieldOfView" },
         .set_fov = .{ "UnityEngine.Camera", "set_fieldOfView" },
         .frame_count = .{ "UnityEngine.Time", "get_frameCount" },
+        .world_to_camera = .{ "UnityEngine.Camera", "get_worldToCameraMatrix_Injected", "INTERNAL_get_worldToCameraMatrix" },
+        .projection = .{ "UnityEngine.Camera", "get_projectionMatrix_Injected", "INTERNAL_get_projectionMatrix" },
+        .local_to_world = .{ "UnityEngine.Transform", "get_localToWorldMatrix_Injected", "INTERNAL_get_localToWorldMatrix" },
     };
 
     /// Blocks while the game's runtime looks, so not on the render thread.

@@ -34,12 +34,6 @@ const Shared = struct {
         return s.wanted.load(.monotonic);
     }
 
-    pub fn camera(s: *Shared, view: Mat4, projection: Mat4) void {
-        s.acquire();
-        defer s.release();
-        s.store.setCamera(view, projection);
-    }
-
     pub fn pose(s: *Shared, skeleton: schema.PosingSkeleton, matrices: *Mat4) void {
         const bones = skeleton.bones;
         const many: [*]Mat4 = @ptrCast(matrices);
@@ -108,6 +102,8 @@ pub const Plugin = struct {
     drag_base: Mat4 = .identity,
     /// Labels for the actor list, which ImGui wants null terminated
     labels: [poses.max_actors][56:0]u8 = undefined,
+    /// Narrows the actors and bones down by name
+    search: [64:0]u8 = @splat(0),
 
     pub const services = .{posing};
 
@@ -198,6 +194,8 @@ pub const Plugin = struct {
         store.frame +%= 1;
         self.shared.wanted.store(open or store.edit_count > 0 or store.anyFrozen(), .monotonic);
         if (!open or !sdk.overlay.available()) return;
+        // The game's plugin sets it each frame
+        if (sdk.frame.view()) |v| store.setCamera(v.view, v.projection) else store.view_proj = null;
         self.drawSkeletons(store);
         self.drawWindow(store);
     }
@@ -273,6 +271,9 @@ pub const Plugin = struct {
         const b = self.currentBone(a) orelse return self.stopDragging();
         const name = a.names[b].get();
         const view = ui.mainViewport();
+        // Its own, apart from other plugins' gizmos
+        const id = gizmo.id("posing");
+        defer id.end();
         gizmo.setDrawList(dl);
         gizmo.setRect(view.pos, view.size);
         gizmo.setOrthographic(false);
@@ -314,18 +315,30 @@ pub const Plugin = struct {
         var ids: [poses.max_actors]*poses.Actor = undefined;
         var items: [poses.max_actors][:0]const u8 = undefined;
         var n: usize = 0;
+        var live: usize = 0;
         var selected: usize = 0;
+        ui.setNextItemWidth(ui.fill);
+        _ = ui.inputTextHint("##search", "Search actors and bones", &self.search);
+        const text = self.searchText();
         for (store.actors) |*a| {
             if (!store.isLive(a)) continue;
+            live += 1;
+            // The one being posed stays, so searching never switches away from it
+            if (self.actor != a.id and !matchesActor(a, text)) continue;
             items[n] = std.fmt.bufPrintSentinel(&self.labels[n], "{s}{s}", .{ a.name.get(), if (a.frozen) " (frozen)" else "" }, 0) catch continue;
             ids[n] = a;
             if (self.actor == a.id) selected = n;
             n += 1;
         }
-        if (n == 0) {
+        if (live == 0) {
             ui.textWrapped("Nothing to pose yet. Posing needs a plugin for this game that hands it skeletons.", .{});
             return;
         }
+        if (n == 0) {
+            ui.textDisabled("Nothing's called that.", .{});
+            return;
+        }
+        if (text.len > 0) ui.textDisabled("{d} of {d} actors", .{ n, live });
         if (ui.combo("Actor", &selected, items[0..n])) self.select(ids[selected], null);
         const a = ids[selected];
         if (self.actor != a.id) self.select(a, null);
@@ -374,20 +387,37 @@ pub const Plugin = struct {
         ui.textDisabled("In the bone's own axes. Double-click a box to type.", .{});
     }
 
-    /// The bones as an indented tree, with posed ones marked.
+    /// The bones as an indented tree, with posed ones marked. Only the ones that match while
+    /// searching, still indented.
     fn boneList(self: *Plugin, store: *poses.Store, a: *const poses.Actor) void {
         var depth: [poses.max_bones]u8 = undefined;
         const picked = self.currentBone(a);
+        const text = self.searchText();
         var buf: [96:0]u8 = undefined;
         const pad: [32]u8 = @splat(' ');
+        var shown: usize = 0;
         for (0..a.count) |i| {
             const p = a.parents[i];
             depth[i] = if (p >= 0 and p < i) @min(depth[@intCast(p)] + 1, pad.len / 2) else 0;
             const name = a.names[i].get();
+            if (text.len > 0 and std.ascii.findIgnoreCase(name, text) == null) continue;
+            shown += 1;
             const mark = if (store.findEdit(a.id, name) != null) " *" else "";
             const label = std.fmt.bufPrintSentinel(&buf, "{s}{s}{s}##{d}", .{ pad[0 .. depth[i] * 2], name, mark, i }, 0) catch continue;
             if (ui.selectable(label, picked == @as(u32, @intCast(i)))) self.select(a, @intCast(i));
         }
+        if (shown == 0) ui.textDisabled("No bones called that.", .{});
+    }
+
+    fn searchText(self: *const Plugin) []const u8 {
+        return std.mem.trim(u8, std.mem.sliceTo(&self.search, 0), " \t");
+    }
+
+    /// By its name, or one of its bones'.
+    fn matchesActor(a: *const poses.Actor, text: []const u8) bool {
+        if (text.len == 0 or std.ascii.findIgnoreCase(a.name.get(), text) != null) return true;
+        for (a.names[0..a.count]) |*n| if (std.ascii.findIgnoreCase(n.get(), text) != null) return true;
+        return false;
     }
 
     fn keyName(self: *Plugin, which: Press) []const u8 {

@@ -10,6 +10,7 @@ const Object = @import("engine.zig").Object;
 
 const Vec3 = sdk.math.Vec3;
 const Quat = sdk.math.Quat;
+const Mat4 = sdk.math.Mat4;
 
 const Pose = struct {
     position: Vec3,
@@ -90,6 +91,31 @@ fn write(e: *const Engine, camera: *Object, transform: *Object, pose: Pose) void
     e.set_fov(camera, pose.fov);
 }
 
+/// Main thread, once Camera Tools has had its say, so plugins drawing over the world, like posing
+/// and the Scene panel's gizmo, see it the way it's drawn.
+pub fn publishView(e: *const Engine, camera: *Object) void {
+    var view: Mat4 = .identity;
+    var projection: Mat4 = .identity;
+    e.world_to_camera(camera, &view);
+    e.projection(camera, &projection);
+    const d3d = toD3d(view, projection);
+    sdk.frame.setView(d3d.view, d3d.projection);
+}
+
+/// Unity's view is mirrored, from its left-handed world to an OpenGL camera that looks down -z with
+/// depth from -1 to 1. The gizmo works out which half of its rings faces the camera from the view
+/// and projection, and gets it backwards for that mix, so it'd draw the back halves while picking the
+/// front ones. This gives it D3D's way round, looking down +z with depth from 0 to 1, like most
+/// games. The two together still put everything in the same place on screen.
+fn toD3d(view: Mat4, projection: Mat4) struct { view: Mat4, projection: Mat4 } {
+    const flip: Mat4 = .scaling(.{ .x = 1, .y = 1, .z = -1 });
+    // z' = (z + w) / 2
+    var depth: Mat4 = .identity;
+    depth.m[10] = 0.5;
+    depth.m[14] = 0.5;
+    return .{ .view = view.mul(flip), .projection = flip.mul(projection).mul(depth) };
+}
+
 const testing = std.testing;
 
 /// A camera the game sets, or not, and what's been written to it.
@@ -127,6 +153,9 @@ const FakeGame = struct {
     fn frameCount() callconv(.c) i32 {
         return 1;
     }
+    fn matrix(_: *Object, out: *Mat4) callconv(.c) void {
+        out.* = .identity;
+    }
 
     const engine: Engine = .{
         .main_camera = mainCamera,
@@ -138,6 +167,9 @@ const FakeGame = struct {
         .get_fov = getFov,
         .set_fov = setFov,
         .frame_count = frameCount,
+        .world_to_camera = matrix,
+        .projection = matrix,
+        .local_to_world = matrix,
     };
 };
 
@@ -199,4 +231,37 @@ test "other cameras are left alone" {
     FakeGame.writes = 0;
     cam.steerWith(&tools, @ptrFromInt(0x3000));
     try testing.expectEqual(0, FakeGame.writes);
+}
+
+test "Unity's camera goes to D3D's way round, landing in the same place" {
+    // OpenGL's perspective, row-vector style, as Unity's memory reads
+    const n: f32 = 0.5;
+    const f: f32 = 100;
+    const a = -(f + n) / (f - n);
+    const b = -2 * f * n / (f - n);
+    const gl: Mat4 = .{ .m = .{ 1.5, 0, 0, 0, 0, 2, 0, 0, 0, 0, a, -1, 0, 0, b, 0 } };
+    // Unity's world is left-handed, so its view mirrors z on the way to the camera's
+    const view = Mat4.translation(.{ .x = -3 }).mul(.scaling(.{ .x = 1, .y = 1, .z = -1 }));
+    const d3d = toD3d(view, gl);
+
+    // No mirror left, and the projection's D3D's way round, which is what the gizmo goes by
+    const v = d3d.view;
+    const det = v.at(0, 0) * (v.at(1, 1) * v.at(2, 2) - v.at(1, 2) * v.at(2, 1)) -
+        v.at(0, 1) * (v.at(1, 0) * v.at(2, 2) - v.at(1, 2) * v.at(2, 0)) +
+        v.at(0, 2) * (v.at(1, 0) * v.at(2, 1) - v.at(1, 1) * v.at(2, 0));
+    try testing.expect(det > 0);
+    try testing.expect(d3d.projection.at(2, 3) > 0);
+
+    // In front of the camera, which is +z in Unity's world
+    const p: Vec3 = .{ .x = 4, .y = 1, .z = 5 };
+    try testing.expect(d3d.view.transformPoint(p).z > 0);
+    // Same spot on screen
+    const before = view.mul(gl).transformPoint(p);
+    const after = d3d.view.mul(d3d.projection).transformPoint(p);
+    try testing.expectApproxEqAbs(before.x, after.x, 1e-5);
+    try testing.expectApproxEqAbs(before.y, after.y, 1e-5);
+    // Depth from 0 at the near plane to 1 at the far one
+    const vp = d3d.view.mul(d3d.projection);
+    try testing.expectApproxEqAbs(0, vp.transformPoint(.{ .x = 3, .z = n }).z, 1e-4);
+    try testing.expectApproxEqAbs(1, vp.transformPoint(.{ .x = 3, .z = f }).z, 1e-4);
 }
