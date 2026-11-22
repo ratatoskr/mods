@@ -2,9 +2,9 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "screenshot",
   "kind": "plugin",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "title": "Screenshot",
   "summary": "Take screenshots in any game as PNG, plus EXR in HDR games.",
   "author": "Asgard",
-  "description": "Press F10 to save a screenshot to Pictures\\Wraith Screenshots. It's always a regular PNG. HDR games also get an EXR that keeps the full HDR range."
+  "description": "Save a screenshot. It's always a regular PNG. HDR games also get an EXR that keeps the full HDR range."
 }
