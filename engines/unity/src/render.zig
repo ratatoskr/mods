@@ -13,6 +13,8 @@ const Object = @import("engine.zig").Object;
 const Frames = @import("frames.zig").Frames;
 const Camera = @import("camera.zig").Camera;
 const Posing = @import("posing.zig").Posing;
+const Speed = @import("speed.zig").Speed;
+const Scene = @import("scene.zig").Scene;
 const loop = @import("loop.zig");
 
 const W = sdk.api.wraith;
@@ -36,6 +38,10 @@ pub const Render = struct {
     frames: *Frames = undefined,
     camera: *Camera = undefined,
     posing: ?*Posing = null,
+    /// Put on at the start of each frame
+    speed: ?*Speed = null,
+    /// Looks round a little each frame
+    scene: ?*Scene = null,
     step: ?StepHook = null,
     /// Null when posing goes with the rest, at the render step
     pose_step: ?StepHook = null,
@@ -117,6 +123,8 @@ pub const Render = struct {
 
     fn finishFrame(self: *Render, h: StepHook) void {
         if (!self.step_seen.swap(true, .monotonic)) log.info("Unity's frames come from its player loop", .{});
+        if (self.speed) |s| s.apply();
+        if (self.scene) |s| s.tick();
         if (self.pose_step == null) if (self.posing) |p| p.run();
         if (self.engine.main_camera()) |camera| {
             self.rendering(camera);
@@ -128,12 +136,14 @@ pub const Render = struct {
     fn preCull(self: *Render, hook: sdk.hooks.FnHook(PreCull), camera: ?*Object, method: ?*anyopaque) void {
         hook.original()(camera, method);
         if (!self.pre_cull_seen.swap(true, .monotonic)) log.info("Unity's frames come from Camera.FireOnPreCull, the built-in pipeline", .{});
+        if (self.speed) |s| s.apply();
         self.rendering(camera orelse return);
     }
 
     fn beginCamera(self: *Render, hook: sdk.hooks.FnHook(BeginCamera), context: usize, camera: ?*Object, method: ?*anyopaque) void {
         hook.original()(context, camera, method);
         if (!self.begin_camera_seen.swap(true, .monotonic)) log.info("Unity's frames come from RenderPipelineManager.BeginCameraRendering, URP or HDRP", .{});
+        if (self.speed) |s| s.apply();
         self.rendering(camera orelse return);
     }
 
@@ -151,6 +161,8 @@ pub const Render = struct {
         if (frame != self.last_frame) {
             self.last_frame = frame;
             self.frames.fire();
+            // The player loop's step ticks it, when there's one
+            if (self.step == null) if (self.scene) |s| s.tick();
         }
         self.camera.steer(camera);
     }

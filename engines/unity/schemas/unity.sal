@@ -19,4 +19,26 @@ trait UnitySubscription {
     UnitySubscription onFrame(keep UnityFrame handler);
     // The main camera, a `UnityEngine.Camera` object, or 0 if there's none. Main thread only.
     usize mainCamera();
+    // Like Unity's `FindObjectsOfType`, every component of `class_name`, like `UnityEngine.Light`
+    // or one of the game's own. Finding them means Unity looks through everything it has, so each
+    // type's answer is kept for about a second and asked again on Unity's main thread while anyone's
+    // asking. What's been destroyed since is left out. The first ask for a type starts it, so it may
+    // come back empty. Any thread.
+    []UnityObject findObjectsOfType(string class_name);
+}
+
+struct UnityObject {
+    // The component's C# object, for Unity's engine calls and the game's runtime, on Unity's main
+    // thread. On a later frame, check it's still there first: its `m_CachedPtr` field is `native`
+    // till Unity destroys it.
+    usize object;
+    // Unity's own object for it, which stays the same while it's around
+    usize native;
+    // Its Transform's, the same way
+    usize transform;
+    usize transform_native;
+    // Its GameObject's
+    string name;
+    // Where it was when Unity was last asked
+    Vec3 position;
 }

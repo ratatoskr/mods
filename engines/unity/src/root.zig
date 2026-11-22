@@ -1,6 +1,6 @@
 //! Unity games, on Mono or IL2CPP. Offers Unity's main thread to plugins in any language through
 //! the `Unity` service, Camera Tools moves the game's main camera, with the built-in render
-//! pipeline, URP or HDRP, and posing poses its characters. Everything goes through the game's C#
+//! pipeline, URP or HDRP, posing poses its characters, and game speed goes through Unity's time scale. Everything goes through the game's C#
 //! runtime and Unity's own engine calls, so it works without knowing anything about the game.
 
 const std = @import("std");
@@ -11,6 +11,9 @@ const Engine = @import("engine.zig").Engine;
 const Camera = @import("camera.zig").Camera;
 const Render = @import("render.zig").Render;
 const Posing = @import("posing.zig").Posing;
+const Speed = @import("speed.zig").Speed;
+const scene_ = @import("scene.zig");
+const Scene = scene_.Scene;
 const frames_ = @import("frames.zig");
 
 pub const std_options: std.Options = .{ .logFn = sdk.logFn };
@@ -26,7 +29,9 @@ pub const Plugin = struct {
     frames: frames_.Frames = .{},
     camera: Camera = .{},
     render: Render = .{},
+    scene: ?Scene = null,
     posing: ?Posing = null,
+    speed: Speed = .{},
 
     pub const services = .{unity};
 
@@ -40,10 +45,13 @@ pub const Plugin = struct {
     }
 
     pub fn stop(self: *Plugin) void {
+        // Puts the game's own time scale back
+        self.speed.stop();
         // Before what they use goes
         self.render.stop();
         self.frames.deinit();
         if (self.posing) |*p| p.deinit();
+        if (self.scene) |*s| s.deinit();
     }
 
     /// Waits for the game to start its C# runtime, which comes after Wraith's loaded plugins.
@@ -59,12 +67,19 @@ pub const Plugin = struct {
             log.err("This Unity's missing {s}, so there's nothing to do", .{missing});
             return err;
         };
+        self.scene = Scene.init(&self.engine, managed, &missing) catch |err| blk: {
+            log.warn("No finding objects or posing, since this Unity's missing {s}: {t}", .{ missing, err });
+            break :blk null;
+        };
         self.ready.store(true, .release);
         self.camera.start(&self.engine);
-        self.posing = Posing.find(&self.engine, managed, &missing) catch |err| blk: {
+        if (self.scene) |*s| self.posing = Posing.find(&self.engine, s, managed, &missing) catch |err| blk: {
             log.warn("No posing, since this Unity's missing {s}: {t}", .{ missing, err });
             break :blk null;
         };
+        self.speed.start(managed, self.ctx.wraith.game()) catch |err| log.info("No time scale to change ({t}), so game speed goes by the clocks", .{err});
+        self.render.speed = &self.speed;
+        self.render.scene = if (self.scene) |*s| s else null;
         self.render.start(&self.engine, managed, &self.frames, &self.camera, if (self.posing) |*p| p else null) catch |err| {
             log.err("Can't tell when Unity renders: {t}", .{err});
             return err;
@@ -73,6 +88,18 @@ pub const Plugin = struct {
         // If neither fires, this Unity renders some other way, which is worth knowing
         try io.sleep(.fromSeconds(10), .awake);
         if (!self.render.seen()) log.warn("Unity hasn't rendered a frame where it was hooked, so there are no frames to hand out", .{});
+    }
+};
+
+/// Per thread, for what `findObjectsOfType` gives back.
+const found_arena = struct {
+    threadlocal var arena: ?std.heap.ArenaAllocator = null;
+
+    fn get() std.mem.Allocator {
+        if (arena) |*a| {
+            _ = a.reset(.retain_capacity);
+        } else arena = .init(std.heap.smp_allocator);
+        return arena.?.allocator();
     }
 };
 
@@ -87,6 +114,25 @@ const Service = struct {
         if (!self.ready.load(.acquire)) return 0;
         return @intFromPtr(self.engine.main_camera() orelse return 0);
     }
+
+    pub fn findObjectsOfType(self: *Plugin, class_name: []const u8) []const schema.UnityObject {
+        if (!self.ready.load(.acquire)) return &.{};
+        const s = if (self.scene) |*s| s else return &.{};
+        // Good till this thread asks again, which is after salamander's copied it
+        const a = found_arena.get();
+        var found: std.ArrayList(scene_.Found) = .empty;
+        _ = s.objectsOfType(a, class_name, &found) catch return &.{};
+        const out = a.alloc(schema.UnityObject, found.items.len) catch return &.{};
+        for (found.items, out) |*f, *o| o.* = .{
+            .object = @intFromPtr(f.object),
+            .native = f.native,
+            .transform = @intFromPtr(f.transform),
+            .transform_native = f.transform_native,
+            .name = f.name.get(),
+            .position = f.position,
+        };
+        return out;
+    }
 };
 
 comptime {
@@ -97,4 +143,6 @@ test {
     _ = @import("camera.zig");
     _ = @import("loop.zig");
     _ = @import("posing.zig");
+    _ = @import("speed.zig");
+    _ = @import("scene.zig");
 }
