@@ -1,0 +1,45 @@
+// Camera tools: fly the game's camera around, or orbit it round a point. A game's plugin hooks
+// wherever the game sets its camera each frame and passes it to `camera`. Camera Tools does the
+// rest: controls, keys, settings and its UI. Other plugins, like posing, can point it at something
+// with `focus`.
+
+// An axis and which way along it.
+enum CamAxis : u8 { pos_y, neg_y, pos_z, neg_z, pos_x, neg_x }
+
+// How the game's world is laid out, so moving and looking go the right way.
+struct CamWorld {
+    CamAxis up;
+    CamAxis look;
+    bool left_handed;
+    f32 metre;
+}
+
+// Which of the camera's fields say where it points.
+enum CamAim : u8 {
+    // at `target`, a point in the world, tipped by `roll`
+    target,
+    // by `rotation`, a quaternion as x, y, z, w
+    rotation,
+}
+
+// The game's camera.
+struct CamState {
+    Vec3 position;
+    CamAim aim;
+    Vec3 target;
+    Vec3 up;
+    Quat rotation;
+    f32 roll;
+    f32 fov;
+}
+
+[Service] trait CameraTools {
+    // once, set the world's layout
+    void world(CamWorld world);
+
+    // every frame from where the game sets the camera, like a hook after its camera update.
+    void camera(inout CamState camera);
+
+    // Takes over the camera if it isn't already, and orbits it round `point`, in the world.
+    void focus(Vec3 point);
+}

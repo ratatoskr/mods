@@ -1,13 +1,13 @@
 .{
-    .name = .screenshot,
-    .version = "0.0.1",
+    .name = .trails_horizon,
+    .version = "0.0.0",
     .dependencies = .{
         .wraith = .{
-            .url = "git+https://github.com/ratatoskr/wraith#8be52fc0b8852d3a58b26efcef8242d286d1bf74",
-            .hash = "wraith-0.0.0-sZo_9zxMVQDdAEAisIaZwNfbBKbA3CSmFS-56rvfi7vt",
+            .url = "git+https://github.com/ratatoskr/wraith#0e13c0744573715231114cbb2253bd79e2d1f517",
+            .hash = "wraith-0.0.0-sZo_90fQVQCPOljU93Coz5JLwiA7nAjpenasnYegB1f8",
         },
     },
     .minimum_zig_version = "0.18.0-dev.1260+833623422",
     .paths = .{""},
-    .fingerprint = 0x58991e41f1c358f7,
+    .fingerprint = 0x7b839c9220a4e195,
 }

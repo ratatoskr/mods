@@ -1,0 +1,51 @@
+// ed9::chara::Actor, any character on the field, party and NPCs and monsters alike.
+struct Chara {
+    [0x1A8]
+    u32 chrid;
+
+    [0x1E0]
+    utf8[32] name;
+
+    [0x2B8]
+    ModelInstance* model;
+
+    // Runs once the model's skeleton is animated, right before its model's modifiers.
+    [Sig("48 83 EC 38 83 B9 ?? ?? ?? ?? 04 0F 29 74 24 ?? 0F 28 F1")]
+    void onModelUpdate(f32 dt);
+}
+
+// fdk::ModelInstance
+struct ModelInstance {
+    [0x48]
+    DagNode* root;
+
+    // IK and the other bone controllers, then dynamic bones like ears, tails and hair. The models
+    // attached to it, like accessories, are placed after this.
+    [Sig("40 53 55 56 57 41 57 48 81 EC ?? ?? ?? ?? 48 8B 99 ?? ?? ?? ?? 49 8B E9")]
+    void updateModifiers(f32 dt, usize context, ?f32* step);
+}
+
+// fdk::DAGNode, one per bone. A tree of first children and next siblings. The root's siblings are
+// other things in the scene.
+[Size(0x180)]
+struct DagNode {
+    [0x08]
+    DagNode* parent;
+
+    [0x10]
+    DagNode* child;
+
+    [0x18]
+    DagNode* sibling;
+
+    // In the world, row-vector style
+    [0x68]
+    Mat4 world;
+
+    [0x138]
+    utf8[64] name;
+
+    // crc32 of the name
+    [0x17C]
+    u32 name_hash;
+}

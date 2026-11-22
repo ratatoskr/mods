@@ -7,6 +7,8 @@
   "summary": "Trails beyond the horizon plugin",
   "author": "Asgard",
   "arches": ["x64"],
+  "depends": ["camera", "posing"],
+  "devDepends": { "camera": "../../libs/camera/wraith.json", "posing": "../../libs/posing/wraith.json" },
   "game": {
     "exes": ["kai.exe"],
     "ids": ["steam-3316940", "gog-1501307817"]

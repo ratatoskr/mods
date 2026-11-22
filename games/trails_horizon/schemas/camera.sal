@@ -1,0 +1,50 @@
+// ed9::camera::Manager.
+struct CameraManager {
+    [0x690] 
+    Camera* camera;
+
+    // Copies controller `index`'s eye, target, up and fov into `camera`, then rebuilds its matrices.
+    [Sig("48 8B C4 55 53 57 48 8D 68 ?? 48 81 EC ?? ?? ?? ?? 0F 29 70 ?? 48 8B F9 0F 29 78")]
+    void applyCamera(f32 dt, i32 index);
+}
+
+// fdk::Camera, a look-at camera. Y is up, and it's right-handed, looking down -Z. Matrices are
+// row-major, row-vector style, so clip = [x y z 1] * view_proj.
+[Size(0x1B0)]
+struct Camera {
+    [0x08] 
+    Vec3 eye;
+    
+    [0x18]
+    Vec3 target;
+   
+    [0x28] 
+    Vec3 up;
+    
+    [0x68] 
+    Mat4 view;
+    
+    [0xA8] 
+    Mat4 proj;
+    
+    [0xE8] 
+    Mat4 view_proj;
+    
+    [0x188] 
+    f32 fov; // vertical in radians
+
+    [0x18C] 
+    f32 aspect;
+   
+    [0x190] 
+    f32 near;
+   
+    [0x194] 
+    f32 far;
+   
+    [0x198] 
+    f32 roll;
+
+    // Builds view, proj and view_proj from the fields above
+    [Virtual(2)] void updateMatrices();
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
+  "id": "posing",
+  "kind": "plugin",
+  "version": "0.0.0",
+  "title": "Posing",
+  "summary": "Pose characters' bones.",
+  "author": "Asgard",
+  "descriptionFile": "README.md",
+  "depends": ["camera"],
+  "devDepends": { "camera": "../camera/wraith.json" },
+  "library": true,
+  "autoLoad": false
+}

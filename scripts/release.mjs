@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { checkZigDependencies, error, findPackages, git, group, hasZigTests, manifestName, npmScripts, packageFiles, publishedVersions, root, run, syncVersions, versionPattern, zip } from "./lib.mjs";
+import { atLeast, checkZigDependencies, error, findPackages, git, group, hasZigTests, manifestName, npmScripts, packageFiles, packagedManifest, publishedVersions, root, run, syncVersions, versionPattern, zip } from "./lib.mjs";
 
 const out = join(root, "release");
 const unreleased = "0.0.0";
@@ -20,7 +20,7 @@ const packers = {
         run(plugin.path, "zig", ["build", "-Doptimize=ReleaseFast", "--prefix", stage, "--summary", "all"]);
         // The Hub takes the id and version from here
         const staged = join(stage, manifestName);
-        if (!existsSync(staged)) copyFileSync(join(plugin.path, manifestName), staged);
+        writeFileSync(staged, packagedManifest(readFileSync(existsSync(staged) ? staged : join(plugin.path, manifestName), "utf8"), plugin.path));
         const entries = files(stage)
             .filter((f) => !f.endsWith(".pdb"))
             .map((f) => ({ name: `${plugin.name}/${relative(stage, f).replaceAll("\\", "/")}`, data: readFileSync(f) }));
@@ -35,7 +35,12 @@ const packers = {
     },
 
     files(pkg) {
-        return zip(packageFiles(pkg.path).map((f) => ({ name: `${pkg.name}/${f}`, data: readFileSync(join(pkg.path, f)) })));
+        return zip(
+            packageFiles(pkg.path).map((f) => {
+                const data = readFileSync(join(pkg.path, f));
+                return { name: `${pkg.name}/${f}`, data: f === manifestName ? Buffer.from(packagedManifest(data.toString("utf8"), pkg.path)) : data };
+            }),
+        );
     },
 };
 
@@ -50,9 +55,39 @@ function files(dir) {
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
+/** The ones they depend on first, so they're published first too. */
+function dependenciesFirst(plugins) {
+    const byName = new Map(plugins.map((p) => [p.name, p]));
+    const ordered = [];
+    const seen = new Set();
+    const visit = (p) => {
+        if (seen.has(p.name)) return;
+        seen.add(p.name);
+        for (const d of p.depends) {
+            const dep = byName.get(d.split("@")[0]);
+            if (dep) visit(dep);
+        }
+        ordered.push(p);
+    };
+    plugins.forEach(visit);
+    return ordered;
+}
+
+/** Why it can't go out yet: something it depends on that isn't on the Hub or going with it. */
+async function missingDependency(plugin, releasing) {
+    for (const d of plugin.depends) {
+        const [name, min] = d.split("@");
+        const versions = [...(await publishedVersions(name)), ...releasing.filter((r) => r.name === name).map((r) => r.version)];
+        if (!versions.some((v) => !min || atLeast(v, min))) {
+            return `it depends on ${d}, which isn't on the Hub. Release ${name} first`;
+        }
+    }
+    return null;
+}
+
 async function build(args) {
     const only = args.only?.replaceAll("\\", "/");
-    const plugins = [...findPackages().values()].filter((p) => !only || p.dir === only);
+    const plugins = dependenciesFirst([...findPackages().values()].filter((p) => !only || p.dir === only));
     if (only && plugins.length === 0) throw new Error(`No package in ${only}`);
     mkdirSync(out, { recursive: true });
     const releases = [];
@@ -68,6 +103,12 @@ async function build(args) {
             continue;
         }
         if ((await publishedVersions(plugin.name)).includes(plugin.version)) continue;
+        const missing = await missingDependency(plugin, releases);
+        if (missing) {
+            failed.push(plugin.dir);
+            error(plugin.dir, `${plugin.name} ${plugin.version} can't go out: ${missing}`);
+            continue;
+        }
         await group(`${plugin.dir} ${plugin.version} (${plugin.builder})`, () => {
             try {
                 const synced = syncVersions(plugin);

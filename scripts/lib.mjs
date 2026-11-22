@@ -30,7 +30,7 @@ export function findPackages() {
             if (ids.has(manifest.id)) throw new Error(`${dir} and ${ids.get(manifest.id)} both have the id "${manifest.id}"`);
             ids.set(manifest.id, dir);
             const builder = existsSync(join(path, "build.zig")) ? "zig" : existsSync(join(path, "package.json")) ? "js" : "files";
-            packages.set(dir, { dir, path, name: manifest.id, kind: manifest.kind ?? "plugin", manifestFile, builder, version: manifest.version });
+            packages.set(dir, { dir, path, name: manifest.id, kind: manifest.kind ?? "plugin", manifestFile, builder, version: manifest.version, depends: manifest.depends ?? [] });
             return;
         }
         if (depth === maxDepth) return;
@@ -67,6 +67,28 @@ export function readManifest(text, file = manifestName) {
     }
 }
 
+/**
+ * wraith.json as it goes in a package: without devDepends, which the Hub won't take, and with
+ * descriptionFile's text as description. `dir` is wraith.json's folder.
+ */
+export function packagedManifest(text, dir) {
+    const m = readManifest(text);
+    if (m.devDepends === undefined && m.descriptionFile === undefined) return text;
+    delete m.devDepends;
+    if (m.descriptionFile !== undefined) {
+        if (m.description !== undefined) throw new Error(`${manifestName} has description and descriptionFile. Keep one`);
+        m.description = readFileSync(join(dir, m.descriptionFile), "utf8").replace(/^\uFEFF/, "").trim();
+        delete m.descriptionFile;
+    }
+    return JSON.stringify(m, null, 2) + "\n";
+}
+
+/** Whether `version` is at least `min`, which can be short like `1.2`. */
+export function atLeast(version, min) {
+    const pad = (v) => [...v.split("."), "0", "0"].slice(0, 3).join(".");
+    return compareVersions(pad(version), pad(min)) >= 0;
+}
+
 export function compareVersions(a, b) {
     const pa = a.split(".").map(Number);
     const pb = b.split(".").map(Number);
@@ -91,7 +113,7 @@ export function run(cwd, command, args) {
 export function checkZigDependencies(plugin) {
     const zon = readFileSync(join(plugin.path, "build.zig.zon"), "utf8");
     const local = [...zon.matchAll(/\.(\w+) = \.\{\s*\.path = "([^"]*)"/g)].map((m) => `${m[1]} (${m[2]})`);
-    if (local.length) throw new Error(`build.zig.zon takes ${local.join(", ")} from a folder. Use \`zig fetch --save=<name> <url>\` instead`);
+    if (local.length) throw new Error(`build.zig.zon takes ${local.join(", ")} from a folder. For a package in this repo, name it in wraith.json's devDepends instead`);
 }
 
 export function hasZigTests(pkg) {
