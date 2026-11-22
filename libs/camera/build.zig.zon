@@ -1,6 +1,6 @@
 .{
     .name = .camera,
-    .version = "0.0.0",
+    .version = "0.0.1",
     .dependencies = .{
         .wraith = .{
             .url = "git+https://github.com/ratatoskr/wraith#6ec1cd111375a07694fd5d03bf1cdeebf3df75ac",
