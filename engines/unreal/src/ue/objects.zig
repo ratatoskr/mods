@@ -24,7 +24,7 @@ pub const Objects = struct {
 
     pub const Kind = enum { chunked, fixed };
 
-    const chunk_len = 64 * 1024;
+    pub const chunk_len = 64 * 1024;
     const strides = [_]usize{ 0x18, 0x10, 0x20, 0x28 };
     const max_objects = 0x400_0000;
 

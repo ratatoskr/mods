@@ -2,7 +2,8 @@
 //! game starts, without signatures or tables for each version, and writes every class and struct
 //! to a dump in Wraith's folder. Then ticks Wraith on the game thread through `ProcessEvent`, does
 //! game speed with the world's time dilation, gives the game a console, hands its camera to Wraith's
-//! free camera and its characters to posing, and tells Wraith when the game's drawing HDR.
+//! free camera and its characters to posing, tells Wraith when the game's drawing HDR, and gives
+//! the Workbench a Scene panel of the world's actors and a Classes panel.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
@@ -18,6 +19,7 @@ const Console = @import("console.zig").Console;
 const Camera = @import("camera.zig").Camera;
 const Posing = @import("posing.zig").Posing;
 const Hdr = @import("hdr.zig").Hdr;
+const Explorer = @import("explorer.zig").Explorer;
 
 pub const std_options: std.Options = .{ .logFn = sdk.logFn };
 pub const panic = sdk.panic;
@@ -37,6 +39,9 @@ pub const Plugin = struct {
     camera: Camera = .{},
     posing: ?Posing = null,
     hdr: ?Hdr = null,
+    explorer: Explorer = .{},
+    /// Set before ticks start, and the explorer's ready then.
+    explorer_on: bool = false,
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
@@ -51,6 +56,9 @@ pub const Plugin = struct {
     }
 
     pub fn stop(self: *Plugin) void {
+        // Its panels go first, while ticks still run
+        if (self.explorer_on) self.explorer.stop();
+        self.explorer_on = false;
         // No more ticks once it's out, and it waits for one in flight
         self.loop.stop();
         self.speed.stop();
@@ -73,6 +81,7 @@ pub const Plugin = struct {
         if (self.camera.tools != null) self.camera.tick();
         if (self.posing) |*p| p.tick();
         if (self.hdr) |*h| h.tick();
+        if (self.explorer_on) self.explorer.tick();
     }
 
     /// The engine fills in its objects as it boots, so this waits for them.
@@ -158,6 +167,9 @@ pub const Plugin = struct {
         if (Hdr.find(ue, &self.loop, &missing)) |h| {
             self.hdr = h;
         } else |err| log.info("Can't ask the game about HDR, since this Unreal's missing {s}: {t}", .{ missing, err });
+        if (self.explorer.start(ue, world, &self.loop, self.camera.tools)) {
+            self.explorer_on = true;
+        } else |err| log.warn("No Scene or Classes panel: {t}", .{err});
         try self.loop.start(pe, .{ .context = self, .func = tick });
 
         // Gives the game a bit to load more of its classes
@@ -252,6 +264,7 @@ test {
     _ = @import("camera.zig");
     _ = @import("posing.zig");
     _ = @import("hdr.zig");
+    _ = @import("explorer.zig");
 }
 
 test "version from the build string" {
