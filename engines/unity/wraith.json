@@ -2,7 +2,7 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "unity",
   "kind": "plugin",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "title": "Unity",
   "summary": "Camera Tools, posing and game speed in Unity games, with plugins' ticks on Unity's main thread.",
   "author": "Asgard",
