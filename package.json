@@ -1,0 +1,9 @@
+{
+  "name": "ratatoskr-mods",
+  "private": true,
+  "description": "Builds and releases the mods in this repo. Each JS mod has its own package.json",
+  "license": "MIT",
+  "devDependencies": {
+    "@ratatoskr.io/plugin-tools": "~0.0.10"
+  }
+}
