@@ -100,6 +100,26 @@ pub const Objects = struct {
         if (i < 0) return false;
         return self.get(@intCast(i)) == p;
     }
+
+    /// Like `get` with plain reads, 0 for a free slot. Game thread only, where every object in the
+    /// array is alive, and quick enough to go through all of them.
+    pub fn getPlain(self: *const Objects, i: usize) usize {
+        const item = switch (self.kind) {
+            .chunked => blk: {
+                const chunks = plain(self.table);
+                if (chunks == 0) return 0;
+                const chunk = plain(chunks + (i / chunk_len) * 8);
+                if (chunk == 0) return 0;
+                break :blk chunk + (i % chunk_len) * self.stride;
+            },
+            .fixed => plain(self.table) + i * self.stride,
+        };
+        return plain(item);
+    }
+
+    fn plain(at: usize) usize {
+        return @as(*align(1) const usize, @ptrFromInt(at)).*;
+    }
 };
 
 const tests = struct {

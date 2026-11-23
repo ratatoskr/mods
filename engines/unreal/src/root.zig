@@ -20,6 +20,8 @@ const Camera = @import("camera.zig").Camera;
 const Posing = @import("posing.zig").Posing;
 const Hdr = @import("hdr.zig").Hdr;
 const Explorer = @import("explorer.zig").Explorer;
+const Service = @import("service.zig").Service;
+const schema = @import("schema");
 
 pub const std_options: std.Options = .{ .logFn = sdk.logFn };
 pub const panic = sdk.panic;
@@ -42,6 +44,14 @@ pub const Plugin = struct {
     explorer: Explorer = .{},
     /// Set before ticks start, and the explorer's ready then.
     explorer_on: bool = false,
+    /// The `Unreal` service, which works once ticks start.
+    service: Service = .{},
+
+    pub const services = .{unreal};
+
+    pub fn unreal(self: *Plugin) schema.Unreal {
+        return .init(&self.service, sdk.salamander.rt.implement(schema.Unreal, Service));
+    }
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
@@ -56,6 +66,7 @@ pub const Plugin = struct {
     }
 
     pub fn stop(self: *Plugin) void {
+        self.service.stop();
         // Its panels go first, while ticks still run
         if (self.explorer_on) self.explorer.stop();
         self.explorer_on = false;
@@ -171,6 +182,7 @@ pub const Plugin = struct {
             self.explorer_on = true;
         } else |err| log.warn("No Scene or Classes panel: {t}", .{err});
         try self.loop.start(pe, .{ .context = self, .func = tick });
+        self.service.start(ue, &self.loop);
 
         // Gives the game a bit to load more of its classes
         try io.sleep(.fromSeconds(10), .awake);
@@ -265,6 +277,7 @@ test {
     _ = @import("posing.zig");
     _ = @import("hdr.zig");
     _ = @import("explorer.zig");
+    _ = @import("service.zig");
 }
 
 test "version from the build string" {

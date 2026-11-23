@@ -404,18 +404,7 @@ pub const Explorer = struct {
 
     /// The object at `i`, read plainly. On the game thread every object in the array is alive.
     fn objectAt(self: *const Explorer, i: usize) usize {
-        const objs = &self.ue.objects;
-        const item = switch (objs.kind) {
-            .chunked => blk: {
-                const chunks = plain(usize, objs.table);
-                if (chunks == 0) return 0;
-                const chunk = plain(usize, chunks + (i / objects_.Objects.chunk_len) * 8);
-                if (chunk == 0) return 0;
-                break :blk chunk + (i % objects_.Objects.chunk_len) * objs.stride;
-            },
-            .fixed => plain(usize, objs.table) + i * objs.stride,
-        };
-        return plain(usize, item);
+        return self.ue.objects.getPlain(i);
     }
 
     fn walkSome(self: *Explorer, w: *Walk, scene_open: bool, classes_open: bool, now: u64) void {
@@ -1614,7 +1603,7 @@ fn withSecond(ue: *const Unreal, call: ?Call, second: []const u8) ?Call {
     return c;
 }
 
-fn plainKind(kind_name: []const u8) ?Kind {
+pub fn plainKind(kind_name: []const u8) ?Kind {
     const map = std.StaticStringMap(Kind).initComptime(.{
         .{ "Int8Property", .i8 },
         .{ "Int16Property", .i16 },
@@ -1630,7 +1619,7 @@ fn plainKind(kind_name: []const u8) ?Kind {
 }
 
 /// Structs that are just floats or doubles, shown as a row of them.
-fn floatsOf(struct_name: []const u8, size: u8) ?struct { n: u8, elem: u8 } {
+pub fn floatsOf(struct_name: []const u8, size: u8) ?struct { n: u8, elem: u8 } {
     const map = std.StaticStringMap(u8).initComptime(.{
         .{ "Vector", 3 },   .{ "Rotator", 3 },     .{ "Vector2D", 2 }, .{ "Vector4", 4 },
         .{ "Quat", 4 },     .{ "LinearColor", 4 }, .{ "Plane", 4 },    .{ "Vector3f", 3 },

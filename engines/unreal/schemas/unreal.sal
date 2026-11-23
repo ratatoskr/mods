@@ -1,0 +1,80 @@
+// Unreal's objects, for plugins and scripts in any language. Plugins depend on `unreal` and get the
+// `Unreal` service. Workbench scripts and tweaks have it too, as `import { Unreal } from "unreal"`
+// in JS or `require("unreal").Unreal` in Lua.
+//
+// Game thread only, since that's where Unreal frees its objects. That's `frame.onTick`, a tweak's
+// code and `tick()`, and Workbench scripts unless they're moved to the render thread. Anywhere else
+// fails with `WrongThread`.
+//
+// Objects are their addresses, good till Unreal's garbage collector takes them, so find them again
+// on a later tick rather than keeping them, or check with `isObject`. Classes, properties and
+// functions go by their short names, like `Character`, `BP_P001_C` or `CustomTimeDilation`.
+
+error UnrealError {
+    // Unreal's still being found, or this game's missing what it needs
+    NotReady = 1,
+    WrongThread,
+    NotFound,
+    // A property `get` and `set` can't do, like a struct or an array. `address` still finds it
+    WrongType,
+}
+
+// Which of `UnrealValue`'s fields it is.
+enum UnrealValueKind : u8 { none, flag, integer, number, text, object, floats }
+
+// A property's value or a function's argument. Integers go for whole numbers and enums, numbers for
+// floats and doubles, text for names and strings, objects as their address, and floats for structs
+// that are only floats or doubles, like `Vector`, `Rotator` or `LinearColor`. An integer works
+// where a number goes and the other way round.
+struct UnrealValue {
+    UnrealValueKind kind;
+    bool flag;
+    i64 integer;
+    f64 number;
+    string text;
+    usize object;
+    []f64 floats;
+}
+
+struct UnrealProperty {
+    string name;
+    // Like `FloatProperty`, or `StructProperty`
+    string type;
+    // From the start of the object
+    u32 offset;
+    u32 size;
+}
+
+[Service] trait Unreal {
+    // Every live object that's a `class_name` or comes from one, class defaults left out. Looks
+    // through every object, so not every tick.
+    []usize!UnrealError findObjects(string class_name);
+    // The first, the same way. `NotFound` if there's none.
+    usize!UnrealError findObject(string class_name);
+    // The class's default object, which its static functions are called on, like `GameplayStatics`'s.
+    usize!UnrealError defaultObject(string class_name);
+    // Whether it's still a live object. Any thread.
+    bool isObject(usize object);
+    string!UnrealError nameOf(usize object);
+    // Its class's name
+    string!UnrealError classOf(usize object);
+    // Its outers' names and its own, like `/Game/Maps/Town.Town.PersistentLevel.BP_P001_C_2147479781`
+    string!UnrealError pathOf(usize object);
+    bool!UnrealError isA(usize object, string class_name);
+    // Its class's properties and its supers', the base class's first
+    []UnrealProperty!UnrealError properties(usize object);
+    // Where a property is, for the `memory` area, for ones `get` and `set` can't do
+    usize!UnrealError address(usize object, string property);
+    UnrealValue!UnrealError get(usize object, string property);
+    void!UnrealError set(usize object, string property, UnrealValue value);
+    // Calls one of its functions the way blueprints do, with `args` in order. Ones left out are
+    // zero. Gives back what it returns, or `none`.
+    UnrealValue!UnrealError call(usize object, string function, []UnrealValue args);
+    // An actor's place in the world, through its own functions
+    Vec3!UnrealError location(usize actor);
+    // Straight there, not swept or pushed by physics
+    void!UnrealError setLocation(usize actor, Vec3 location);
+    // Pitch, yaw and roll in degrees
+    Vec3!UnrealError rotation(usize actor);
+    void!UnrealError setRotation(usize actor, Vec3 rotation);
+}
