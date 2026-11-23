@@ -1,8 +1,8 @@
 //! Unreal Engine games, UE4 and UE5. Finds the engine's names, objects and class layouts as the
 //! game starts, without signatures or tables for each version, and writes every class and struct
 //! to a dump in Wraith's folder. Then ticks Wraith on the game thread through `ProcessEvent`, does
-//! game speed with the world's time dilation, gives the game a console, and hands its camera to
-//! Wraith's free camera and its characters to posing.
+//! game speed with the world's time dilation, gives the game a console, hands its camera to Wraith's
+//! free camera and its characters to posing, and tells Wraith when the game's drawing HDR.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
@@ -17,6 +17,7 @@ const Speed = @import("speed.zig").Speed;
 const Console = @import("console.zig").Console;
 const Camera = @import("camera.zig").Camera;
 const Posing = @import("posing.zig").Posing;
+const Hdr = @import("hdr.zig").Hdr;
 
 pub const std_options: std.Options = .{ .logFn = sdk.logFn };
 pub const panic = sdk.panic;
@@ -35,6 +36,7 @@ pub const Plugin = struct {
     console: Console = .{},
     camera: Camera = .{},
     posing: ?Posing = null,
+    hdr: ?Hdr = null,
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
@@ -70,6 +72,7 @@ pub const Plugin = struct {
         self.console.tick();
         if (self.camera.tools != null) self.camera.tick();
         if (self.posing) |*p| p.tick();
+        if (self.hdr) |*h| h.tick();
     }
 
     /// The engine fills in its objects as it boots, so this waits for them.
@@ -152,6 +155,9 @@ pub const Plugin = struct {
                 self.camera.late = .{ .context = &self.posing.?, .func = Posing.lateCallback };
             }
         } else |err| log.warn("No posing, since this Unreal's missing {s}: {t}", .{ missing, err });
+        if (Hdr.find(ue, &self.loop, &missing)) |h| {
+            self.hdr = h;
+        } else |err| log.info("Can't ask the game about HDR, since this Unreal's missing {s}: {t}", .{ missing, err });
         try self.loop.start(pe, .{ .context = self, .func = tick });
 
         // Gives the game a bit to load more of its classes
@@ -245,6 +251,7 @@ test {
     _ = @import("speed.zig");
     _ = @import("camera.zig");
     _ = @import("posing.zig");
+    _ = @import("hdr.zig");
 }
 
 test "version from the build string" {

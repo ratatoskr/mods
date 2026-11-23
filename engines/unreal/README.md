@@ -8,4 +8,5 @@ For games made with Unreal Engine 4 or 5.
 - Unreal's game thread drives Wraith's ticks, so other plugins' `frame.onTick` runs there, once a frame, where calling into the engine is safe.
 - Wraith's game speed goes through the world's time dilation, so only the world changes and the UI carries on. 0 pauses the world the engine's own way. The game's own slow motion still works underneath it.
 - Games that ship without a console get one back, opened with the game's console key, usually ` or ~. The Unreal console window, under the plugin's button on the overlay's bar, runs commands too, for games with no console key.
+- Asks the game's settings whether HDR's on, now and then, so Wraith's overlay matches the game even when Wraith joined the game late.
 - Writes every class and struct, with their properties' offsets and types and their functions, to `%LOCALAPPDATA%\Wraith\dumps\unreal\<game id>.txt`, about 10 seconds after it finds them.
