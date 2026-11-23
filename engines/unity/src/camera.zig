@@ -1,8 +1,9 @@
-//! Hands the main camera to Camera Tools just before Unity renders it, once the game's own camera
+//! Hands the main camera to Wraith's free camera just before Unity renders it, once the game's own camera
 //! code has had its say, Cinemachine included. `Render` calls it on the main thread.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
+const W = sdk.api.wraith;
 const schema = @import("schema");
 
 const Engine = @import("engine.zig").Engine;
@@ -21,8 +22,8 @@ const Pose = struct {
 
 pub const Camera = struct {
     engine: *const Engine = undefined,
-    /// Null without Camera Tools, which leaves the camera to the game.
-    tools: ?schema.CameraTools = null,
+    /// Wraith's free camera. Null only if Wraith's too old to have one.
+    tools: ?W.FreeCamera = null,
     // Main thread only from here down
     /// The game's own camera, as of the last frame it set it.
     game: Pose = undefined,
@@ -31,7 +32,7 @@ pub const Camera = struct {
 
     pub fn start(self: *Camera, engine: *const Engine) void {
         self.engine = engine;
-        self.tools = sdk.salamander.service(schema.CameraTools, "camera");
+        self.tools = if (sdk.wraith.root()) |w| w.camera() else null;
         if (self.tools) |t| t.world(.{ .up = .pos_y, .look = .pos_z, .left_handed = true, .metre = 1 });
     }
 
@@ -40,7 +41,7 @@ pub const Camera = struct {
         self.steerWith(self.tools orelse return, camera);
     }
 
-    /// `tools` is Camera Tools, or a stand-in for tests.
+    /// `tools` is the free camera, or a stand-in for tests.
     fn steerWith(self: *Camera, tools: anytype, camera: *Object) void {
         const e = self.engine;
         // Not UI cameras, reflections and the like
@@ -55,7 +56,7 @@ pub const Camera = struct {
             if (now.fov != w.fov) self.game.fov = now.fov;
         } else self.game = now;
 
-        var state: schema.CamState = .{
+        var state: W.CamState = .{
             .position = self.game.position,
             .aim = .rotation,
             .target = .{},
@@ -67,7 +68,7 @@ pub const Camera = struct {
         const before = state;
         tools.camera(&state);
         if (std.meta.eql(state, before)) {
-            // Camera Tools let go. Put the game's back, for games that don't set it every frame
+            // The free camera let go. Put the game's back, for games that don't set it every frame
             if (self.wrote != null) write(e, camera, transform, self.game);
             self.wrote = null;
             return;
@@ -91,7 +92,7 @@ fn write(e: *const Engine, camera: *Object, transform: *Object, pose: Pose) void
     e.set_fov(camera, pose.fov);
 }
 
-/// Main thread, once Camera Tools has had its say, so plugins drawing over the world, like posing
+/// Main thread, once the free camera has had its say, so plugins drawing over the world, like posing
 /// and the Scene panel's gizmo, see it the way it's drawn.
 pub fn publishView(e: *const Engine, camera: *Object) void {
     var view: Mat4 = .identity;
@@ -173,7 +174,7 @@ const FakeGame = struct {
     };
 };
 
-/// Camera Tools: hands back its own camera while it's on.
+/// The free camera: hands back its own camera while it's on.
 const FakeTools = struct {
     on: bool = false,
     position: Vec3 = .{ .x = 9 },
@@ -181,7 +182,7 @@ const FakeTools = struct {
     /// What the game had, as it came in
     seen: Vec3 = .{},
 
-    pub fn camera(self: *FakeTools, state: *schema.CamState) void {
+    pub fn camera(self: *FakeTools, state: *W.CamState) void {
         self.seen = state.position;
         if (!self.on) return;
         state.position = self.position;
@@ -189,7 +190,7 @@ const FakeTools = struct {
     }
 };
 
-test "moves the main camera while Camera Tools has it, and gives the game's back" {
+test "moves the main camera while the free camera has it, and gives the game's back" {
     var cam: Camera = .{ .engine = &FakeGame.engine };
     var tools: FakeTools = .{};
     FakeGame.writes = 0;
@@ -199,13 +200,13 @@ test "moves the main camera while Camera Tools has it, and gives the game's back
     try testing.expectEqual(0, FakeGame.writes);
     try testing.expectEqual(1, tools.seen.x);
 
-    // On, it's Camera Tools', with its fov in degrees
+    // On, it's the free camera's, with its fov in degrees
     tools.on = true;
     cam.steerWith(&tools, FakeGame.camera);
     try testing.expectEqual(9, FakeGame.pose.position.x);
     try testing.expectApproxEqAbs(90, FakeGame.pose.fov, 0.001);
 
-    // A game that sets its camera every frame still shows Camera Tools where it is
+    // A game that sets its camera every frame still shows the free camera where it is
     FakeGame.pose.position = .{ .x = 2 };
     cam.steerWith(&tools, FakeGame.camera);
     try testing.expectEqual(2, tools.seen.x);

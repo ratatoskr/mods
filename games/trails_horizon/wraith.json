@@ -2,13 +2,12 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "trails_horizon",
   "kind": "plugin",
-  "version": "0.0.2",
+  "version": "0.0.3",
+  "apiVersion": 1,
   "title": "Trails Horizon",
   "summary": "Trails beyond the horizon plugin",
   "author": "Asgard",
   "arches": ["x64"],
-  "depends": ["camera", "posing"],
-  "devDepends": { "camera": "../../libs/camera/wraith.json", "posing": "../../libs/posing/wraith.json" },
   "game": {
     "exes": ["kai.exe"],
     "ids": ["steam-3316940", "gog-1501307817"]

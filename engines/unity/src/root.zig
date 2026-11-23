@@ -1,5 +1,5 @@
 //! Unity games, on Mono or IL2CPP. Drives Wraith's ticks from Unity's main thread, so every
-//! plugin's `onTick` can use Unity's engine calls and methods. Camera Tools moves the game's main
+//! plugin's `onTick` can use Unity's engine calls and methods. Wraith's free camera moves the game's main
 //! camera, with the built-in render pipeline, URP or HDRP, posing poses its characters, and game
 //! speed goes through Unity's time scale. Everything goes through the game's C# runtime and Unity's
 //! own engine calls, so it works without knowing anything about the game.

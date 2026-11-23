@@ -1,8 +1,9 @@
-//! The game's camera, right after the camera manager sets it each frame. Camera Tools gets to move
+//! The game's camera, right after the camera manager sets it each frame. The free camera gets to move
 //! it, then it's Wraith's view of the game, for posing and anything else drawing over the world.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
+const W = sdk.api.wraith;
 const schema = @import("schema");
 
 const CameraManager = schema.CameraManager;
@@ -10,11 +11,11 @@ const Apply = CameraManager.Fns.applyCamera;
 const ApplyHook = sdk.hooks.FnHook(Apply);
 
 pub const Camera = struct {
-    tools: ?schema.CameraTools = null,
+    tools: ?W.FreeCamera = null,
     apply: ApplyHook = undefined,
 
     pub fn start(self: *Camera) !void {
-        self.tools = sdk.salamander.service(schema.CameraTools, "camera");
+        self.tools = if (sdk.wraith.root()) |w| w.camera() else null;
         if (self.tools) |t| t.world(.{ .up = .pos_y, .look = .neg_z, .left_handed = false, .metre = 1 });
         self.apply = try sdk.hooks.createFnWith(Apply, try CameraManager.addresses.applyCamera(), applyCamera, self, .{ .enabled = true });
     }
@@ -26,8 +27,8 @@ pub const Camera = struct {
         sdk.frame.setView(camera.view, camera.proj);
     }
 
-    fn steer(tools: schema.CameraTools, camera: *schema.Camera) void {
-        var view: schema.CamState = .{
+    fn steer(tools: W.FreeCamera, camera: *schema.Camera) void {
+        var view: W.CamState = .{
             .position = camera.eye,
             .aim = .target,
             .target = camera.target,

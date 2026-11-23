@@ -3,7 +3,7 @@
 //! where every render pipeline renders. Unity before 2019 or so might not say where it is, so then
 //! it's each camera's `Camera.FireOnPreCull` or `RenderPipelineManager.BeginCameraRendering`, which
 //! some games never call. Either way it ticks Wraith there, so every plugin's `onTick` runs on the
-//! main thread, then lets Camera Tools move the main camera. Posing goes a bit earlier, before
+//! main thread, then lets the free camera move the main camera. Posing goes a bit earlier, before
 //! skinned meshes follow their bones.
 
 const std = @import("std");

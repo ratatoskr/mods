@@ -22,7 +22,7 @@ pub const Plugin = struct {
         try self.mira_tweaks.start(ctx);
         try self.items_tweaks.start(ctx);
         // The rest still works without them
-        self.camera.start() catch |err| log.err("Can't hook the camera, so there's no Camera Tools or view of the game: {t}", .{err});
+        self.camera.start() catch |err| log.err("Can't hook the camera, so there's no free camera or view of the game: {t}", .{err});
         self.posing.start() catch |err| log.err("No posing: {t}", .{err});
     }
 };

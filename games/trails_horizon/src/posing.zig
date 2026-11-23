@@ -3,6 +3,7 @@
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
+const W = sdk.api.wraith;
 const schema = @import("schema");
 
 const Chara = schema.Chara;
@@ -22,12 +23,12 @@ const max_nodes = 512;
 threadlocal var updating: ?*Chara = null;
 
 pub const Posing = struct {
-    service: schema.Posing = undefined,
+    service: W.Posing = undefined,
     update: UpdateHook = undefined,
     modifiers: ModifiersHook = undefined,
 
     pub fn start(self: *Posing) !void {
-        self.service = sdk.salamander.service(schema.Posing, "posing") orelse return error.PosingMissing;
+        self.service = (sdk.wraith.root() orelse return error.PosingMissing).posing();
         self.update = try sdk.hooks.createFnWith(Update, try Chara.addresses.onModelUpdate(), onModelUpdate, self, .{ .enabled = true });
         self.modifiers = try sdk.hooks.createFnWith(Modifiers, try ModelInstance.addresses.updateModifiers(), updateModifiers, self, .{ .enabled = true });
     }
@@ -51,7 +52,7 @@ pub const Posing = struct {
         const root = (chara.model orelse return).root orelse return;
 
         var nodes: [max_nodes]*DagNode = undefined;
-        var bones: [max_nodes]schema.PosingBone = undefined;
+        var bones: [max_nodes]W.PosingBone = undefined;
         var matrices: [max_nodes]Mat4 = undefined;
         var unnamed: [max_nodes][10]u8 = undefined;
         const count = walk(root, &nodes, &bones);
@@ -69,7 +70,7 @@ pub const Posing = struct {
 };
 
 /// The tree under `root` depth first, so parents come before their children. Gives how many.
-fn walk(root: *DagNode, nodes: *[max_nodes]*DagNode, bones: *[max_nodes]schema.PosingBone) usize {
+fn walk(root: *DagNode, nodes: *[max_nodes]*DagNode, bones: *[max_nodes]W.PosingBone) usize {
     const Next = struct { node: *DagNode, parent: i32 };
     var stack: [max_nodes]Next = undefined;
     stack[0] = .{ .node = root, .parent = -1 };

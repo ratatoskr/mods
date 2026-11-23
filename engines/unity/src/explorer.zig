@@ -224,7 +224,7 @@ pub const Explorer = struct {
     engine: *const Engine = undefined,
     scene: *Scene = undefined,
     calls: Calls = undefined,
-    tools: ?schema.CameraTools = null,
+    tools: ?W.FreeCamera = null,
     ticks: ?sdk.frame.TickDriver = null,
     transform_type: usize = 0,
     component_type: usize = 0,
@@ -285,7 +285,7 @@ pub const Explorer = struct {
 
     /// Blocks while the game's runtime looks, so not on the render thread. Panel and all, or
     /// nothing if this Unity's missing what it needs.
-    pub fn start(self: *Explorer, engine: *const Engine, scene: *Scene, managed: W.Managed, tools: ?schema.CameraTools, ticks: ?sdk.frame.TickDriver) !void {
+    pub fn start(self: *Explorer, engine: *const Engine, scene: *Scene, managed: W.Managed, tools: ?W.FreeCamera, ticks: ?sdk.frame.TickDriver) !void {
         self.* = .{ .engine = engine, .scene = scene, .managed = managed, .tools = tools, .ticks = ticks };
         var missing: []const u8 = "";
         self.calls = engine_.findCalls(Calls, Calls.names, managed, &missing) catch |err| {
@@ -791,7 +791,7 @@ pub const Explorer = struct {
         var menu = ui.commands("scene", .{});
         defer menu.end();
         const any = self.picked.native != 0;
-        if (menu.item(.{ .label = "Orbit the camera round it", .enabled = any and self.tools != null, .default = true, .tooltip = "Camera Tools takes over and orbits where it is" })) self.actions.push(.{ .focus = self.picked });
+        if (menu.item(.{ .label = "Orbit the camera round it", .enabled = any and self.tools != null, .default = true, .tooltip = "The free camera takes over and orbits where it is" })) self.actions.push(.{ .focus = self.picked });
         if (menu.item(.{ .label = "Turn on or off", .enabled = any, .tooltip = "Its GameObject's SetActive" })) {
             const on = if (self.details.read()) |d| blk: {
                 defer d.end();

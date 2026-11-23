@@ -155,13 +155,13 @@ var zone_pick: sdk.timing.Zone = .init("Posing: finding characters");
 
 /// What a frame works on, kept off Unity's main thread's stack.
 const Scratch = struct {
-    bones: [max_bones]schema.PosingBone,
+    bones: [max_bones]W.PosingBone,
     matrices: [max_bones]Mat4,
     input: [max_bones]Mat4,
 };
 
 pub const Posing = struct {
-    service: schema.Posing,
+    service: W.Posing,
     calls: Calls,
     engine: *const Engine,
     scene: *Scene,
@@ -176,7 +176,7 @@ pub const Posing = struct {
 
     /// Null without posing. Blocks while the game's runtime looks, so not on the render thread.
     pub fn find(engine: *const Engine, scene: *Scene, managed: W.Managed, missing: *[]const u8) !?Posing {
-        const service = sdk.salamander.service(schema.Posing, "posing") orelse return null;
+        const service = (sdk.wraith.root() orelse return null).posing();
         for ([_]*sdk.timing.Zone{ &zone_read, &zone_hand, &zone_write, &zone_pick }) |z| sdk.timing.list(z);
         const calls = try engine_.findCalls(Calls, Calls.names, managed, missing);
         const scratch = try gpa.create(Scratch);
