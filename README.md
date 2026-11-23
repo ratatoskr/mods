@@ -14,6 +14,8 @@ CI publishes every version the Hub doesn't have yet, and a failed one is tried a
 
 A package that depends on another one here points at it with `devDepends` in its `wraith.json`, like `"devDepends": { "unity": "../../engines/unity/wraith.json" }`, rather than a path in `build.zig.zon`. Releases leave `devDepends` out, release what's depended on first, and won't release a package whose dependency isn't on the Hub or going out with it.
 
+The scripts in `scripts/` check each `wraith.json` against the Hub's schema and package it with the JS tools (`@ratatoskr.io/plugin-tools`), so run `npm ci` here before running them yourself.
+
 ## License
 
 AGPL-3.0, see [LICENSE](LICENSE), unless a package has a license of its own.

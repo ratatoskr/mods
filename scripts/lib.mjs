@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crc32, deflateRawSync } from "node:zlib";
+import { packagedManifest, readManifest as checkedManifest } from "@ratatoskr.io/plugin-tools";
 
 export const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const github = !!process.env.GITHUB_ACTIONS;
@@ -48,41 +49,30 @@ export function packageOf(packages, file) {
     return null;
 }
 
+/** What the Hub has out for `id`, from its index. The signature's first line isn't checked, since
+ *  this only decides what to release. */
 export async function publishedVersions(id) {
     try {
-        const response = await fetch(`${dist}/v1/packages/${id}.json`);
+        const response = await fetch(`${dist}/v2/index.signed`);
         if (!response.ok) return [];
-        const index = await response.json();
-        return (index.versions ?? []).map((v) => v.version);
+        const text = await response.text();
+        const index = JSON.parse(text.slice(text.indexOf("\n") + 1));
+        return (index.packages?.find((p) => p.id === id)?.versions ?? []).map((v) => v.version);
     } catch {
         return [];
     }
 }
 
+/** Parsed and checked against the schema the Hub uses, so CI fails on what the Hub would turn down. */
 export function readManifest(text, file = manifestName) {
-    try {
-        return JSON.parse(text.replace(/^\uFEFF/, ""));
-    } catch (e) {
-        throw new Error(`${file} isn't valid JSON: ${e.message}`);
-    }
+    return checkedManifest(text.replace(/^\uFEFF/, ""), file);
 }
 
 /**
  * wraith.json as it goes in a package: without devDepends, which the Hub won't take, and with
  * descriptionFile's text as description. `dir` is wraith.json's folder.
  */
-export function packagedManifest(text, dir) {
-    const m = readManifest(text);
-    if (m.devDepends === undefined && m.descriptionFile === undefined) return text;
-    delete m.devDepends;
-    if (m.descriptionFile !== undefined) {
-        if (m.description !== undefined) throw new Error(`${manifestName} has description and descriptionFile. Keep one`);
-        m.description = readFileSync(join(dir, m.descriptionFile), "utf8").replace(/^\uFEFF/, "").trim();
-        delete m.descriptionFile;
-    }
-    return JSON.stringify(m, null, 2) + "\n";
-}
-
+export { packagedManifest };
 /** Whether `version` is at least `min`, which can be short like `1.2`. */
 export function atLeast(version, min) {
     const pad = (v) => [...v.split("."), "0", "0"].slice(0, 3).join(".");

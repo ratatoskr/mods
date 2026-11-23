@@ -7,7 +7,7 @@
 // Without --base, or if the ref isn't there, everything builds. So does a change outside the
 // packages, like to these scripts.
 
-import { checkZigDependencies, compareVersions, error, findPackages, git, group, hasZigTests, manifestName, npmScripts, packageFiles, packageOf, publishedVersions, readManifest, run, versionPattern, warning } from "./lib.mjs";
+import { checkZigDependencies, compareVersions, error, findPackages, git, group, hasZigTests, manifestName, npmScripts, packageFiles, packageOf, publishedVersions, run, versionPattern, warning } from "./lib.mjs";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -56,7 +56,8 @@ async function checkVersion(plugin, base, changed) {
     const before = base && git("show", `${base}:${plugin.manifestFile}`);
     let old;
     try {
-        old = before ? readManifest(before).version : undefined;
+        // Only its version, so one from before a schema change still compares
+        old = before ? JSON.parse(before.replace(/^\uFEFF/, "")).version : undefined;
     } catch {
         // Broken at the base, so nothing to compare with
     }
