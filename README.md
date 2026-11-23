@@ -2,6 +2,10 @@
 
 Mods for [Wraith](https://wraith.io) in any language it runs, both plugins and projects are supported. Everything here is published on the [Wraith Hub](https://hub.wraith.io).
 
+## Want to download?
+
+Get the Wraith app from [wraith.io](https://wraith.io). It installs Wraith, finds your games, and installs mods from the [Hub](https://hub.wraith.io). New to it? [Start here](https://docs.wraith.io/play/).
+
 ## Releasing
 
 A package's version is the one in its `wraith.json`. Bump it and push to `main`.
