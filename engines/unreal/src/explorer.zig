@@ -695,19 +695,7 @@ pub const Explorer = struct {
 
     /// The first live one of `class` or what comes from it. Goes through every object.
     fn instanceOf(self: *Explorer, class: usize) ?usize {
-        const count = self.ue.objects.count();
-        for (0..count) |i| {
-            const obj = self.objectAt(i);
-            if (obj == 0 or plain(u32, obj + object.flags) & template_flags != 0) continue;
-            var at: ?usize = plain(usize, obj + object.class);
-            var depth: usize = 0;
-            while (at) |c| : (at = self.ue.superOf(c)) {
-                depth += 1;
-                if (depth > 64) break;
-                if (c == class) return obj;
-            }
-        }
-        return null;
+        return self.ue.liveInstanceOf(class);
     }
 
     /// Where an actor or scene component is, in the world.

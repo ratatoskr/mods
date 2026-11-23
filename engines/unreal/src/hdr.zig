@@ -18,7 +18,8 @@ const max_misses = 5;
 pub const Hdr = struct {
     ue: *const Unreal,
     loop: *Loop,
-    /// `GameUserSettings.IsHDREnabled`, and where its answer goes.
+    /// `GameUserSettings`, and `IsHDREnabled` and where its answer goes.
+    class: usize,
     function: usize,
     size: usize,
     returns: usize,
@@ -43,6 +44,7 @@ pub const Hdr = struct {
         return .{
             .ue = ue,
             .loop = loop,
+            .class = found[0],
             .function = function,
             .size = @intCast(ue.structSize(function) orelse return error.MissingFunction),
             .returns = ue.offsetOf(function, "ReturnValue") orelse {
@@ -67,7 +69,7 @@ pub const Hdr = struct {
         // The game makes its settings object as it starts, and could make another
         if (self.settings == 0 or !self.ue.objects.isObject(self.settings)) {
             if (self.misses == max_misses) return null;
-            self.settings = self.ue.findInstance("GameUserSettings") orelse {
+            self.settings = self.ue.liveInstanceOf(self.class) orelse {
                 self.misses += 1;
                 if (self.misses == max_misses) log.info("The game has no settings object, so Wraith can't ask it about HDR", .{});
                 return null;

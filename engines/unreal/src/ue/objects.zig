@@ -21,18 +21,20 @@ pub const Objects = struct {
     table: usize,
     /// One `FUObjectItem`.
     stride: usize,
+    /// Objects in a chunk. 64K in stock engines, but Tales of Arise has 65K.
+    chunk_len: usize = 0,
 
     pub const Kind = enum { chunked, fixed };
 
-    pub const chunk_len = 64 * 1024;
     const strides = [_]usize{ 0x18, 0x10, 0x20, 0x28 };
+    const stock_len = 64 * 1024;
     const max_objects = 0x400_0000;
 
     /// Counts come straight from `words`, the game's data. Only likely pointers get read.
     pub fn find(mem: *const Mem, words: []const usize) ?Objects {
         for (words, 0..) |v, i| {
             if (i + 3 >= words.len or !mem.readable(v, 8)) continue;
-            if (chunkedAt(mem, words[i..][0..4])) |stride| return .{ .mem = mem, .kind = .chunked, .table = @intFromPtr(&words[i]), .stride = stride };
+            if (chunkedAt(mem, words[i..][0..4])) |c| return .{ .mem = mem, .kind = .chunked, .table = @intFromPtr(&words[i]), .stride = c.stride, .chunk_len = c.len };
         }
         for (words, 0..) |v, i| {
             if (i + 1 >= words.len or !mem.readable(v, 8)) continue;
@@ -46,15 +48,38 @@ pub const Objects = struct {
         return .{ @bitCast(@as(u32, @truncate(w))), @bitCast(@as(u32, @truncate(w >> 32))) };
     }
 
+    const Chunks = struct { stride: usize, len: usize };
+
     /// `Objects`, `PreAllocatedObjects`, `MaxElements` and `NumElements`, `MaxChunks` and `NumChunks`.
-    fn chunkedAt(mem: *const Mem, w: *const [4]usize) ?usize {
+    /// The engine makes the max whole chunks, so that gives the chunk size.
+    fn chunkedAt(mem: *const Mem, w: *const [4]usize) ?Chunks {
         const max, const num = halves(w[2]);
         if (num <= 0 or num > max or max > max_objects) return null;
         const max_chunks, const num_chunks = halves(w[3]);
-        if (max_chunks != @divFloor(max + chunk_len - 1, chunk_len)) return null;
-        if (num_chunks < @divFloor(num + chunk_len - 1, chunk_len) or num_chunks > max_chunks) return null;
-        const first = mem.ptr(w[0]) orelse return null;
-        return strideOf(mem, first);
+        if (max_chunks <= 0) return null;
+        // 64K rounded up, for any max that isn't whole chunks
+        const len = if (@rem(max, max_chunks) == 0) @divExact(max, max_chunks) else stock_len;
+        if (len < 1024 or (len == stock_len and max_chunks != @divFloor(max + len - 1, len))) return null;
+        if (num_chunks < @divFloor(num + len - 1, len) or num_chunks > max_chunks) return null;
+        const chunks = w[0];
+        const first = mem.ptr(chunks) orelse return null;
+        const stride = strideOf(mem, first) orelse return null;
+        if (num_chunks > 1 and !secondChunkStartsAt(mem, chunks, stride, @intCast(len))) return null;
+        return .{ .stride = stride, .len = @intCast(len) };
+    }
+
+    /// The first live objects in the second chunk say they're `len` on.
+    fn secondChunkStartsAt(mem: *const Mem, chunks: usize, stride: usize, len: usize) bool {
+        const second = mem.ptr(chunks + 8) orelse return false;
+        var checked: usize = 0;
+        for (0..16) |k| {
+            const obj = mem.ptr(second + k * stride) orelse continue;
+            const index = mem.read(i32, obj + object.index) orelse return false;
+            if (index != @as(i32, @intCast(len + k))) return false;
+            checked += 1;
+            if (checked == 2) return true;
+        }
+        return checked > 0;
     }
 
     /// `Objects`, `MaxElements` and `NumElements`.
@@ -87,7 +112,7 @@ pub const Objects = struct {
         const items = switch (self.kind) {
             .chunked => blk: {
                 const chunks = self.mem.ptr(self.table) orelse return null;
-                break :blk (self.mem.ptr(chunks + (i / chunk_len) * 8) orelse return null) + (i % chunk_len) * self.stride;
+                break :blk (self.mem.ptr(chunks + (i / self.chunk_len) * 8) orelse return null) + (i % self.chunk_len) * self.stride;
             },
             .fixed => (self.mem.ptr(self.table) orelse return null) + i * self.stride,
         };
@@ -108,9 +133,9 @@ pub const Objects = struct {
             .chunked => blk: {
                 const chunks = plain(self.table);
                 if (chunks == 0) return 0;
-                const chunk = plain(chunks + (i / chunk_len) * 8);
+                const chunk = plain(chunks + (i / self.chunk_len) * 8);
                 if (chunk == 0) return 0;
-                break :blk chunk + (i % chunk_len) * self.stride;
+                break :blk chunk + (i % self.chunk_len) * self.stride;
             },
             .fixed => plain(self.table) + i * self.stride,
         };
@@ -151,17 +176,56 @@ const tests = struct {
         }
         var chunks = [_]usize{@intFromPtr(&items)};
         // Some data, then ObjObjects
-        var data = [_]usize{ 1, 2, @intFromPtr(&chunks), 0, (@as(usize, 5) << 32) | 70000, (@as(usize, 1) << 32) | 2 };
+        var data = [_]usize{ 1, 2, @intFromPtr(&chunks), 0, (@as(usize, 5) << 32) | 0x20000, (@as(usize, 1) << 32) | 2 };
         try mem.refresh();
 
         const objects = Objects.find(&mem, &data).?;
         try std.testing.expectEqual(.chunked, objects.kind);
         try std.testing.expectEqual(0x18, objects.stride);
+        try std.testing.expectEqual(0x10000, objects.chunk_len);
         try std.testing.expectEqual(5, objects.count());
         try std.testing.expectEqual(@intFromPtr(&objs[4]), objects.get(4).?);
         try std.testing.expect(objects.isObject(@intFromPtr(&objs[2])));
         var stray: Obj = .{ .index = 2 };
         try std.testing.expect(!objects.isObject(@intFromPtr(&stray)));
+    }
+
+    test "chunked, with chunks that aren't 64K" {
+        var mem = try Mem.init(std.testing.allocator);
+        defer mem.deinit();
+        const len = 0x10400;
+        var objs: [8]Obj = undefined;
+        var items: [2][4]Item = undefined;
+        for (0..2) |c| for (0..4) |k| {
+            objs[c * 4 + k] = .{ .index = @intCast(c * len + k) };
+            items[c][k] = .{ .object = @intFromPtr(&objs[c * 4 + k]) };
+        };
+        var chunks = [_]usize{ @intFromPtr(&items[0]), @intFromPtr(&items[1]) };
+        // Tales of Arise's, 32 chunks of 0x10400
+        var data = [_]usize{ @intFromPtr(&chunks), 0, (@as(usize, len + 4) << 32) | 0x208000, (@as(usize, 2) << 32) | 32 };
+        try mem.refresh();
+
+        const objects = Objects.find(&mem, &data).?;
+        try std.testing.expectEqual(len, objects.chunk_len);
+        try std.testing.expectEqual(@intFromPtr(&objs[5]), objects.get(len + 1).?);
+        try std.testing.expect(objects.isObject(@intFromPtr(&objs[6])));
+        try std.testing.expectEqual(@intFromPtr(&objs[7]), objects.getPlain(len + 3));
+    }
+
+    test "a second chunk that doesn't start where the counts say isn't it" {
+        var mem = try Mem.init(std.testing.allocator);
+        defer mem.deinit();
+        var objs: [8]Obj = undefined;
+        var items: [2][4]Item = undefined;
+        for (0..2) |c| for (0..4) |k| {
+            objs[c * 4 + k] = .{ .index = @intCast(c * 0x10000 + k) };
+            items[c][k] = .{ .object = @intFromPtr(&objs[c * 4 + k]) };
+        };
+        var chunks = [_]usize{ @intFromPtr(&items[0]), @intFromPtr(&items[1]) };
+        var data = [_]usize{ @intFromPtr(&chunks), 0, (@as(usize, 0x10404) << 32) | 0x208000, (@as(usize, 2) << 32) | 32 };
+        try mem.refresh();
+
+        try std.testing.expectEqual(null, Objects.find(&mem, &data));
     }
 
     test "fixed, with smaller items" {

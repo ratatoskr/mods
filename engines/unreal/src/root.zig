@@ -70,12 +70,21 @@ pub const Plugin = struct {
         // Its panels go first, while ticks still run
         if (self.explorer_on) self.explorer.stop();
         self.explorer_on = false;
+        // Puts the game back, on its own thread, while the hook's still in
+        self.loop.farewell(self.ctx.io, .{ .context = self, .func = farewell });
         // No more ticks once it's out, and it waits for one in flight
         self.loop.stop();
         self.speed.stop();
         if (self.posing) |*p| p.deinit();
         self.handBack();
         if (self.mem) |*m| m.deinit();
+    }
+
+    /// Game thread, just before the plugin goes.
+    fn farewell(raw: *anyopaque) void {
+        const self: *Plugin = @ptrCast(@alignCast(raw));
+        if (self.posing) |*p| p.restore();
+        self.camera.leave();
     }
 
     fn handBack(self: *Plugin) void {

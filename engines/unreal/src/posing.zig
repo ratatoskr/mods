@@ -1,13 +1,13 @@
 //! Hands posing each character's skeleton, once Unreal's animated it for the frame. An animated
 //! mesh's anim instance gets `BlueprintPostEvaluateAnimation` through `ProcessEvent` each time it's
-//! animated, which says which meshes are fresh. But that comes before the component swaps the new
-//! bones in from the animation's worker threads, so the posing itself happens once the camera's
-//! updated, after every mesh has finished and before the frame's sent to be drawn. Things held in a
-//! bone's socket have moved by then, so they don't follow edits. Meshes following another's pose,
-//! like clothes, do. The bones are the component's component-space transforms, which aren't
-//! reflected, so where they are is found once, from the bone count. Names and parents come from the
-//! component's own `GetBoneName` and `GetParentBone`. Edits go straight into the transforms being
-//! drawn, which the next animation replaces, so they don't pile up.
+//! animated, after IK and before the component places what's held in its bones' sockets. So that's
+//! where edits go, into whichever buffer is about to be drawn, as Kai and Brio do it, and held
+//! things follow. Meshes not animated this frame, like while paused, are posed once the camera's
+//! updated instead, before the frame's sent to be drawn, and what's held is placed again then.
+//! Meshes following another's pose, like clothes, follow either way. The bones are the component's
+//! component-space transforms, which aren't reflected, so where they are is found once, from the
+//! bone count. Names and parents come from the component's own `GetBoneName` and `GetParentBone`.
+//! Edits go on the pose as animated, which the next animation replaces, so they don't pile up.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
@@ -30,8 +30,8 @@ const max_bones = 512;
 /// Faces bring big skeletons. Posing gets the first `max_bones` of up to this many.
 const max_total = 4096;
 const max_actors = 32;
-/// Frames the game animated anything in, after the mesh was last animated, before it's forgotten.
-/// Paused worlds animate nothing, so their meshes stay.
+/// Frames the game animated anything in, after the mesh was last animated, before it's checked on.
+/// It's forgotten then if it's gone or not being drawn, so paused worlds keep theirs.
 const forget_after = 120;
 
 /// A UFunction and where its params are.
@@ -53,6 +53,33 @@ pub const Offsets = struct {
     skinned_to: usize,
     /// `SkeletalMeshComponent.AnimScriptInstance`, its main one.
     anim_instance: usize,
+    /// Null if this Unreal doesn't have what it takes.
+    follow: ?Follow,
+    /// Null if it doesn't, and then paused edits aren't drawn.
+    redraw: ?Redraw,
+    /// `Actor.WasRecentlyRendered`, with its `Tolerance` and `ReturnValue`.
+    rendered: ?Call,
+};
+
+/// For having a mesh drawn with its bones as they are, when the game hasn't animated it. Setting
+/// `PrimitiveComponent.bRenderCustomDepth` has the component's render state made again at the end
+/// of the frame, so it's set to the other value and back.
+const Redraw = struct {
+    custom_depth: usize,
+    mask: u8,
+    /// `SetRenderCustomDepth` and its `bValue`.
+    set: Call,
+};
+
+/// For placing what's attached to a mesh's bones again, from `SceneComponent`.
+const Follow = struct {
+    children: usize,
+    socket: usize,
+    location: usize,
+    rotation: usize,
+    /// `K2_SetRelativeLocationAndRotation`, with `NewLocation` and `NewRotation`.
+    set: Call,
+    teleport: ?usize,
 };
 
 /// An FTransform, as floats before UE5 and doubles after.
@@ -118,6 +145,12 @@ const Mesh = struct {
     /// paused, get the edits put on them afresh rather than on top of last frame's.
     base: []Mat4 = &.{},
     has_base: bool = false,
+    /// Posed as it was animated this frame, so not again after the camera.
+    posed: bool = false,
+    /// Its bones have edits in them, as drawn.
+    edited: bool = false,
+    /// Its read buffer index as it was animated, for working out when the game flips them.
+    read_then: i32 = -1,
     arena: ?std.heap.ArenaAllocator = null,
 
     fn deinit(self: *Mesh) void {
@@ -192,17 +225,22 @@ pub const Posing = struct {
     /// Counts frames the game animated anything in, which is what meshes are aged by.
     animated_frames: u64 = 0,
     any_animated: bool = false,
+    /// When the game flips a component's bone buffers, worked out from the first fresh meshes.
+    flip: ?enum { before_post_evaluate, after_post_evaluate } = null,
+    flip_votes: [2]u32 = .{ 0, 0 },
+    /// Ticks, for checking on meshes that haven't been animated lately now and then.
+    ticks: u32 = 0,
     /// Null without posing.
     pub fn find(ue: *const Unreal, loop: *Loop, camera: *const Camera, missing: *[]const u8) !?Posing {
         const service = (sdk.wraith.root() orelse return null).posing();
-        const names = [_][]const u8{ "AnimInstance", "MeshComponent", "SkinnedMeshComponent", "SceneComponent", "SkeletalMeshComponent" };
+        const names = [_][]const u8{ "AnimInstance", "MeshComponent", "SkinnedMeshComponent", "SceneComponent", "SkeletalMeshComponent", "Actor", "PrimitiveComponent" };
         var found: [names.len]usize = undefined;
         ue.findIn("/Script/Engine", &names, &found);
         for (names, found) |n, f| if (f == 0) {
             missing.* = n;
             return error.MissingClass;
         };
-        const anim, const mesh, const skinned, const scene, const skeletal = found;
+        const anim, const mesh, const skinned, const scene, const skeletal, const actor, const primitive = found;
         const call = struct {
             fn call(u: *const Unreal, class: usize, comptime name: []const u8, comptime params: []const []const u8, m: *[]const u8) !Call {
                 const f = u.functionNamed(class, name) orelse {
@@ -232,7 +270,12 @@ pub const Posing = struct {
                 missing.* = "AnimScriptInstance";
                 return error.MissingProperty;
             },
+            .follow = followOf(ue, scene),
+            .redraw = redrawOf(ue, primitive),
+            .rendered = call(ue, actor, "WasRecentlyRendered", &.{ "Tolerance", "ReturnValue" }, missing) catch null,
         };
+        if (off.follow == null) log.info("Things attached to bones won't follow posing while paused, since this Unreal's missing what places them", .{});
+        if (off.redraw == null) log.info("Posing while paused won't show, since this Unreal's missing SetRenderCustomDepth", .{});
         const scratch = try gpa.create(Scratch);
         return .{
             .service = service,
@@ -254,12 +297,16 @@ pub const Posing = struct {
 
     /// Game thread, once a tick. Picks the nearest of what was animated lately, and forgets the rest.
     pub fn tick(self: *Posing) void {
+        const was = self.active;
         self.active = self.service.active();
+        if (was and !self.active) self.restore();
         if (self.any_animated) {
             self.animated_frames += 1;
             self.any_animated = false;
         }
         const frame = self.animated_frames;
+        self.ticks +%= 1;
+        const check = self.ticks % 30 == 0;
         var gone: std.ArrayList(usize) = .empty;
         defer gone.deinit(gpa);
         var nearest: [max_actors]struct { mesh: usize, distance: f32 } = undefined;
@@ -267,7 +314,8 @@ pub const Posing = struct {
         var it = self.meshes.iterator();
         while (it.next()) |kv| {
             const m = kv.value_ptr;
-            if (frame -% m.seen > forget_after) {
+            // Something else in the game can still be animating while the world's paused
+            if (check and frame -% m.seen > forget_after and (m.skip or !self.stillShown(kv.key_ptr.*))) {
                 gone.append(gpa, kv.key_ptr.*) catch {};
                 continue;
             }
@@ -309,6 +357,40 @@ pub const Posing = struct {
         self.any_animated = true;
         mesh.to_world = self.toWorld(component) orelse return;
         if (self.camera.shown) |c| mesh.distance = mesh.to_world.getTranslation().distance(c.position);
+        self.poseEarly(component, mesh);
+    }
+
+    /// Edits go in now, after the animation's IK and before the component places what's attached
+    /// to its bones, so those follow. Which buffer depends on whether it's flipped them yet.
+    fn poseEarly(self: *Posing, component: usize, mesh: *Mesh) void {
+        const b = self.buffers orelse return;
+        if (self.probe != null or !self.isChosen(component)) return;
+        const r = b.read_index orelse return self.poseFresh(component, mesh, .read);
+        mesh.read_then = self.ue.mem.read(i32, component + r) orelse return;
+        const flip = self.flip orelse return;
+        self.poseFresh(component, mesh, if (flip == .after_post_evaluate) .editable else .read);
+    }
+
+    fn poseFresh(self: *Posing, component: usize, mesh: *Mesh, into: Into) void {
+        _ = self.pose(component, mesh, true, into);
+        // After, since a first pose builds the mesh afresh
+        mesh.posed = true;
+    }
+
+    fn isChosen(self: *const Posing, component: usize) bool {
+        return std.mem.indexOfScalar(usize, self.chosen[0..self.chosen_len], component) != null;
+    }
+
+    /// Whether the buffers flip after `BlueprintPostEvaluateAnimation`, from a few fresh meshes.
+    fn learnFlip(self: *Posing, component: usize, mesh: *const Mesh) void {
+        const r = (self.buffers orelse return).read_index orelse return;
+        const now = self.ue.mem.read(i32, component + r) orelse return;
+        if (mesh.read_then < 0) return;
+        self.flip_votes[@intFromBool(now != mesh.read_then)] += 1;
+        const after, const before = .{ self.flip_votes[1], self.flip_votes[0] };
+        if (after + before < 16) return;
+        self.flip = if (after > before) .after_post_evaluate else .before_post_evaluate;
+        log.info("Posing edits bones as they're animated, {s} the game flips them", .{if (self.flip == .after_post_evaluate) "before" else "after"});
     }
 
     pub fn lateCallback(raw: *anyopaque) void {
@@ -316,8 +398,9 @@ pub const Posing = struct {
     }
 
     /// Game thread, once the camera's updated, when every mesh has its new bones in and none have
-    /// been sent to be drawn. Fresh ones take their new pose as the base, and the rest, like while
-    /// the world's paused, get the edits on the base they had, so edits never pile up.
+    /// been sent to be drawn. Ones not posed as they were animated get it here: fresh ones take
+    /// their new pose as the base, and the rest, like while the world's paused, get the edits on
+    /// the base they had, so edits never pile up. What's attached to them is placed again then.
     pub fn late(self: *Posing) void {
         if (!self.active) return;
         if (self.buffers == null or self.probe != null) return self.findDrawn();
@@ -325,22 +408,30 @@ pub const Posing = struct {
             const mesh = self.meshes.getPtr(component) orelse continue;
             if (mesh.skip) continue;
             const fresh = mesh.fresh;
+            const posed = mesh.posed;
             mesh.fresh = false;
+            mesh.posed = false;
+            if (posed) continue;
+            if (fresh and self.flip == null) self.learnFlip(component, mesh);
+            mesh.read_then = -1;
             // Not animated this frame, so it could have gone since
             if (!fresh and (!mesh.has_base or !self.ue.objects.isObject(component))) continue;
-            self.pose(component, mesh, fresh);
+            if (self.pose(component, mesh, fresh, .read) and !fresh) self.showPaused(component);
         }
     }
 
-    fn pose(self: *Posing, component: usize, mesh: *Mesh, fresh: bool) void {
-        const bones = self.drawn(component) orelse return;
+    const Into = enum { read, editable };
+
+    /// True if it changed any bones.
+    fn pose(self: *Posing, component: usize, mesh: *Mesh, fresh: bool, into: Into) bool {
+        const bones = self.bonesIn(component, into) orelse return false;
         if (bones.count != mesh.total) {
-            if (!fresh) return;
+            if (!fresh) return false;
             self.build(component, mesh) catch {
                 mesh.skip = true;
-                return;
+                return false;
             };
-            if (bones.count != mesh.total) return;
+            if (bones.count != mesh.total) return false;
         }
         // Parents come before children, so the first ones are a whole skeleton
         const n = mesh.count;
@@ -354,20 +445,49 @@ pub const Posing = struct {
         // What's drawn now, to only write what changes
         for (0..n) |i| s.input[i] = self.layout.read(bones.data + i * stride);
         self.service.pose(.{ .id = component, .name = mesh.name, .bones = mesh.bones, .to_world = mesh.to_world }, &s.matrices[0]);
+        var changed = false;
+        var edited = false;
         for (0..n) |i| {
+            if (!edited and !s.matrices[i].approxEql(mesh.base[i], 1e-6)) edited = true;
             if (s.matrices[i].approxEql(s.input[i], 1e-6)) continue;
             self.layout.write(bones.data + i * stride, s.matrices[i]);
+            changed = true;
+        }
+        mesh.edited = edited;
+        return changed;
+    }
+
+    /// Edited meshes back as the game last animated them, for when posing stops, like when the
+    /// plugin's going. Game thread only. Matters while paused, when the game won't animate them again.
+    pub fn restore(self: *Posing) void {
+        if (self.buffers == null or self.probe != null) return;
+        var it = self.meshes.iterator();
+        while (it.next()) |kv| {
+            const mesh = kv.value_ptr;
+            if (!mesh.edited or !mesh.has_base) continue;
+            mesh.edited = false;
+            const component = kv.key_ptr.*;
+            if (!self.ue.objects.isObject(component)) continue;
+            const bones = self.bonesIn(component, .read) orelse continue;
+            if (bones.count != mesh.total) continue;
+            const stride = self.layout.size();
+            for (mesh.base[0..mesh.count], 0..) |m, i| self.layout.write(bones.data + i * stride, m);
+            self.showPaused(component);
         }
     }
 
     const Bones = struct { data: usize, other: ?usize = null, count: u32 };
 
-    /// The bones the component will be drawn with, read afresh each time, since it swaps whole
-    /// arrays with the animation's.
-    fn drawn(self: *Posing, component: usize) ?Bones {
+    /// The bones being drawn, or being animated, which get drawn once the component flips them.
+    /// Read afresh each time, since it swaps whole arrays with the animation's.
+    fn bonesIn(self: *Posing, component: usize, into: Into) ?Bones {
         const mem = self.ue.mem;
         const b = self.buffers orelse return null;
-        const which: usize = if (b.read_index) |r| (if (mem.read(i32, component + r) == 1) 1 else 0) else 0;
+        const which: usize = if (b.read_index) |r| blk: {
+            // The editable index sits just before the read one
+            const at = if (into == .editable) r - 4 else r;
+            break :blk if (mem.read(i32, component + at) == 1) 1 else 0;
+        } else 0;
         const header = mem.read([2]usize, component + b.arrays + which * 16) orelse return null;
         const count: u32 = @truncate(@as(u64, header[1]));
         if (header[0] == 0 or count == 0 or count > max_total) return null;
@@ -435,6 +555,65 @@ pub const Posing = struct {
         return if (n > 0 and n <= max_total) @intCast(n) else null;
     }
 
+    /// Things attached to the component's bones or sockets, put back where those are now, with
+    /// what's attached to them in turn, and the mesh drawn as it is. For edits the game didn't
+    /// animate in, like while paused.
+    fn showPaused(self: *Posing, component: usize) void {
+        self.placeAttached(component);
+        const r = self.off.redraw orelse return;
+        const byte = self.ue.mem.read(u8, component + r.custom_depth) orelse return;
+        const on = byte & r.mask != 0;
+        var params: [16]u8 align(16) = @splat(0);
+        if (r.set.size > params.len) return;
+        for ([_]bool{ !on, on }) |value| {
+            @memset(params[0..r.set.size], 0);
+            params[r.set.params[0]] = @intFromBool(value);
+            self.loop.call(component, r.set.function, params[0..r.set.size]);
+        }
+    }
+
+    /// Setting where one is relative to its socket only places it if that's changed, so the one it
+    /// has is nudged first, then set back.
+    fn placeAttached(self: *Posing, component: usize) void {
+        const f = self.off.follow orelse return;
+        const mem = self.ue.mem;
+        const list = mem.read([2]usize, component + f.children) orelse return;
+        const n: usize = @min(@as(u32, @truncate(@as(u64, list[1]))), 64);
+        const vec = if (self.ue.layout.doubles) @as(usize, 24) else 12;
+        var params: [0x200]u8 align(16) = undefined;
+        if (f.set.size > params.len) return;
+        for (0..n) |i| {
+            const child = mem.ptr(list[0] + i * 8) orelse continue;
+            const socket = mem.read(FName, child + f.socket) orelse continue;
+            if (socket.index == 0) continue;
+            @memset(params[0..f.set.size], 0);
+            if (!mem.bytes(child + f.location, params[f.set.params[0]..][0..vec])) continue;
+            if (!mem.bytes(child + f.rotation, params[f.set.params[1]..][0..vec])) continue;
+            if (f.teleport) |t| params[t] = 1;
+            if (self.ue.layout.doubles) {
+                const x = mem.read(f64, child + f.location) orelse continue;
+                _ = mem.write(f64, child + f.location, x + 1);
+            } else {
+                const x = mem.read(f32, child + f.location) orelse continue;
+                _ = mem.write(f32, child + f.location, x + 1);
+            }
+            self.loop.call(child, f.set.function, params[0..f.set.size]);
+        }
+    }
+
+    /// Whether a mesh that hasn't been animated lately is still around to pose, like while paused.
+    fn stillShown(self: *Posing, component: usize) bool {
+        if (!self.ue.objects.isObject(component)) return false;
+        const c = self.off.rendered orelse return false;
+        const actor = self.ue.outerOf(component) orelse return false;
+        if (!self.ue.isA(actor, "Actor")) return false;
+        var p: [16]u8 align(16) = @splat(0);
+        if (c.size > p.len) return false;
+        std.mem.writeInt(u32, p[c.params[0]..][0..4], @bitCast(@as(f32, 1)), .little);
+        self.loop.call(actor, c.function, p[0..c.size]);
+        return p[c.params[1]] != 0;
+    }
+
     fn toWorld(self: *Posing, component: usize) ?Mat4 {
         var p: [0x80]u8 align(16) = @splat(0);
         const c = self.off.to_world;
@@ -498,6 +677,40 @@ pub const Posing = struct {
 };
 
 const testing = std.testing;
+
+fn redrawOf(ue: *const Unreal, primitive: usize) ?Redraw {
+    const field = ue.fieldNamed(primitive, "bRenderCustomDepth") orelse return null;
+    const p = ue.property(field) orelse return null;
+    // A bool property's byte offset and mask follow it
+    const info = ue.mem.read([4]u8, field + ue.layout.property_end) orelse return null;
+    if (p.offset < 0 or info[3] == 0) return null;
+    const set = ue.functionNamed(primitive, "SetRenderCustomDepth") orelse return null;
+    return .{
+        .custom_depth = @as(usize, @intCast(p.offset)) + info[1],
+        .mask = info[3],
+        .set = .{
+            .function = set,
+            .size = @intCast(ue.structSize(set) orelse return null),
+            .params = .{ ue.offsetOf(set, "bValue") orelse return null, 0 },
+        },
+    };
+}
+
+fn followOf(ue: *const Unreal, scene: usize) ?Follow {
+    const set = ue.functionNamed(scene, "K2_SetRelativeLocationAndRotation") orelse return null;
+    return .{
+        .children = ue.offsetOf(scene, "AttachChildren") orelse return null,
+        .socket = ue.offsetOf(scene, "AttachSocketName") orelse return null,
+        .location = ue.offsetOf(scene, "RelativeLocation") orelse return null,
+        .rotation = ue.offsetOf(scene, "RelativeRotation") orelse return null,
+        .set = .{
+            .function = set,
+            .size = @intCast(ue.structSize(set) orelse return null),
+            .params = .{ ue.offsetOf(set, "NewLocation") orelse return null, ue.offsetOf(set, "NewRotation") orelse return null },
+        },
+        .teleport = ue.offsetOf(set, "bTeleport"),
+    };
+}
 
 test "transforms both ways, as floats and doubles" {
     const m: Mat4 = .transform(.{ .x = 1, .y = 2, .z = 3 }, Quat.fromAxisAngle(.{ .z = 1 }, 0.5), .{ .x = 1, .y = 1, .z = 2 });

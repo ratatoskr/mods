@@ -28,6 +28,10 @@ pub const Loop = struct {
     watch_count: usize = 0,
     /// The game's window shape, from the render thread, as f32 bits.
     aspect: sdk.atomic.Value(u32) = .init(@bitCast(@as(f32, 16.0 / 9.0))),
+    /// `farewell`'s, run once on the game thread.
+    leaving: ?Callback = null,
+    leave: sdk.atomic.Value(bool) = .init(false),
+    left: sdk.atomic.Value(bool) = .init(false),
 
     pub const Callback = struct {
         context: *anyopaque,
@@ -87,6 +91,26 @@ pub const Loop = struct {
         self.hook = null;
     }
 
+    /// Runs `cb` on the game thread before the hook goes, so the game can be put back how it was.
+    /// Waits a little for the game to call in, and gives up if it doesn't, like while it's loading.
+    pub fn farewell(self: *Loop, io: std.Io, cb: Callback) void {
+        if (self.hook == null or self.game_thread.load(.acquire) == 0) return;
+        if (self.onGameThread()) return cb.func(cb.context);
+        self.leaving = cb;
+        self.left.store(false, .release);
+        self.leave.store(true, .release);
+        var waited: usize = 0;
+        while (!self.left.load(.acquire) and waited < 50) : (waited += 1) {
+            io.sleep(.fromMilliseconds(10), .awake) catch break;
+        }
+        if (self.leave.swap(false, .acq_rel)) {
+            log.warn("The game thread didn't come round, so the game might not be put back exactly as it was", .{});
+            return;
+        }
+        // It took it just now, so it's running it
+        while (!self.left.load(.acquire)) std.atomic.spinLoopHint();
+    }
+
     /// Render thread, once a frame.
     pub fn frame(self: *Loop) void {
         _ = self.frames.fetchAdd(1, .release);
@@ -131,6 +155,13 @@ pub const Loop = struct {
             return;
         }
         if (id != game or self.ticking) return;
+        if (self.leave.load(.acquire)) {
+            if (self.leave.swap(false, .acq_rel)) {
+                if (self.leaving) |cb| cb.func(cb.context);
+                self.left.store(true, .release);
+            }
+            return;
+        }
         const f = self.frames.load(.acquire);
         if (f == self.ticked_frame) return;
         self.ticked_frame = f;

@@ -41,6 +41,10 @@ pub const Offsets = struct {
     add_size: usize,
     add_class: usize,
     add_returns: usize,
+    /// `PlayerCameraManager.RemoveCameraModifier` and its `ModifierToRemove`, for going.
+    remove: ?usize = null,
+    remove_size: usize = 0,
+    remove_param: usize = 0,
     /// `CameraModifier.BlueprintModifyCamera` and its params, the camera as it is then the new one.
     modify: usize,
     in_location: usize,
@@ -93,6 +97,7 @@ pub const Camera = struct {
                 };
             }
         }.off;
+        const remove = ue.functionNamed(manager, "RemoveCameraModifier");
         return .{
             .manager = try off(ue, controller, "PlayerCameraManager", missing),
             .modifier_class = modifier,
@@ -100,6 +105,9 @@ pub const Camera = struct {
             .add_size = @intCast(ue.structSize(add) orelse return error.MissingFunction),
             .add_class = try off(ue, add, "ModifierClass", missing),
             .add_returns = try off(ue, add, "ReturnValue", missing),
+            .remove = remove,
+            .remove_size = if (remove) |r| @intCast(ue.structSize(r) orelse 0) else 0,
+            .remove_param = if (remove) |r| ue.offsetOf(r, "ModifierToRemove") orelse 0 else 0,
             .modify = modify,
             .in_location = try off(ue, modify, "ViewLocation", missing),
             .in_rotation = try off(ue, modify, "ViewRotation", missing),
@@ -137,6 +145,18 @@ pub const Camera = struct {
             log.info("The free camera moves the camera through a camera modifier of ours", .{});
             self.added = true;
         } else log.debug("A new camera manager, so it gets our camera modifier too", .{});
+    }
+
+    /// Game thread. Takes ours back out of the camera manager, so a reload doesn't pile them up.
+    pub fn leave(self: *Camera) void {
+        if (self.modifier == 0 or self.manager == 0) return;
+        const remove = self.off.remove orelse return;
+        defer self.modifier = 0;
+        if (!self.world.ue.objects.isObject(self.manager) or !self.world.ue.objects.isObject(self.modifier)) return;
+        var params: [32]u8 align(16) = @splat(0);
+        if (self.off.remove_size > params.len) return;
+        std.mem.writeInt(usize, params[self.off.remove_param..][0..8], self.modifier, .little);
+        self.loop.call(self.manager, remove, params[0..self.off.remove_size]);
     }
 
     /// Game thread, once a camera modifier's `BlueprintModifyCamera` has run.

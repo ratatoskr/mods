@@ -401,6 +401,24 @@ pub fn findInstance(self: *const Unreal, class_name: []const u8) ?usize {
     return null;
 }
 
+/// Like `findInstance` but by the class itself, with plain reads, so it's quick enough for the game
+/// thread. Game thread only, where every object in the array is alive. Skips templates too.
+pub fn liveInstanceOf(self: *const Unreal, class: usize) ?usize {
+    const templates = class_default | 0x20;
+    for (0..self.objects.count()) |i| {
+        const obj = self.objects.getPlain(i);
+        if (obj == 0 or @as(*align(1) const u32, @ptrFromInt(obj + object.flags)).* & templates != 0) continue;
+        var at: ?usize = @as(*align(1) const usize, @ptrFromInt(obj + object.class)).*;
+        var depth: usize = 0;
+        while (at) |c| : (at = self.superOf(c)) {
+            depth += 1;
+            if (depth > 64) break;
+            if (c == class) return obj;
+        }
+    }
+    return null;
+}
+
 /// Where a property sits in a `class`'s objects, looking through its supers too.
 pub fn offsetOf(self: *const Unreal, class: usize, name: []const u8) ?usize {
     var at: ?usize = class;
