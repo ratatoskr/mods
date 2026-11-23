@@ -10,6 +10,6 @@
   "arches": ["x64"],
   "game": {
     "exes": ["kai.exe"],
-    "ids": ["steam-3316940", "gog-1501307817"]
+    "ids": ["steam-3316940", "gog-1501307817", "epic-4636399b6c414feaa48112aa66abf19c"]
   }
 }
