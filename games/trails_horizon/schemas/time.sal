@@ -1,0 +1,29 @@
+// ed9's High Speed Mode. The game's update scales each frame's time by it, so everything in the
+// world goes faster, while play time and the UI keep real time.
+struct HighSpeed {
+    // How much faster the game runs now: 1 with High Speed Mode off, else its setting for what's
+    // going on, like a battle or the field.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 8F E0 01 00 00 F3 44 0F 59 C8", Rip)]
+    f32 scale();
+}
+
+// ed9::Application, the game.
+struct Application {
+    [0x1E0]
+    HighSpeed* high_speed;
+
+    // `t` without High Speed Mode's scale, for a timer that keeps its own pace.
+    [Sig("E8 ?? ?? ?? ?? F3 0F 58 BB ?? ?? ?? ?? F3 0F 5C F0", Rip)]
+    f32 unscaled(f32 t);
+
+    // The update while playing, rather than at the title or loading. Scales `dt` by High Speed
+    // Mode, then updates the world, camera and UI with it.
+    [Sig("48 8B C4 48 89 58 18 57 48 81 EC 90 00 00 00 0F 29 70 E8 0F 29 78 D8 44 0F 29 48 B8 44 0F 29 50 A8")]
+    void updateInGame(f32 dt);
+}
+
+// ed9::ui::Manager, the menus and HUD.
+struct UiManager {
+    [Sig("E8 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? 48 8B 1D ?? ?? ?? ?? E8 ?? ?? ?? ?? 4C 8B C0", Rip)]
+    void update(f32 dt);
+}

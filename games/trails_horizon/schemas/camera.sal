@@ -6,6 +6,10 @@ struct CameraManager {
     // Copies controller `index`'s eye, target, up and fov into `camera`, then rebuilds its matrices.
     [Sig("48 8B C4 55 53 57 48 8D 68 ?? 48 81 EC ?? ?? ?? ?? 0F 29 70 ?? 48 8B F9 0F 29 78")]
     void applyCamera(f32 dt, i32 index);
+
+    // Moves the camera on by `dt`, from the player's controls or a cutscene.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 20 E8 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? 41 0F 28 C9", Rip)]
+    void update(f32 dt);
 }
 
 // fdk::Camera, a look-at camera. Y is up, and it's right-handed, looking down -Z. Matrices are

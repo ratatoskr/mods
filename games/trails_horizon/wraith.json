@@ -5,8 +5,9 @@
   "version": "0.0.4",
   "apiVersion": 1,
   "title": "Trails Horizon",
-  "summary": "Trails beyond the horizon plugin",
+  "summary": "The free camera, posing, game speed and pause, and money, item and script tweaks for Trails beyond the Horizon.",
   "author": "Asgard",
+  "descriptionFile": "README.md",
   "arches": ["x64"],
   "game": {
     "exes": ["kai.exe"],
