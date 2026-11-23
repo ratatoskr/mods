@@ -30,7 +30,8 @@ const max_bones = 512;
 /// Faces bring big skeletons. Posing gets the first `max_bones` of up to this many.
 const max_total = 4096;
 const max_actors = 32;
-/// Ticks a mesh is remembered after the game last animated it.
+/// Frames the game animated anything in, after the mesh was last animated, before it's forgotten.
+/// Paused worlds animate nothing, so their meshes stay.
 const forget_after = 120;
 
 /// A UFunction and where its params are.
@@ -113,6 +114,10 @@ const Mesh = struct {
     count: u32 = 0,
     name: []const u8 = "",
     bones: []W.PosingBone = &.{},
+    /// Its bones as last animated, before any edits, so frames it isn't animated in, like while
+    /// paused, get the edits put on them afresh rather than on top of last frame's.
+    base: []Mat4 = &.{},
+    has_base: bool = false,
     arena: ?std.heap.ArenaAllocator = null,
 
     fn deinit(self: *Mesh) void {
@@ -184,6 +189,9 @@ pub const Posing = struct {
     /// The nearest, as of last tick.
     chosen: [max_actors]usize = @splat(0),
     chosen_len: usize = 0,
+    /// Counts frames the game animated anything in, which is what meshes are aged by.
+    animated_frames: u64 = 0,
+    any_animated: bool = false,
     /// Null without posing.
     pub fn find(ue: *const Unreal, loop: *Loop, camera: *const Camera, missing: *[]const u8) !?Posing {
         const service = (sdk.wraith.root() orelse return null).posing();
@@ -247,7 +255,11 @@ pub const Posing = struct {
     /// Game thread, once a tick. Picks the nearest of what was animated lately, and forgets the rest.
     pub fn tick(self: *Posing) void {
         self.active = self.service.active();
-        const frame = self.loop.frames.load(.acquire);
+        if (self.any_animated) {
+            self.animated_frames += 1;
+            self.any_animated = false;
+        }
+        const frame = self.animated_frames;
         var gone: std.ArrayList(usize) = .empty;
         defer gone.deinit(gpa);
         var nearest: [max_actors]struct { mesh: usize, distance: f32 } = undefined;
@@ -292,8 +304,9 @@ pub const Posing = struct {
         if (mesh.skip) return;
         // Linked and post-process anim instances get this too, but the main one's once a frame
         if (self.ue.mem.ptr(component + self.off.anim_instance) != anim_instance) return;
-        mesh.seen = self.loop.frames.load(.acquire);
+        mesh.seen = self.animated_frames;
         mesh.fresh = true;
+        self.any_animated = true;
         mesh.to_world = self.toWorld(component) orelse return;
         if (self.camera.shown) |c| mesh.distance = mesh.to_world.getTranslation().distance(c.position);
     }
@@ -303,21 +316,26 @@ pub const Posing = struct {
     }
 
     /// Game thread, once the camera's updated, when every mesh has its new bones in and none have
-    /// been sent to be drawn. Only fresh ones, so edits don't go on top of last frame's.
+    /// been sent to be drawn. Fresh ones take their new pose as the base, and the rest, like while
+    /// the world's paused, get the edits on the base they had, so edits never pile up.
     pub fn late(self: *Posing) void {
         if (!self.active) return;
         if (self.buffers == null or self.probe != null) return self.findDrawn();
         for (self.chosen[0..self.chosen_len]) |component| {
             const mesh = self.meshes.getPtr(component) orelse continue;
-            if (!mesh.fresh or mesh.skip) continue;
+            if (mesh.skip) continue;
+            const fresh = mesh.fresh;
             mesh.fresh = false;
-            self.pose(component, mesh);
+            // Not animated this frame, so it could have gone since
+            if (!fresh and (!mesh.has_base or !self.ue.objects.isObject(component))) continue;
+            self.pose(component, mesh, fresh);
         }
     }
 
-    fn pose(self: *Posing, component: usize, mesh: *Mesh) void {
+    fn pose(self: *Posing, component: usize, mesh: *Mesh, fresh: bool) void {
         const bones = self.drawn(component) orelse return;
         if (bones.count != mesh.total) {
+            if (!fresh) return;
             self.build(component, mesh) catch {
                 mesh.skip = true;
                 return;
@@ -328,8 +346,13 @@ pub const Posing = struct {
         const n = mesh.count;
         const stride = self.layout.size();
         const s = self.scratch;
-        for (0..n) |i| s.matrices[i] = self.layout.read(bones.data + i * stride);
-        @memcpy(s.input[0..n], s.matrices[0..n]);
+        if (fresh) {
+            for (0..n) |i| s.matrices[i] = self.layout.read(bones.data + i * stride);
+            @memcpy(mesh.base[0..n], s.matrices[0..n]);
+            mesh.has_base = true;
+        } else @memcpy(s.matrices[0..n], mesh.base[0..n]);
+        // What's drawn now, to only write what changes
+        for (0..n) |i| s.input[i] = self.layout.read(bones.data + i * stride);
         self.service.pose(.{ .id = component, .name = mesh.name, .bones = mesh.bones, .to_world = mesh.to_world }, &s.matrices[0]);
         for (0..n) |i| {
             if (s.matrices[i].approxEql(s.input[i], 1e-6)) continue;
@@ -422,7 +445,13 @@ pub const Posing = struct {
 
     /// Bone names and parents, from the component, and what it's called after its actor.
     fn build(self: *Posing, component: usize, mesh: *Mesh) !void {
+        const seen = mesh.seen;
+        const distance = mesh.distance;
+        const to_world = mesh.to_world;
         mesh.deinit();
+        mesh.seen = seen;
+        mesh.distance = distance;
+        mesh.to_world = to_world;
         mesh.arena = .init(gpa);
         const a = mesh.arena.?.allocator();
         const total = self.numBones(component) orelse return error.NoBones;
@@ -430,6 +459,7 @@ pub const Posing = struct {
         const n = @min(total, max_bones);
         const fnames = try a.alloc(FName, n);
         const bones = try a.alloc(W.PosingBone, n);
+        mesh.base = try a.alloc(Mat4, n);
         var buf: [256]u8 = undefined;
         for (0..n) |i| {
             fnames[i] = self.boneName(component, @intCast(i));
