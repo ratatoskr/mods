@@ -1,7 +1,9 @@
 //! Game speed through the world's time dilation, which Wraith asks for ahead of hooking the clocks.
 //! Only the world slows down or speeds up, the UI and the camera manager carry on. 0 pauses the
-//! world the engine's own way, as the local player. Games set the dilation themselves too, for
-//! slow motion, so what the game sets is kept and ours goes on top.
+//! world the engine's own way, as the local player, so nothing in it moves however long it's held.
+//! A paused world skips the player's camera unless the controller's told to keep going, so it's
+//! told to while ours is the pause, which keeps the free camera and posing working. Games set the
+//! dilation themselves too, for slow motion, so what the game sets is kept and ours goes on top.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
@@ -24,16 +26,20 @@ pub const Speed = struct {
     written: ?f32 = null,
     /// The player state we paused with, if it's ours.
     paused_with: usize = 0,
+    /// The controller we kept ticking through our pause, and whether it was already.
+    kept: usize = 0,
+    kept_was: bool = false,
 
     pub fn start(self: *Speed, world: *const World, game: sdk.api.wraith.Game) void {
         self.world = world;
         game.provideSpeed(.init(self, changed));
     }
 
-    /// Puts the game's own back. Plain values, so any thread's fine.
+    /// Puts the game's own back. Game thread, or once nothing ticks.
     pub fn stop(self: *Speed) void {
         const world = self.world orelse return;
         self.ours.store(@bitCast(@as(f64, 1)), .release);
+        self.unkeep(world);
         if (self.settings == 0 or world.settings() != self.settings) return;
         const mem = world.ue.mem;
         if (self.written != null) _ = mem.write(f32, self.settings + world.off.time_dilation, self.game);
@@ -73,10 +79,33 @@ pub const Speed = struct {
             if (pauser == 0) if (world.playerState()) |ps| {
                 if (mem.write(usize, pauser_at, ps)) self.paused_with = ps;
             };
-        } else if (self.paused_with != 0) {
-            if (pauser == self.paused_with) _ = mem.write(usize, pauser_at, 0);
-            self.paused_with = 0;
+            self.keep(world);
+        } else {
+            if (self.paused_with != 0) {
+                if (pauser == self.paused_with) _ = mem.write(usize, pauser_at, 0);
+                self.paused_with = 0;
+            }
+            self.unkeep(world);
         }
+    }
+
+    /// Keeps the player's controller, and with it the camera, going through the pause. A new
+    /// controller, like after a level load, gets it too.
+    fn keep(self: *Speed, world: *const World) void {
+        const bit = world.off.full_tick_when_paused orelse return;
+        const controller = world.playerController() orelse return;
+        if (controller == self.kept) return;
+        self.unkeep(world);
+        self.kept_was = world.setBit(controller, bit, true) orelse return;
+        self.kept = controller;
+    }
+
+    fn unkeep(self: *Speed, world: *const World) void {
+        if (self.kept == 0) return;
+        defer self.kept = 0;
+        const bit = world.off.full_tick_when_paused orelse return;
+        if (!world.ue.objects.isObject(self.kept)) return;
+        _ = world.setBit(self.kept, bit, self.kept_was);
     }
 };
 

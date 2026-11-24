@@ -34,7 +34,12 @@ const Offsets = struct {
     viewport_console: ?usize,
     console_class: ?usize,
     console_keys: ?usize,
+    /// `PlayerController.bShouldPerformFullTickWhenPaused`, a bit, which keeps its camera going
+    /// while the world's paused.
+    full_tick_when_paused: ?Bit,
 };
+
+pub const Bit = Unreal.Bit;
 
 /// A UFunction and the object it's called on, with where its params go.
 pub const Function = struct {
@@ -51,8 +56,9 @@ const classes = [_][]const u8{
     "Level",                    "WorldSettings",       "GameInstance",                 "Player",
     "Controller",               "KismetSystemLibrary", "Default__KismetSystemLibrary", "GameplayStatics",
     "Default__GameplayStatics", "Console",             "InputSettings",                "Default__InputSettings",
+    "PlayerController",
 };
-const C = enum { engine, game_engine, viewport, world, level, world_settings, game_instance, player, controller, kismet, kismet_cdo, statics, statics_cdo, console, input, input_cdo };
+const C = enum { engine, game_engine, viewport, world, level, world_settings, game_instance, player, controller, kismet, kismet_cdo, statics, statics_cdo, console, input, input_cdo, player_controller };
 
 pub fn find(ue: *const Unreal, missing: *[]const u8) !World {
     var found: [classes.len]usize = undefined;
@@ -98,6 +104,7 @@ pub fn find(ue: *const Unreal, missing: *[]const u8) !World {
             .viewport_console = ue.offsetOf(get(&found, .viewport), "ViewportConsole"),
             .console_class = ue.offsetOf(get(&found, .engine), "ConsoleClass"),
             .console_keys = if (get(&found, .input) != 0) ue.offsetOf(get(&found, .input), "ConsoleKeys") else null,
+            .full_tick_when_paused = if (get(&found, .player_controller) != 0) ue.bitOf(get(&found, .player_controller), "bShouldPerformFullTickWhenPaused") else null,
         },
         .console_class = get(&found, .console),
         .input_settings = get(&found, .input_cdo),
@@ -123,6 +130,14 @@ fn at(self: *const World, obj: usize, offset: usize) ?usize {
     return self.ue.mem.ptr(obj + offset);
 }
 
+/// Sets `bit` on `obj`, giving what it was.
+pub fn setBit(self: *const World, obj: usize, bit: Bit, on: bool) ?bool {
+    const byte = self.ue.mem.read(u8, obj + bit.offset) orelse return null;
+    const was = byte & bit.mask != 0;
+    _ = self.ue.mem.write(u8, obj + bit.offset, if (on) byte | bit.mask else byte & ~bit.mask);
+    return was;
+}
+
 pub fn viewport(self: *const World) ?usize {
     return self.at(self.engine, self.off.game_viewport);
 }
@@ -135,6 +150,12 @@ pub fn world(self: *const World) ?usize {
 pub fn settings(self: *const World) ?usize {
     const level = self.at(self.world() orelse return null, self.off.persistent_level) orelse return null;
     return self.at(level, self.off.world_settings);
+}
+
+/// Someone's paused the world the engine's way, like the game's pause menu or Wraith's speed at 0.
+pub fn paused(self: *const World) bool {
+    const s = self.settings() orelse return false;
+    return (self.ue.mem.read(usize, s + self.off.pauser) orelse 0) != 0;
 }
 
 /// The first local player's controller.

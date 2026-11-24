@@ -18,6 +18,7 @@ const Speed = @import("speed.zig").Speed;
 const Console = @import("console.zig").Console;
 const Camera = @import("camera.zig").Camera;
 const Posing = @import("posing.zig").Posing;
+const Meshes = @import("meshes.zig").Meshes;
 const Hdr = @import("hdr.zig").Hdr;
 const Explorer = @import("explorer.zig").Explorer;
 const Service = @import("service.zig").Service;
@@ -39,6 +40,7 @@ pub const Plugin = struct {
     speed: Speed = .{},
     console: Console = .{},
     camera: Camera = .{},
+    meshes: ?Meshes = null,
     posing: ?Posing = null,
     hdr: ?Hdr = null,
     explorer: Explorer = .{},
@@ -76,6 +78,7 @@ pub const Plugin = struct {
         self.loop.stop();
         self.speed.stop();
         if (self.posing) |*p| p.deinit();
+        if (self.meshes) |*m| m.deinit();
         self.handBack();
         if (self.mem) |*m| m.deinit();
     }
@@ -99,6 +102,7 @@ pub const Plugin = struct {
         self.speed.apply();
         self.console.tick();
         if (self.camera.tools != null) self.camera.tick();
+        if (self.meshes) |*m| m.tick();
         if (self.posing) |*p| p.tick();
         if (self.hdr) |*h| h.tick();
         if (self.explorer_on) self.explorer.tick();
@@ -177,12 +181,17 @@ pub const Plugin = struct {
             self.camera.start(world, &self.loop, off);
             self.loop.watch(off.modify, &self.camera, Camera.onModify);
         } else |err| log.warn("No free camera, since this Unreal's missing {s}: {t}", .{ missing, err });
-        if (Posing.find(ue, &self.loop, &self.camera, &missing)) |found| {
-            if (found) |p| {
-                self.posing = p;
-                self.loop.watch(p.off.post_evaluate, &self.posing.?, Posing.onPostEvaluate);
-                self.camera.late = .{ .context = &self.posing.?, .func = Posing.lateCallback };
-            }
+        if (Meshes.find(ue, &self.loop, &self.camera, &missing)) |m| {
+            self.meshes = m;
+            const meshes = &self.meshes.?;
+            self.loop.watch(m.off.post_evaluate, meshes, Meshes.onPostEvaluate);
+            self.camera.late = .{ .context = meshes, .func = Meshes.lateCallback };
+            if (Posing.find(ue, &self.loop, meshes, world, &missing)) |found| {
+                if (found) |p| {
+                    self.posing = p;
+                    meshes.listener = .{ .context = &self.posing.?, .func = Posing.onAnimated };
+                }
+            } else |err| log.warn("No posing, since this Unreal's missing {s}: {t}", .{ missing, err });
         } else |err| log.warn("No posing, since this Unreal's missing {s}: {t}", .{ missing, err });
         if (Hdr.find(ue, &self.loop, &missing)) |h| {
             self.hdr = h;
@@ -284,6 +293,8 @@ test {
     _ = @import("speed.zig");
     _ = @import("camera.zig");
     _ = @import("posing.zig");
+    _ = @import("meshes.zig");
+    _ = @import("ue/Bones.zig");
     _ = @import("hdr.zig");
     _ = @import("explorer.zig");
     _ = @import("service.zig");

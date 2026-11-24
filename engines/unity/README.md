@@ -4,7 +4,7 @@ For games made with Unity, on Mono or IL2CPP, with the built-in render pipeline,
 
 - Wraith's free camera moves the game's main camera, so the free camera and orbiting work without a plugin for the game.
 - Wraith's game speed goes through Unity's time scale, so only gameplay changes and 0 pauses. The game's own pauses and slow motion still work underneath it.
-- Posing poses the characters nearest the camera. Anything with a skinned mesh is one, with the mesh's bones as its skeleton, and meshes sharing a skeleton, like a body and its hair, are one character named after its model.
+- Posing poses the characters nearest the camera. Anything with a skinned mesh is one, with the mesh's bones as its skeleton, and meshes sharing a skeleton, like a body and its hair, are one character named after its model. Its meshes' blend shapes, like a face's blinks and smiles, go to posing too, on Unity 2019 to 2022.
 - `findObjectsOfType` for other plugins, like Unity's own, from any thread. Each type's answer is kept for about a second, since asking Unity is slow, and what's been destroyed since is left out.
 - Unity's main thread drives Wraith's ticks, so other plugins' `frame.onTick` runs there, where Unity's engine calls and methods work, once a frame as the main camera's about to render. Nothing ticks till the game's C# is running. See `schemas/unity.sal` for the `Unity` service.
 - A Scene panel in the Workbench, next to Classes: every GameObject as a tree, and the picked one's Transform and components with their fields, which can be changed, with a gizmo on it in the game. It only asks Unity anything while it's open, a slice of the tree a frame.

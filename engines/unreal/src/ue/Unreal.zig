@@ -404,19 +404,26 @@ pub fn findInstance(self: *const Unreal, class_name: []const u8) ?usize {
 /// Like `findInstance` but by the class itself, with plain reads, so it's quick enough for the game
 /// thread. Game thread only, where every object in the array is alive. Skips templates too.
 pub fn liveInstanceOf(self: *const Unreal, class: usize) ?usize {
-    const templates = class_default | 0x20;
     for (0..self.objects.count()) |i| {
         const obj = self.objects.getPlain(i);
-        if (obj == 0 or @as(*align(1) const u32, @ptrFromInt(obj + object.flags)).* & templates != 0) continue;
-        var at: ?usize = @as(*align(1) const usize, @ptrFromInt(obj + object.class)).*;
-        var depth: usize = 0;
-        while (at) |c| : (at = self.superOf(c)) {
-            depth += 1;
-            if (depth > 64) break;
-            if (c == class) return obj;
-        }
+        if (self.isLive(obj, class)) return obj;
     }
     return null;
+}
+
+/// Whether `obj` is a live instance of `class` or one from it, not a template, with plain reads.
+/// Game thread only, on what's in the object array.
+pub fn isLive(self: *const Unreal, obj: usize, class: usize) bool {
+    const templates = class_default | 0x20;
+    if (obj == 0 or @as(*align(1) const u32, @ptrFromInt(obj + object.flags)).* & templates != 0) return false;
+    var at: ?usize = @as(*align(1) const usize, @ptrFromInt(obj + object.class)).*;
+    var depth: usize = 0;
+    while (at) |c| : (at = self.superOf(c)) {
+        depth += 1;
+        if (depth > 64) return false;
+        if (c == class) return true;
+    }
+    return false;
 }
 
 /// Where a property sits in a `class`'s objects, looking through its supers too.
@@ -430,6 +437,26 @@ pub fn offsetOf(self: *const Unreal, class: usize, name: []const u8) ?usize {
             const p = self.property(f) orelse return null;
             return if (p.offset >= 0) @intCast(p.offset) else null;
         }
+    }
+    return null;
+}
+
+/// A bool kept as a bit in a byte, like most of the engine's.
+pub const Bit = struct { offset: usize, mask: u8 };
+
+/// Where a bool property's bit is in a `class`'s objects, looking through its supers too. Its byte
+/// and mask follow the property.
+pub fn bitOf(self: *const Unreal, class: usize, name: []const u8) ?Bit {
+    var at: ?usize = class;
+    var depth: usize = 0;
+    while (at) |c| : (at = self.superOf(c)) {
+        depth += 1;
+        if (depth > 64) return null;
+        const field = self.fieldNamed(c, name) orelse continue;
+        const p = self.property(field) orelse return null;
+        const info = self.mem.read([4]u8, field + self.layout.property_end) orelse return null;
+        if (p.offset < 0 or info[3] == 0) return null;
+        return .{ .offset = @as(usize, @intCast(p.offset)) + info[1], .mask = info[3] };
     }
     return null;
 }
@@ -450,6 +477,28 @@ pub fn functionNamed(self: *const Unreal, class: usize, name: []const u8) ?usize
         }
     }
     return null;
+}
+
+/// A UFunction, how big its params are, and where the ones asked for are.
+pub const Call = struct {
+    function: usize,
+    size: usize,
+    /// In the order they were asked for.
+    params: [2]usize = .{ 0, 0 },
+};
+
+/// A class's UFunction and where its `params` are, or what's missing.
+pub fn callOf(self: *const Unreal, class: usize, comptime name: []const u8, comptime params: []const []const u8, missing: *[]const u8) !Call {
+    const f = self.functionNamed(class, name) orelse {
+        missing.* = name;
+        return error.MissingFunction;
+    };
+    var out: Call = .{ .function = f, .size = @intCast(self.structSize(f) orelse return error.MissingFunction) };
+    inline for (params, 0..) |p, i| out.params[i] = self.offsetOf(f, p) orelse {
+        missing.* = name ++ "'s " ++ p;
+        return error.MissingProperty;
+    };
+    return out;
 }
 
 /// `UFunction::FunctionFlags`, its first field, right after UStruct's. A native class's size is its

@@ -22,6 +22,7 @@ const Vec3 = sdk.math.Vec3;
 const Quat = sdk.math.Quat;
 const Mat4 = sdk.math.Mat4;
 const gpa = std.heap.smp_allocator;
+const log = sdk.log.scoped(.unity);
 
 /// Posing's own limits
 const max_bones = 512;
@@ -30,6 +31,12 @@ const max_actors = 32;
 const max_meshes = 128;
 /// How far up from a bone it looks for the rest of its skeleton
 const max_climb = 64;
+/// Of one character, like a body, its face and its lashes
+const max_renderers = 16;
+/// Blend shapes of one character, over all its meshes
+const max_shapes = 512;
+/// Unity's weights go to 100, posing's to 1
+const unity_weight = 100;
 const word = @sizeOf(usize);
 const array_length = 3 * word;
 const array_items = 4 * word;
@@ -57,6 +64,24 @@ const Calls = struct {
         .get_local_scale = .{ "UnityEngine.Transform", "get_localScale_Injected", "INTERNAL_get_localScale" },
         .set_local_scale = .{ "UnityEngine.Transform", "set_localScale_Injected", "INTERNAL_set_localScale" },
         .local_to_world = .{ "UnityEngine.Transform", "get_localToWorldMatrix_Injected", "INTERNAL_get_localToWorldMatrix" },
+    };
+};
+
+/// Unity's calls for blend shapes. Posing goes on without them if they aren't there.
+const ShapeCalls = struct {
+    shared_mesh: *const fn (*Object) callconv(.c) ?*Object,
+    count: *const fn (*Object) callconv(.c) i32,
+    /// A C# string
+    name: *const fn (*Object, i32) callconv(.c) ?*Object,
+    get_weight: *const fn (*Object, i32) callconv(.c) f32,
+    set_weight: *const fn (*Object, i32, f32) callconv(.c) void,
+
+    const names = .{
+        .shared_mesh = .{ "UnityEngine.SkinnedMeshRenderer", "get_sharedMesh" },
+        .count = .{ "UnityEngine.Mesh", "get_blendShapeCount" },
+        .name = .{ "UnityEngine.Mesh", "GetBlendShapeName" },
+        .get_weight = .{ "UnityEngine.SkinnedMeshRenderer", "GetBlendShapeWeight" },
+        .set_weight = .{ "UnityEngine.SkinnedMeshRenderer", "SetBlendShapeWeight" },
     };
 };
 
@@ -106,6 +131,43 @@ const Track = struct {
     game: Local,
     wrote: Local,
     frame: u32,
+
+    /// The game's own back where it hasn't set its own since, each of position, rotation and scale
+    /// on its own, since a game often animates only some of them, like eyes that only turn.
+    fn restored(t: Track, now: Local) Local {
+        return .{
+            .position = if (std.meta.eql(now.position, t.wrote.position)) t.game.position else now.position,
+            .rotation = if (std.meta.eql(now.rotation, t.wrote.rotation)) t.game.rotation else now.rotation,
+            .scale = if (std.meta.eql(now.scale, t.wrote.scale)) t.game.scale else now.scale,
+        };
+    }
+};
+
+/// The same for a blend shape, in Unity's weights.
+const ShapeTrack = struct {
+    game: f32,
+    wrote: f32,
+    frame: u32,
+};
+
+/// A blend shape, by its renderer and its place on that renderer's mesh.
+const ShapeKey = struct {
+    renderer: usize,
+    index: i32,
+};
+
+/// One of a character's SkinnedMeshRenderers, held like its bones, and where its shapes are in the
+/// character's list.
+const Renderer = struct {
+    object: *Object,
+    native: usize,
+    hold: u32,
+    name: Name,
+    /// What the shapes were read from, so a new mesh gets them read again. -1 till they're read.
+    mesh_native: usize = 0,
+    mesh_count: i32 = -1,
+    first: u32 = 0,
+    count: u32 = 0,
 };
 
 /// A character, in one of posing's slots. Its transforms are held through the game's runtime so the
@@ -123,6 +185,11 @@ const Actor = struct {
     parents: [max_bones]i32 = undefined,
     names: [max_bones]Name = undefined,
     node_holds: [max_bones]u32 = undefined,
+    renderers: [max_renderers]Renderer = undefined,
+    renderer_count: u32 = 0,
+    /// Over all its renderers, each one's in a row
+    shape_names: [max_shapes]Name = undefined,
+    shape_count: u32 = 0,
 
     fn root(a: *const Actor) *Object {
         return a.nodes[0];
@@ -138,6 +205,11 @@ const Actor = struct {
 const Mesh = struct {
     /// On its bones array and its root, which keep them till they're held themselves
     holds: [2]u32,
+    /// The SkinnedMeshRenderer, held by the scene's answer
+    renderer: *Object,
+    renderer_native: usize,
+    /// Its GameObject's
+    name: Name,
     /// The mesh's own transform, which sits beside the skeleton under the model
     transform: *Object,
     bones: []*Object,
@@ -158,11 +230,16 @@ const Scratch = struct {
     bones: [max_bones]W.PosingBone,
     matrices: [max_bones]Mat4,
     input: [max_bones]Mat4,
+    shapes: [max_shapes]W.PosingShape,
+    weights: [max_shapes]f32,
+    weights_in: [max_shapes]f32,
 };
 
 pub const Posing = struct {
     service: W.Posing,
     calls: Calls,
+    /// Null when this Unity hasn't got them
+    shape_calls: ?ShapeCalls,
     engine: *const Engine,
     scene: *Scene,
     managed: W.Managed,
@@ -172,6 +249,7 @@ pub const Posing = struct {
     /// The scene's answer they were picked from
     picked: u32 = 0,
     tracked: std.AutoHashMapUnmanaged(usize, Track) = .empty,
+    shapes_tracked: std.AutoHashMapUnmanaged(ShapeKey, ShapeTrack) = .empty,
     frame: u32 = 0,
 
     /// Null without posing. Blocks while the game's runtime looks, so not on the render thread.
@@ -179,11 +257,15 @@ pub const Posing = struct {
         const service = (sdk.wraith.root() orelse return null).posing();
         for ([_]*sdk.timing.Zone{ &zone_read, &zone_hand, &zone_write, &zone_pick }) |z| sdk.timing.list(z);
         const calls = try engine_.findCalls(Calls, Calls.names, managed, missing);
+        var shape_missing: []const u8 = "";
+        const shape_calls = engine_.findCalls(ShapeCalls, ShapeCalls.names, managed, &shape_missing) catch null;
+        if (shape_calls == null) log.info("No posing blend shapes, since this Unity's missing {s}", .{shape_missing});
         const scratch = try gpa.create(Scratch);
         errdefer gpa.destroy(scratch);
         return .{
             .service = service,
             .calls = calls,
+            .shape_calls = shape_calls,
             .engine = engine,
             .scene = scene,
             .managed = managed,
@@ -199,6 +281,7 @@ pub const Posing = struct {
     pub fn deinit(self: *Posing) void {
         for (self.actors) |*a| if (a.used) self.drop(a);
         self.tracked.deinit(gpa);
+        self.shapes_tracked.deinit(gpa);
         gpa.destroy(self.scratch);
         gpa.destroy(self.actors);
     }
@@ -207,7 +290,7 @@ pub const Posing = struct {
     pub fn run(self: *Posing) void {
         self.frame +%= 1;
         const active = self.service.active();
-        if (!active and self.tracked.count() == 0) return;
+        if (!active and self.tracked.count() == 0 and self.shapes_tracked.count() == 0) return;
         var found: std.ArrayList(scene_.Found) = .empty;
         defer found.deinit(gpa);
         const answer = self.scene.objectsOfType(gpa, "UnityEngine.SkinnedMeshRenderer", &found) catch 0;
@@ -222,6 +305,8 @@ pub const Posing = struct {
         // Whatever wasn't posed this frame has its own back already, or is gone
         var it = self.tracked.iterator();
         while (it.next()) |kv| if (kv.value_ptr.frame != self.frame) self.tracked.removeByPtr(kv.key_ptr);
+        var shapes_it = self.shapes_tracked.iterator();
+        while (shapes_it.next()) |kv| if (kv.value_ptr.frame != self.frame) self.shapes_tracked.removeByPtr(kv.key_ptr);
     }
 
     /// The characters nearest the camera. Ones already in a slot keep it, and their skeleton.
@@ -332,7 +417,7 @@ pub const Posing = struct {
         const root_native = self.scene.nativeOf(root);
         // It may not be one of the bones, so it's held too
         const root_hold = self.managed.hold(@intFromPtr(root)) catch 0;
-        return .{ .holds = .{ hold, root_hold }, .transform = f.transform, .bones = bones[0..count], .natives = natives[0..count], .root = root, .root_native = root_native, .distance = 0 };
+        return .{ .holds = .{ hold, root_hold }, .renderer = f.object, .renderer_native = f.native, .name = f.name, .transform = f.transform, .bones = bones[0..count], .natives = natives[0..count], .root = root, .root_native = root_native, .distance = 0 };
     }
 
     /// The nearest transform both are, or are under. Null if they're in different trees.
@@ -364,6 +449,93 @@ pub const Posing = struct {
         slot.name = self.scene.nameOf(model, self.scene.nativeOf(model));
         for (meshes) |m| for (m.bones, m.natives) |b, n| {
             _ = self.join(slot, b, n);
+        };
+        if (self.shape_calls == null) return;
+        for (meshes) |m| {
+            if (slot.renderer_count == max_renderers) break;
+            slot.renderers[slot.renderer_count] = .{
+                .object = m.renderer,
+                .native = m.renderer_native,
+                .hold = self.managed.hold(@intFromPtr(m.renderer)) catch 0,
+                .name = m.name,
+            };
+            slot.renderer_count += 1;
+        }
+    }
+
+    /// Reads each renderer's shape names again if its mesh isn't the one they came from, or one's
+    /// gone, which comes out.
+    fn readShapes(self: *Posing, a: *Actor) void {
+        const sc = &(self.shape_calls orelse return);
+        var stale = false;
+        var kept: u32 = 0;
+        for (a.renderers[0..a.renderer_count]) |r| {
+            if (!self.alive(r.object, r.native)) {
+                self.release(r.hold);
+                stale = true;
+                continue;
+            }
+            const mesh = sc.shared_mesh(r.object);
+            const mesh_native = if (mesh) |m| self.scene.nativeOf(m) else 0;
+            const n = if (mesh) |m| sc.count(m) else 0;
+            if (mesh_native != r.mesh_native or n != r.mesh_count) stale = true;
+            a.renderers[kept] = r;
+            kept += 1;
+        }
+        a.renderer_count = kept;
+        if (!stale) return;
+
+        a.shape_count = 0;
+        var buf: [48]u8 = undefined;
+        for (a.renderers[0..a.renderer_count]) |*r| {
+            const mesh = sc.shared_mesh(r.object);
+            r.mesh_native = if (mesh) |m| self.scene.nativeOf(m) else 0;
+            r.mesh_count = if (mesh) |m| sc.count(m) else 0;
+            r.first = a.shape_count;
+            r.count = 0;
+            const m = mesh orelse continue;
+            const n: u32 = @intCast(@max(r.mesh_count, 0));
+            while (r.count < n and a.shape_count < max_shapes) : (r.count += 1) {
+                const s = sc.name(m, @intCast(r.count));
+                a.shape_names[a.shape_count] = if (s) |text| .init(scene_.readString(@intFromPtr(text), &buf)) else .{};
+                a.shape_count += 1;
+            }
+        }
+    }
+
+    /// Hands over the actor's blend shapes after its bones, and writes back what posing changed.
+    fn poseShapes(self: *Posing, a: *Actor, active: bool) void {
+        const sc = &(self.shape_calls orelse return);
+        const s = self.scratch;
+        if (a.renderer_count == 0) return;
+        self.readShapes(a);
+
+        // The game's own weights back where it didn't set one since we posed it
+        if (self.shapes_tracked.count() > 0) for (a.renderers[0..a.renderer_count]) |r| {
+            for (0..r.count) |j| {
+                const key: ShapeKey = .{ .renderer = r.native, .index = @intCast(j) };
+                const kv = self.shapes_tracked.fetchRemove(key) orelse continue;
+                if (sc.get_weight(r.object, key.index) == kv.value.wrote) sc.set_weight(r.object, key.index, kv.value.game);
+            }
+        };
+        if (!active or a.shape_count == 0) return;
+
+        for (a.renderers[0..a.renderer_count]) |r| for (0..r.count) |j| {
+            const i = r.first + j;
+            s.weights[i] = sc.get_weight(r.object, @intCast(j)) / unity_weight;
+            s.weights_in[i] = s.weights[i];
+            s.shapes[i] = .{ .name = a.shape_names[i].get(), .mesh = r.name.get() };
+        };
+        const count = a.shape_count;
+        self.service.shapes(a.native, s.shapes[0..count], &s.weights[0]);
+
+        for (a.renderers[0..a.renderer_count]) |r| for (0..r.count) |j| {
+            const i = r.first + j;
+            if (s.weights[i] == s.weights_in[i]) continue;
+            const index: i32 = @intCast(j);
+            const game = s.weights_in[i] * unity_weight;
+            sc.set_weight(r.object, index, s.weights[i] * unity_weight);
+            self.shapes_tracked.put(gpa, .{ .renderer = r.native, .index = index }, .{ .game = game, .wrote = sc.get_weight(r.object, index), .frame = self.frame }) catch {};
         };
     }
 
@@ -447,6 +619,12 @@ pub const Posing = struct {
     }
 
     fn pose(self: *Posing, a: *Actor, active: bool) void {
+        self.poseBones(a, active);
+        // It may have gone
+        if (a.used) self.poseShapes(a, active);
+    }
+
+    fn poseBones(self: *Posing, a: *Actor, active: bool) void {
         const c = &self.calls;
         const s = self.scratch;
         if (!self.alive(a.root(), a.native)) {
@@ -464,7 +642,9 @@ pub const Posing = struct {
         // The game's own pose back where it didn't set one since we posed it
         if (self.tracked.count() > 0) for (a.nodes[0..count], a.natives[0..count]) |t, native| {
             const kv = self.tracked.fetchRemove(native) orelse continue;
-            if (std.meta.eql(Local.read(c, t), kv.value.wrote)) kv.value.game.write(c, t);
+            const now: Local = .read(c, t);
+            const back = kv.value.restored(now);
+            if (!std.meta.eql(back, now)) back.write(c, t);
         };
         if (!active) return;
 
@@ -505,6 +685,7 @@ pub const Posing = struct {
     /// Out of its slot, letting go of what it held.
     fn drop(self: *Posing, a: *Actor) void {
         for (a.node_holds[0..a.count]) |h| self.release(h);
+        for (a.renderers[0..a.renderer_count]) |r| self.release(r.hold);
         a.* = .{};
     }
 
@@ -584,6 +765,20 @@ fn unite(group_of: []usize, i: usize, j: usize) void {
 }
 
 const testing = std.testing;
+
+test "the game's own goes back on what it didn't set again, position, rotation and scale apart" {
+    const game: Local = .{ .position = .{ .y = 1 }, .rotation = .identity, .scale = .{ .x = 1, .y = 1, .z = 1 } };
+    const wrote: Local = .{ .position = .{ .y = 2 }, .rotation = Quat.fromAxisAngle(.{ .y = 1 }, 0.5), .scale = .{ .x = 1, .y = 1, .z = 1 } };
+    const track: Track = .{ .game = game, .wrote = wrote, .frame = 0 };
+    // Nothing set again, so it's all the game's
+    try testing.expectEqual(game, track.restored(wrote));
+    // An eye the game only turns keeps its new turn, and gets its own place back, not posing's
+    var turned = wrote;
+    turned.rotation = Quat.fromAxisAngle(.{ .x = 1 }, 0.2);
+    const back = track.restored(turned);
+    try testing.expectEqual(game.position, back.position);
+    try testing.expectEqual(turned.rotation, back.rotation);
+}
 
 test "a posed matrix goes back to the same local transform" {
     const l: Local = .{
@@ -709,7 +904,7 @@ test "characters are found from their meshes' bones, a body and its hair as one"
     calls.parent = FakeUnity.parent;
     calls.bones = FakeUnity.bones;
     var actors: [max_actors]Actor = @splat(.{});
-    var posing: Posing = .{ .service = undefined, .calls = calls, .engine = &engine, .scene = &scene, .managed = .{}, .scratch = undefined, .actors = &actors };
+    var posing: Posing = .{ .service = undefined, .calls = calls, .shape_calls = null, .engine = &engine, .scene = &scene, .managed = .{}, .scratch = undefined, .actors = &actors };
 
     var found = [_]scene_.Found{
         .{ .object = hair_mesh.obj(), .native = 4, .transform = hair_mesh.obj(), .transform_native = 4, .name = .init("Hair"), .position = .{ .x = 1 } },
@@ -782,7 +977,7 @@ test "a body and a glow on the same bones, with two tops under a root that isn't
     calls.parent = FakeUnity.parent;
     calls.bones = FakeUnity.bones;
     var actors: [max_actors]Actor = @splat(.{});
-    var posing: Posing = .{ .service = undefined, .calls = calls, .engine = &engine, .scene = &scene, .managed = .{}, .scratch = undefined, .actors = &actors };
+    var posing: Posing = .{ .service = undefined, .calls = calls, .shape_calls = null, .engine = &engine, .scene = &scene, .managed = .{}, .scratch = undefined, .actors = &actors };
 
     var found = [_]scene_.Found{
         .{ .object = glow_mesh.obj(), .native = 3, .transform = glow_mesh.obj(), .transform_native = 3, .name = .init("Glow"), .position = .{ .x = 1 } },

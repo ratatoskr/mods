@@ -68,18 +68,19 @@ pub const Objects = struct {
         return .{ .stride = stride, .len = @intCast(len) };
     }
 
-    /// The first live objects in the second chunk say they're `len` on.
+    /// The first live objects in the second chunk say they're `len` on. Its first slots can all be
+    /// free, so it looks a fair way in, and only a live object in the wrong place rules it out.
     fn secondChunkStartsAt(mem: *const Mem, chunks: usize, stride: usize, len: usize) bool {
         const second = mem.ptr(chunks + 8) orelse return false;
         var checked: usize = 0;
-        for (0..16) |k| {
+        for (0..@min(len, 4096)) |k| {
             const obj = mem.ptr(second + k * stride) orelse continue;
             const index = mem.read(i32, obj + object.index) orelse return false;
             if (index != @as(i32, @intCast(len + k))) return false;
             checked += 1;
             if (checked == 2) return true;
         }
-        return checked > 0;
+        return true;
     }
 
     /// `Objects`, `MaxElements` and `NumElements`.
@@ -226,6 +227,30 @@ const tests = struct {
         try mem.refresh();
 
         try std.testing.expectEqual(null, Objects.find(&mem, &data));
+    }
+
+    test "a second chunk whose first slots are free still counts" {
+        var mem = try Mem.init(std.testing.allocator);
+        defer mem.deinit();
+        var objs: [6]Obj = undefined;
+        var first: [4]Item = undefined;
+        for (objs[0..4], &first, 0..) |*o, *it, i| {
+            o.* = .{ .index = @intCast(i) };
+            it.* = .{ .object = @intFromPtr(o) };
+        }
+        // Like Rune Factory's, with the second chunk's first 40 free
+        var second: [64]Item = @splat(.{ .object = 0 });
+        objs[4] = .{ .index = 0x10000 + 40 };
+        objs[5] = .{ .index = 0x10000 + 41 };
+        second[40] = .{ .object = @intFromPtr(&objs[4]) };
+        second[41] = .{ .object = @intFromPtr(&objs[5]) };
+        var chunks = [_]usize{ @intFromPtr(&first), @intFromPtr(&second) };
+        var data = [_]usize{ @intFromPtr(&chunks), 0, (@as(usize, 0x10029) << 32) | 0x210000, (@as(usize, 2) << 32) | 33 };
+        try mem.refresh();
+
+        const objects = Objects.find(&mem, &data).?;
+        try std.testing.expectEqual(0x10000, objects.chunk_len);
+        try std.testing.expectEqual(@intFromPtr(&objs[4]), objects.get(0x10000 + 40).?);
     }
 
     test "fixed, with smaller items" {
