@@ -13,6 +13,9 @@ pub const Plugin = struct {
         self.ctx = ctx;
         // FFXIV keeps its cursor free, so Wraith's windows leave it the mouse and keyboard
         ctx.wraith.ui().setMouseFree(true);
+        // Changing its speed breaks it online, so it stays off till something turns it on where it
+        // works, like Group Pose
+        ctx.wraith.game().setSpeedControl(false);
     }
 
     pub fn stop(self: *Plugin) void {
