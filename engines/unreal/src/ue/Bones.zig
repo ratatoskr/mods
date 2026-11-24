@@ -183,12 +183,12 @@ pub const Bones = struct {
     }
 
     /// What the game's just animated a mesh's bones into, at its post-evaluate, which is what's
-    /// drawn once it's flipped them.
+    /// drawn once it's flipped them. Game thread, with the mesh live.
     pub fn justAnimated(self: *const Bones, component: usize) ?Array {
         return self.array(component, self.flips_after == true);
     }
 
-    /// What's drawn.
+    /// What's drawn. Game thread, with the mesh live.
     pub fn drawn(self: *const Bones, component: usize) ?Array {
         return self.array(component, false);
     }
@@ -196,20 +196,23 @@ pub const Bones = struct {
     fn array(self: *const Bones, component: usize, editable: bool) ?Array {
         const mem = self.ue.mem;
         const arrays = self.arrays orelse return null;
+        const h = mem.live([2][2]usize, component + arrays);
         const which: usize = if (self.read_index) |r| blk: {
-            if (!self.doubled(component)) break :blk 0;
-            break :blk if (mem.read(i32, component + if (editable) r - 4 else r) == 1) 1 else 0;
+            if (!isDoubled(h)) break :blk 0;
+            break :blk if (mem.live(i32, component + if (editable) r - 4 else r) == 1) 1 else 0;
         } else 0;
-        const header = mem.read([2]usize, component + arrays + which * 16) orelse return null;
-        const count: u32 = @truncate(@as(u64, header[1]));
-        if (header[0] == 0 or count == 0 or count > max_total) return null;
-        return .{ .data = header[0], .count = count };
+        const count: u32 = @truncate(@as(u64, h[which][1]));
+        if (h[which][0] == 0 or count == 0 or count > max_total) return null;
+        return .{ .data = h[which][0], .count = count };
     }
 
-    /// Has a second array as full as its first.
+    /// Has a second array as full as its first. Checked, for meshes that may be gone.
     fn doubled(self: *const Bones, component: usize) bool {
         const arrays = self.arrays orelse return false;
-        const h = self.ue.mem.read([2][2]usize, component + arrays) orelse return false;
+        return isDoubled(self.ue.mem.read([2][2]usize, component + arrays) orelse return false);
+    }
+
+    fn isDoubled(h: [2][2]usize) bool {
         const first: u32 = @truncate(@as(u64, h[0][1]));
         const second: u32 = @truncate(@as(u64, h[1][1]));
         return first != 0 and second == first and h[1][0] != 0;

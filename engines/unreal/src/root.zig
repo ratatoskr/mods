@@ -294,6 +294,7 @@ test {
     _ = @import("camera.zig");
     _ = @import("posing.zig");
     _ = @import("meshes.zig");
+    _ = @import("morphs.zig");
     _ = @import("ue/Bones.zig");
     _ = @import("hdr.zig");
     _ = @import("explorer.zig");

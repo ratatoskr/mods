@@ -7,7 +7,7 @@
 //! every frame: at their full detail, with no update rate optimizations or tick interval, which
 //! games use to animate far or minor characters less. In a paused world they're kept ticking with
 //! their animation's rate at 0, along with meshes that copy their bones, like clothes. It all goes
-//! back as posing closes.
+//! back as posing closes. Blend shapes, morph targets in Unreal, go through morphs.zig.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
@@ -18,6 +18,8 @@ const FName = Unreal.FName;
 const Loop = @import("loop.zig").Loop;
 const World = @import("ue/World.zig");
 const Meshes = @import("meshes.zig").Meshes;
+const morphs_ = @import("morphs.zig");
+const Morphs = morphs_.Morphs;
 
 const Mat4 = sdk.math.Mat4;
 const gpa = std.heap.smp_allocator;
@@ -67,8 +69,14 @@ const Skeleton = struct {
     /// Hashes of what posing last wrote into each bone, the last few times, 0 where it didn't.
     wrote: [][wrote_kept]u64,
     ring: u8 = 0,
+    /// Its blend shapes, over it and the meshes that follow it.
+    shapes: []morphs_.Shape = &.{},
+    shape_list: []W.PosingShape = &.{},
     arena: std.heap.ArenaAllocator,
 };
+
+/// A mesh that copies its bones from another, by the other's object index.
+const Follower = struct { leader: u32, component: usize };
 
 /// A mesh being held, and what to put back.
 const Held = struct {
@@ -78,6 +86,8 @@ const Held = struct {
     uro: bool = false,
     interval: f32 = 0,
     lod: i32 = 0,
+    /// At full detail, once the player's picked it or edited it, till posing closes.
+    detailed: bool = false,
     /// Set while it's kept ticking through a pause.
     frozen: ?struct { rate: f32, tickable: bool } = null,
 };
@@ -86,6 +96,8 @@ const Scratch = struct {
     matrices: [max_bones]Mat4,
     input: [max_bones]Mat4,
     stale: [max_bones]bool,
+    weights: [morphs_.max_shapes]f32,
+    weights_in: [morphs_.max_shapes]f32,
 };
 
 pub const Posing = struct {
@@ -95,12 +107,16 @@ pub const Posing = struct {
     meshes: *Meshes,
     world: *const World,
     off: Offsets,
+    /// Null if this Unreal's missing what blend shapes need.
+    morphs: ?Morphs,
     scratch: *Scratch,
     // Game thread only from here down
     skeletons: std.AutoHashMapUnmanaged(usize, Skeleton) = .empty,
     held: std.ArrayList(Held) = .empty,
-    /// Followers have been looked for, this pause.
-    followed: bool = false,
+    /// Every mesh that follows another, found as posing opens and as the world pauses.
+    followers: std.ArrayList(Follower) = .empty,
+    was_active: bool = false,
+    was_paused: bool = false,
     release_in: u8 = 0,
     active: bool = false,
 
@@ -131,6 +147,11 @@ pub const Posing = struct {
             .leader = ue.offsetOf(skinned, "LeaderPoseComponent") orelse ue.offsetOf(skinned, "MasterPoseComponent"),
         };
         if (off.tickable == null or off.rate == null) log.info("Posing while the world's paused won't show, since this Unreal's missing SetTickableWhenPaused or GlobalAnimRateScale", .{});
+        var morph_missing: []const u8 = "";
+        const morphs = Morphs.find(ue, loop, &morph_missing) catch |err| blk: {
+            log.info("No posing blend shapes, since this Unreal's missing {s}: {t}", .{ morph_missing, err });
+            break :blk null;
+        };
         return .{
             .service = service,
             .ue = ue,
@@ -138,6 +159,7 @@ pub const Posing = struct {
             .meshes = meshes,
             .world = world,
             .off = off,
+            .morphs = morphs,
             .scratch = try gpa.create(Scratch),
         };
     }
@@ -147,6 +169,7 @@ pub const Posing = struct {
         while (it.next()) |s| s.arena.deinit();
         self.skeletons.deinit(gpa);
         self.held.deinit(gpa);
+        self.followers.deinit(gpa);
         gpa.destroy(self.scratch);
     }
 
@@ -154,7 +177,14 @@ pub const Posing = struct {
     pub fn tick(self: *Posing) void {
         self.active = self.service.active();
         self.meshes.precise = self.active;
-        self.holdWhileOpen();
+        const paused = self.world.paused();
+        // What follows what, as posing opens, and again as the world pauses
+        if (self.active and (!self.was_active or (paused and !self.was_paused))) self.findFollowers();
+        // Closed, nothing's posed, so the blend shapes go back to the game's
+        if (self.was_active and !self.active) self.unshapeAll();
+        self.was_active = self.active;
+        self.holdWhileOpen(paused);
+        self.was_paused = paused;
         // A skeleton of a mesh the game's done with, one a tick
         var it = self.skeletons.iterator();
         while (it.next()) |kv| {
@@ -186,8 +216,9 @@ pub const Posing = struct {
         // animating. They start from as they were last animated instead.
         for (s.input[0..n], s.stale[0..n], sk.wrote, 0..) |*m, *stale, wrote, i| {
             const at = bones.data + i * stride;
-            const h = boneHash(at, stride);
-            stale.* = h != 0 and std.mem.indexOfScalar(u64, &wrote, h) != null;
+            // Only bones posing's written lately can have its writes in
+            const written = std.mem.indexOfNone(u64, &wrote, &.{0}) != null;
+            stale.* = written and std.mem.indexOfScalar(u64, &wrote, boneHash(at, stride)) != null;
             if (stale.*) m.* = sk.base[i] else {
                 m.* = layout.read(at);
                 sk.base[i] = m.*;
@@ -206,6 +237,30 @@ pub const Posing = struct {
             wrote[sk.ring] = if (changed) boneHash(at, stride) else 0;
             sk.edited = sk.edited or changed;
         }
+        if (sk.shapes.len > 0) self.poseShapes(component, sk);
+    }
+
+    /// Hands posing the blend shapes as the animation has them, and puts posing's over them, or
+    /// hands back the ones it's let go of.
+    fn poseShapes(self: *Posing, component: usize, sk: *Skeleton) void {
+        const m = &(self.morphs orelse return);
+        const anim = self.ue.mem.live(usize, component + self.meshes.off.anim_instance);
+        if (anim == 0) return;
+        const s = self.scratch;
+        const n = sk.shapes.len;
+        for (sk.shapes, s.weights_in[0..n]) |sh, *w| w.* = m.weight(anim, sh.name);
+        @memcpy(s.weights[0..n], s.weights_in[0..n]);
+        self.service.shapes(component, sk.shape_list, &s.weights[0]);
+        for (sk.shapes, s.weights[0..n], s.weights_in[0..n]) |*sh, w, in| m.set(sh, if (w != in) w else null);
+    }
+
+    /// Every blend shape back to the game's.
+    fn unshapeAll(self: *Posing) void {
+        const m = &(self.morphs orelse return);
+        var it = self.skeletons.valueIterator();
+        while (it.next()) |sk| for (sk.shapes) |*sh| {
+            if (sh.set != null and self.ue.objects.isObject(sh.component)) m.set(sh, null);
+        };
     }
 
     fn boneHash(at: usize, stride: usize) u64 {
@@ -225,6 +280,7 @@ pub const Posing = struct {
             if (bones.count != sk.total) continue;
             for (sk.base[0..sk.count], 0..) |m, i| layout.write(bones.data + i * layout.size(), m);
         }
+        self.unshapeAll();
         self.release();
     }
 
@@ -264,6 +320,21 @@ pub const Posing = struct {
             bones[i] = .{ .name = try a.dupe(u8, text), .parent = parent };
         }
         const owner = self.ue.outerOf(component) orelse component;
+        var shapes: std.ArrayList(morphs_.Shape) = .empty;
+        var list: std.ArrayList(W.PosingShape) = .empty;
+        if (self.morphs) |*m| {
+            // A face is often its own mesh following the body
+            var with: [16]usize = undefined;
+            with[0] = component;
+            var k: usize = 1;
+            const index = self.ue.mem.read(u32, component + Unreal.object.index) orelse 0;
+            for (self.followers.items) |f| {
+                if (f.leader != index or k == with.len) continue;
+                with[k] = f.component;
+                k += 1;
+            }
+            m.collect(a, with[0..k], &shapes, &list) catch {};
+        }
         return .{
             .total = total,
             .count = n,
@@ -275,6 +346,8 @@ pub const Posing = struct {
                 @memset(w, @splat(0));
                 break :blk w;
             },
+            .shapes = shapes.items,
+            .shape_list = list.items,
             .arena = arena,
         };
     }
@@ -299,16 +372,13 @@ pub const Posing = struct {
 
     /// Holds the meshes being posed while posing's open, and lets them go as it closes, a few
     /// frames later in a paused world.
-    fn holdWhileOpen(self: *Posing) void {
-        const paused = self.world.paused();
+    fn holdWhileOpen(self: *Posing, paused: bool) void {
         if (self.active) {
             self.release_in = release_after;
             for (self.meshes.nearest()) |c| self.hold(c);
-            // Looked for once a pause, since nothing new comes along while it's paused
-            if (paused and !self.followed) self.holdFollowers();
-            self.followed = paused;
+            if (paused) self.holdFollowers();
             for (self.held.items) |*h| {
-                if (!self.ue.objects.isObject(h.component)) continue;
+                if (!self.ue.objects.isObjectPlain(h.component)) continue;
                 if (paused) self.freeze(h) else self.thaw(h);
             }
             return;
@@ -321,57 +391,71 @@ pub const Posing = struct {
         self.release();
     }
 
-    /// Every bone, every frame. Games can change these back as they like, so it's every tick.
+    /// Every bone, every frame. Games can change these back as they like, so it's every tick. Plain
+    /// reads and writes, since it's every tick and the game was animating it a moment ago. Full
+    /// detail costs the most, so only once the player's picked it or edited it.
     fn hold(self: *Posing, component: usize) void {
-        if (!self.ue.objects.isObject(component)) return;
+        if (!self.ue.objects.isObjectPlain(component)) return;
         const mem = self.ue.mem;
         const o = self.off;
-        const known = for (self.held.items) |h| {
-            if (h.component == component) break true;
-        } else false;
-        if (!known) {
+        const h = for (self.held.items) |*h| {
+            if (h.component == component) break h;
+        } else blk: {
             if (self.held.items.len >= max_held) return;
             self.held.append(gpa, .{
                 .component = component,
-                .uro = if (o.uro) |b| (mem.read(u8, component + b.offset) orelse 0) & b.mask != 0 else false,
-                .interval = if (o.interval) |i| mem.read(f32, component + i) orelse 0 else 0,
-                .lod = if (o.forced_lod_at) |l| mem.read(i32, component + l) orelse 0 else 0,
+                .uro = if (o.uro) |b| mem.live(u8, component + b.offset) & b.mask != 0 else false,
+                .interval = if (o.interval) |i| mem.live(f32, component + i) else 0,
+                .lod = if (o.forced_lod_at) |l| mem.live(i32, component + l) else 0,
             }) catch return;
+            break :blk &self.held.items[self.held.items.len - 1];
+        };
+        if (o.uro) |b| {
+            const v = mem.live(u8, component + b.offset);
+            if (v & b.mask != 0) mem.setLive(u8, component + b.offset, v & ~b.mask);
         }
-        if (o.uro) |b| if (mem.read(u8, component + b.offset)) |v| {
-            if (v & b.mask != 0) _ = mem.write(u8, component + b.offset, v & ~b.mask);
+        if (o.interval) |i| {
+            if (mem.live(f32, component + i) != 0) mem.setLive(f32, component + i, 0);
+        }
+        if (!h.detailed) h.detailed = self.service.wanted(component);
+        if (h.detailed) if (o.forced_lod_at) |l| {
+            if (mem.live(i32, component + l) != 1) self.setInt(component, o.forced_lod, 1);
         };
-        if (o.interval) |i| if (mem.read(f32, component + i)) |v| {
-            if (v != 0) _ = mem.write(f32, component + i, 0);
-        };
-        if (o.forced_lod_at) |l| if (mem.read(i32, component + l)) |v| {
-            if (v != 1) self.setInt(component, o.forced_lod, 1);
-        };
+    }
+
+    /// Every mesh that copies its bones from another. One look through every object, so only as
+    /// posing opens and as the world pauses, since nothing new comes along while it's paused.
+    fn findFollowers(self: *Posing) void {
+        self.followers.clearRetainingCapacity();
+        const leader = self.off.leader orelse return;
+        for (0..self.ue.objects.count()) |i| {
+            const obj = self.ue.objects.getPlain(i);
+            if (!self.ue.isLive(obj, self.off.skinned)) continue;
+            // A weak pointer, its object's index then serial number
+            const index = self.ue.mem.live(i32, obj + leader);
+            if (index < 0) continue;
+            self.followers.append(gpa, .{ .leader = @intCast(index), .component = obj }) catch return;
+        }
     }
 
     /// Meshes that copy their bones from a held one. They only take them as they tick, which a
     /// paused world doesn't do.
     fn holdFollowers(self: *Posing) void {
-        const leader = self.off.leader orelse return;
+        if (self.followers.items.len == 0) return;
         var leaders: [max_held]u32 = undefined;
         var n: usize = 0;
         for (self.held.items) |h| {
-            if (h.follower) continue;
-            leaders[n] = self.ue.mem.read(u32, h.component + Unreal.object.index) orelse continue;
+            if (h.follower or !self.ue.objects.isObjectPlain(h.component)) continue;
+            leaders[n] = self.ue.mem.live(u32, h.component + Unreal.object.index);
             n += 1;
         }
-        if (n == 0) return;
-        for (0..self.ue.objects.count()) |i| {
+        for (self.followers.items) |f| {
             if (self.held.items.len >= max_held) return;
-            const obj = self.ue.objects.getPlain(i);
-            if (!self.ue.isLive(obj, self.off.skinned)) continue;
-            // A weak pointer, its object's index then serial number
-            const index = self.ue.mem.read(i32, obj + leader) orelse continue;
-            if (index < 0 or std.mem.indexOfScalar(u32, leaders[0..n], @intCast(index)) == null) continue;
+            if (std.mem.indexOfScalar(u32, leaders[0..n], f.leader) == null) continue;
             const known = for (self.held.items) |h| {
-                if (h.component == obj) break true;
+                if (h.component == f.component) break true;
             } else false;
-            if (!known) self.held.append(gpa, .{ .component = obj, .follower = true }) catch return;
+            if (!known and self.ue.objects.isObjectPlain(f.component)) self.held.append(gpa, .{ .component = f.component, .follower = true }) catch return;
         }
     }
 
@@ -379,17 +463,17 @@ pub const Posing = struct {
         if (h.frozen != null) return;
         const rate_at = self.off.rate orelse return;
         const mem = self.ue.mem;
-        const rate = if (h.follower) 0 else mem.read(f32, h.component + rate_at) orelse return;
-        const tickable = if (self.off.tickable_bit) |b| (mem.read(u8, h.component + b.offset) orelse 0) & b.mask != 0 else false;
+        const rate = if (h.follower) 0 else mem.live(f32, h.component + rate_at);
+        const tickable = if (self.off.tickable_bit) |b| mem.live(u8, h.component + b.offset) & b.mask != 0 else false;
         h.frozen = .{ .rate = rate, .tickable = tickable };
-        if (!h.follower) _ = mem.write(f32, h.component + rate_at, 0);
+        if (!h.follower) mem.setLive(f32, h.component + rate_at, 0);
         if (!tickable) self.setBool(h.component, self.off.tickable, true);
     }
 
     fn thaw(self: *Posing, h: *Held) void {
         const fr = h.frozen orelse return;
         h.frozen = null;
-        if (!h.follower) _ = self.ue.mem.write(f32, h.component + self.off.rate.?, fr.rate);
+        if (!h.follower) self.ue.mem.setLive(f32, h.component + self.off.rate.?, fr.rate);
         if (!fr.tickable) self.setBool(h.component, self.off.tickable, false);
     }
 
@@ -397,16 +481,16 @@ pub const Posing = struct {
     fn release(self: *Posing) void {
         const mem = self.ue.mem;
         const o = self.off;
-        self.followed = false;
         for (self.held.items) |*h| {
-            if (!self.ue.objects.isObject(h.component)) continue;
+            if (!self.ue.objects.isObjectPlain(h.component)) continue;
             self.thaw(h);
             if (h.follower) continue;
-            if (o.uro) |b| if (mem.read(u8, h.component + b.offset)) |v| {
-                _ = mem.write(u8, h.component + b.offset, if (h.uro) v | b.mask else v & ~b.mask);
-            };
-            if (o.interval) |i| _ = mem.write(f32, h.component + i, h.interval);
-            if (o.forced_lod_at != null) self.setInt(h.component, o.forced_lod, h.lod);
+            if (o.uro) |b| {
+                const v = mem.live(u8, h.component + b.offset);
+                mem.setLive(u8, h.component + b.offset, if (h.uro) v | b.mask else v & ~b.mask);
+            }
+            if (o.interval) |i| mem.setLive(f32, h.component + i, h.interval);
+            if (h.detailed and o.forced_lod_at != null) self.setInt(h.component, o.forced_lod, h.lod);
         }
         self.held.clearRetainingCapacity();
     }

@@ -146,6 +146,15 @@ pub const Objects = struct {
     fn plain(at: usize) usize {
         return @as(*align(1) const usize, @ptrFromInt(at)).*;
     }
+
+    /// Like `isObject` with plain reads, for the game thread every frame. `p` has to be readable,
+    /// like a component the game was animating a moment ago, though it may be gone since.
+    pub fn isObjectPlain(self: *const Objects, p: usize) bool {
+        const i = @as(*align(1) const i32, @ptrFromInt(p + object.index)).*;
+        const n = @as(*align(1) const i32, @ptrFromInt(self.table + @as(usize, if (self.kind == .chunked) 0x14 else 0xC))).*;
+        if (i < 0 or i >= n) return false;
+        return self.getPlain(@intCast(i)) == p;
+    }
 };
 
 const tests = struct {

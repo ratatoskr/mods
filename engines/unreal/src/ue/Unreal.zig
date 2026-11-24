@@ -484,7 +484,7 @@ pub const Call = struct {
     function: usize,
     size: usize,
     /// In the order they were asked for.
-    params: [2]usize = .{ 0, 0 },
+    params: [3]usize = .{ 0, 0, 0 },
 };
 
 /// A class's UFunction and where its `params` are, or what's missing.

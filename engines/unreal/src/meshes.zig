@@ -58,7 +58,7 @@ pub const Meshes = struct {
     any_animated: bool = false,
     nearest_buf: [max_nearest]usize = @splat(0),
     nearest_len: usize = 0,
-    /// Where meshes are every frame, rather than now and then, while something needs it.
+    /// Where the nearest are every frame, rather than now and then, while something needs it.
     precise: bool = false,
     listener: ?Listener = null,
 
@@ -115,16 +115,19 @@ pub const Meshes = struct {
     /// Game thread, at an anim instance's post-evaluate.
     pub fn onPostEvaluate(raw: *anyopaque, anim_instance: usize, _: ?*anyopaque) void {
         const self: *Meshes = @ptrCast(@alignCast(raw));
-        const component = self.ue.outerOf(anim_instance) orelse return;
+        // The engine's animating it right now, so plain reads are fine
+        const mem = self.ue.mem;
+        const component = mem.live(usize, anim_instance + Unreal.object.outer);
+        if (component == 0) return;
         const entry = self.map.getOrPut(gpa, component) catch return;
         if (!entry.found_existing) entry.value_ptr.* = .{ .skip = !self.ue.isA(component, "SkeletalMeshComponent") };
         const mesh = entry.value_ptr;
         if (mesh.skip) return;
         // Linked and post-process anim instances get this too, but the main one's once a frame
-        if (self.ue.mem.ptr(component + self.off.anim_instance) != anim_instance) return;
+        if (mem.live(usize, component + self.off.anim_instance) != anim_instance) return;
         mesh.seen = self.frame;
         self.any_animated = true;
-        if (self.precise or mesh.located == null or self.frame - mesh.located.? >= locate_every) {
+        if (mesh.located == null or self.frame - mesh.located.? >= locate_every or (self.precise and self.isNearest(component))) {
             if (self.toWorld(component)) |m| {
                 mesh.to_world = m;
                 mesh.located = self.frame;

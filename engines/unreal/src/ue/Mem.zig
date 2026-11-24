@@ -96,6 +96,18 @@ pub fn write(self: *const Mem, comptime T: type, address: usize, value: T) bool 
     return true;
 }
 
+/// Game thread only, in an object the game's using right now, so it's there. No checks, where
+/// `read` asks Windows about anything newer than the snapshot and copies through it too, which is
+/// far too slow for every mesh every frame.
+pub fn live(_: *const Mem, comptime T: type, address: usize) T {
+    return @as(*align(1) const T, @ptrFromInt(address)).*;
+}
+
+/// The same for writing a plain value, without `write`'s change of page protection.
+pub fn setLive(_: *const Mem, comptime T: type, address: usize, value: T) void {
+    @as(*align(1) T, @ptrFromInt(address)).* = value;
+}
+
 test "pointers into our own memory" {
     var mem = try Mem.init(std.testing.allocator);
     defer mem.deinit();
