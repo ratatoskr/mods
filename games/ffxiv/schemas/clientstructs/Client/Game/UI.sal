@@ -1,0 +1,2026 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Game.UI;
+
+[Size(0x848)]
+struct Achievement : ServerRequestCallbackInterface {
+    [0x8] Achievement.AchievementState state;
+    // Main completion bitmap This is distinct from the two near-completion result bitmaps and the
+    // ItemBarterWarning bitmap.
+    [0xC] u8[510] completed_achievements;
+    // Last Five Achievement Ids
+    [0x20A] u16[5] history;
+    [0x230] Achievement.AchievementState progress_request_state;
+    [0x234] u32 progress_achievement_id;
+    [0x238] u32 progress_current;
+    [0x23C] u32 progress_max;
+    // Enables the two independently requested near-completion result slots. These slots do not cache or
+    // partition `CompletedAchievements`. Each is a separate server-provided achievement-Id membership
+    // bitmap for a different UI lifecycle.
+    [0x240] u8[2] near_completion_achievement_requests;
+    // Set after a near-completion slot has been received, suppressing subsequent first-receipt
+    // notifications.
+    [0x242] bool[2] near_completion_achievement_received;
+    // Load state for near-completion slots 0 and 1.
+    [0x244] Achievement.AchievementState[2] near_completion_achievement_states;
+    // Near-completion achievement bitmaps for the login notification and the Achievement addon's Near
+    // Completion page. Index 0 is the login notification, index 1 is the Achievement addon's Near
+    // Completion page. Controlled by AchievementAppealLoginDisp config.
+    [0x24C] Achievement.AchievementBitmap[2] near_completion_achievements;
+    // Used only by ItemBarterWarning rows. A dedicated server packet is ORed into this bitmap without
+    // modifying `CompletedAchievements`. When checking an ItemBarterWarning row, the game treats its
+    // referenced achievement as complete if either bitmap has the corresponding bit set.
+    [0x648] u8[510] item_barter_warning_completed_achievements;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 04 30 FF C3", FirstMatch, Offset(3), Rel32)] static Achievement instance;
+    // Requests Achievement Progress from the server The reply comes from `handleAchievementsPacket`
+    [Sig("E8 ?? ?? ?? ?? 8B C3 48 8B 5C 24 ?? 48 8B 74 24 ?? 48 83 C4 20 5F C3 83 F8 02", FirstMatch, Offset(1), Rel32)] void requestCompletedAchievements();
+    // Requests Achievement Progress from the server
+    [Sig("E8 ?? ?? ?? ?? 41 C6 44 24 ?? ?? E9 ?? ?? ?? ?? 48 8D 4F ?? E8 ?? ?? ?? ?? 88 43", FirstMatch, Offset(1), Rel32)] void requestAchievementProgress(u32 id);
+    // Requests data for a FATE progress tab
+    [Sig("E8 ?? ?? ?? ?? 48 8D 54 24 ?? C6 86", FirstMatch, Offset(1), Rel32)] bool requestFateProgressTab(u8 tab_index);
+    // Receives Achievement Progress requested with `requestAchievementProgress`.
+    [Sig("C7 81 ?? ?? ?? ?? ?? ?? ?? ?? 89 91 ?? ?? ?? ?? 44 89 81", FirstMatch)] void receiveAchievementProgress(u32 id, u32 current, u32 max);
+    // Checks whether an achievement is present in the main completion bitmap. This does not inspect
+    // ItemBarterWarning data.
+    [Sig("E8 ?? ?? ?? ?? 04 30 FF C3", FirstMatch, Offset(1), Rel32)] bool isComplete(i32 achievement_id);
+    // Marks an achievement complete and adds it to the recent completion history Any near-completion
+    // result slot containing this achievement is cleared and reset to Invalid
+    [Sig("E8 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B C8 ?? ?? ?? FF 52 ?? 8B 54 24 ?? 48 8B C8", FirstMatch, Offset(1), Rel32)] void setAchievementCompleted(u32 achievement_id);
+    [Sig("83 FA ?? 77 ?? 48 63 C2 0F B7 84 41 ?? ?? ?? ?? C3 33 C0 C3 CC CC CC CC CC CC CC CC CC CC CC CC C7 81", FirstMatch)] u16 getHistoryEntry(u32 index);
+    // ORs a ItemBarterWarning packet into the bitmap
+    [Sig("48 89 5C 24 ?? 48 89 7C 24 ?? 48 2B D1 48 8D 81", FirstMatch)] void mergeItemBarterWarningCompletedAchievements(u8* achievement_bitmap);
+    // Checks the ItemBarterWarning completion bitmap for an achievement id
+    [Sig("44 8B C2 4C 8B C9 81 FA ?? ?? ?? ?? 72", FirstMatch)] bool isItemBarterWarningAchievementComplete(u32 achievement_id);
+    // Clears the login notification near-completion bitmap and resets only its state to `invalid`.
+    [Sig("E8 ?? ?? ?? ?? C6 45 ?? ?? 45 33 F6", FirstMatch, Offset(1), Rel32)] void resetLoginNearCompletionAchievements();
+    // Returns the load state for a near-completion result slot.
+    [Sig("E8 ?? ?? ?? ?? FF C8 83 F8 ?? 76 ?? 41 8D 56", FirstMatch, Offset(1), Rel32)] Achievement.AchievementState getNearCompletionAchievementState(Achievement.NearCompletionAchievementSlot slot);
+    // Checks whether an achievement belongs to a loaded near-completion result slot.
+    [Sig("45 8B C8 83 FA ?? 73 ?? 44 8B C2", FirstMatch)] bool isNearCompletionAchievement(Achievement.NearCompletionAchievementSlot slot, u32 achievement_id);
+    // Receives near-completion result for a UI slot.
+    [Sig("83 FA ?? 0F 83 ?? ?? ?? ?? 48 89 5C 24 ?? 56 48 83 EC ?? 48 8B D9", FirstMatch)] void receiveNearCompletionAchievements(Achievement.NearCompletionAchievementSlot slot, Achievement.AchievementBitmap* achievement_bitmap);
+    // Requests both near-completion result slots. This is not a forced refresh of a slot that is already
+    // enabled and requested or loaded.
+    [Sig("48 83 EC ?? 33 D2 38 91", FirstMatch)] void requestAllNearCompletionAchievements();
+    // Requests one near-completion result slot.
+    [Sig("48 8B C1 83 FA ?? 73 ?? 8B CA BA", FirstMatch)] void requestNearCompletionAchievementSlot(Achievement.NearCompletionAchievementSlot slot);
+}
+
+// Represents the AutoAttackState structure. Originally, this might have been embedded in WeaponState
+// at offset 0x10, but current analysis shows auto-attack is managed globally.
+[Size(0x1)]
+struct AutoAttackState {
+    [0x0] bool is_auto_attacking;
+    // Gets the current auto-attack state.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 38 1D", FirstMatch, Offset(1), Rel32)] bool get();
+    // Handles actor control updates related to AutoAttack state.
+    [Sig("88 11 80 FA 01 75 ?? 48 8B 0D ?? ?? ?? ?? 48 85 C9 74 ?? 38 15 ?? ?? ?? ?? 74 ?? 48 81 C1 ?? ?? ?? ??", FirstMatch)] void onActorControl(bool new_state);
+    // Sets the auto-attack state after performing configuration and validation checks. Wraps the SetImpl
+    // call after ensuring conditions are met.
+    [Sig("E8 ?? ?? ?? ?? B0 ?? EB ?? 48 8D 0D", FirstMatch, Offset(1), Rel32)] bool set(bool new_state);
+    // Sets the auto-attack state.
+    [Sig("E8 ?? ?? ?? ?? EB ?? F6 87 ?? ?? ?? ?? ?? 75", FirstMatch, Offset(1), Rel32)] bool setImpl(bool new_state, bool send_packet, bool is_instant);
+}
+
+[Size(0x34)]
+struct BannerData {
+    [0x0] bool has_data;
+    [0x1] u8 expression;
+    [0x2] u8 camera_zoom;
+    [0x3] u8 directional_lighting_color_red;
+    [0x4] u8 directional_lighting_color_green;
+    [0x5] u8 directional_lighting_color_blue;
+    [0x6] u8 directional_lighting_brightness;
+    [0x7] u8 ambient_lighting_color_red;
+    [0x8] u8 ambient_lighting_color_green;
+    [0x9] u8 ambient_lighting_color_blue;
+    [0xA] u8 ambient_lighting_brightness;
+    [0xB] u8 flags;
+    [0xC] u16 banner_timeline;
+    [0xE] u16 animation_progress;
+    [0x10] u16 head_direction_y;
+    [0x12] u16 head_direction_x;
+    [0x14] u16 eye_direction_y;
+    [0x16] u16 eye_direction_x;
+    [0x18] u16 camera_position_x;
+    [0x1A] u16 camera_position_y;
+    [0x1C] u16 camera_position_z;
+    [0x1E] u16 camera_target_x;
+    [0x20] u16 camera_target_y;
+    [0x22] u16 camera_target_z;
+    [0x24] u16 image_rotation;
+    [0x26] u16 directional_lighting_vertical_angle;
+    [0x28] u16 directional_lighting_horizontal_angle;
+    [0x2A] u16 banner_decoration;
+    [0x2C] u16 banner_bg;
+    [0x2E] u16 banner_frame;
+    [0x30] u32 checksum;
+}
+
+[Size(0x23FC)]
+struct Buddy {
+    [0x0] Buddy.BuddyMember[9] battle_buddies;
+    [0x2370] CompanionInfo companion_info;
+    [0x23C0] PetInfo pet_info;
+    [0x23D0] DutyHelperInfo duty_helper_info;
+}
+
+[Size(0x20)]
+struct Cabinet {
+    [0x0] Cabinet.CabinetState state;
+    [0x8] STD.StdVector<u8> unlocked_items;
+    [Sig("E8 ?? ?? ?? ?? 33 F6 40 B5 ?? 89 B3", FirstMatch, Offset(1), Rel32)] bool withdrawCabinetItem(u32 cabinet_id);
+    [Sig("E8 ?? ?? ?? ?? 45 33 E4 41 C6 46 ?? ?? 4D 89 66", FirstMatch, Offset(1), Rel32)] bool storeCabinetItem(u32 cabinet_id);
+    // Check if an item is stored in the player's armoire.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 0F 85 DB", FirstMatch, Offset(1), Rel32)] bool isItemInCabinet(u32 cabinet_id);
+}
+
+[Size(0x8)]
+struct Chain {
+    [0x0] f32 remaining_time;
+    [0x4] f32 max_time;
+}
+
+[Size(0x1F0)]
+struct CharaCard {
+    [0x0] BannerData temp_banner_data;
+    [0x34] BannerData current_banner_data;
+    [0x6C] CharaCardData temp_chara_card_data;
+    [0x128] CharaCardData current_chara_card_data;
+    [0x1E4] i32 timestamp;
+    [0x1E8] CharaCardFlags flags;
+    [Sig("48 8D 0D ?? ?? ?? ?? C6 40 ?? ?? E8 ?? ?? ?? ?? C6 43", FirstMatch, Offset(3), Rel32)] static CharaCard instance;
+    [Sig("40 53 48 81 EC 80 0F 00 00 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 70 0F 00 00 48 8B 0D ?? ?? ?? ?? 48 8B DA E8 ?? ?? ?? ?? 45 33 C9 C7 44 24 20 ?? ?? ?? ?? 45 33 C0 48 C7 44 24 28 20 00 00 00 48 8D 54 24 20 48 89 5C 24 40 48 8B C8 C7 44 24 48 01 00 00 00", FirstMatch)] void requestCharaCardForContentId(u64 content_id);
+    [Sig("40 53 48 81 EC 80 0F 00 00 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 70 0F 00 00 48 8B 0D ?? ?? ?? ?? 48 8B DA E8 ?? ?? ?? ?? 8B 4B 78 48 8D 54 24 20 48 89 4C 24 40 45 33 C9 48 8B C8 C7 44 24 20 ?? ?? ?? ?? 45 33 C0 48 C7 44 24 28 20 00 00 00 C7 44 24 48 01 00 00 00", FirstMatch)] void requestCharaCardForGameObject(Object.GameObject* game_object);
+    [Sig("48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B 0D", FirstMatch)] void requestCharaCardUpdate();
+    [Sig("40 53 48 83 EC ?? 48 8B DA 0F B6 52", FirstMatch)] void handleCurrentCharaCardDataPacket(Network.CharaCardPacket* packet);
+}
+
+[Size(0xBC)]
+struct CharaCardData {
+    [0x0] CharaCardData.Data8Struct data8;
+    [0x52] CharaCardData.Data16Struct data16;
+    [0x88] CharaCardData.Data32Struct data32;
+}
+
+bitfield CharaCardFlags : u32 {
+    [Bit(0)] bool has_current_banner_data;
+    [Bit(1)] bool has_current_chara_card_data;
+    [Bit(2)] bool has_current_chara_card_data_timestamp;
+    // none is none of them
+}
+
+[Size(0x2D8)]
+struct CollectablesShop {
+}
+
+// Chocobo Companion
+[Size(0x50)]
+struct CompanionInfo {
+    [0x0] Buddy.BuddyMember* companion;
+    [0x8] f32 time_left;
+    [0xC] u8[13] buddy_equip_unlock_bitmask;
+    // Indexes in array: 0 = Head 1 = Chest 2 = Feet
+    [0x1A] u8[3] buddy_equip_row_ids;
+    [0x1D] utf8[21] name;
+    [0x34] u32 current_xp;
+    [0x38] u8 rank;
+    [0x39] u8 stars;
+    [0x3A] u8 skill_points;
+    // 0 = Defender Level 1 = Attacker Level 2 = Healer Level
+    [0x3B] u8[3] levels;
+    [0x3E] u8 active_command;
+    [0x3F] u8 favorite_feed;
+    [0x40] u8 current_color_stain_id;
+    [0x41] bool mounted;
+    [Sig("E9 ?? ?? ?? ?? 0F B7 50 02 41 B8", FirstMatch, Offset(1), Rel32)] bool isBuddyEquipUnlocked(u32 buddy_equip_id);
+}
+
+[Size(0x10)]
+struct ContentFinderConditionInterface : ContentInterface {
+    [0x8] u16 content_finder_condition_row_id;
+}
+
+[Size(0x8)]
+struct ContentInterface {
+    [0x0] void* virtual_table;
+    [Virtual(0)] ContentInterface* dtor(u8 free_flag);
+    [Virtual(1)] cstring getName();
+    [Virtual(2)] cstring getNameShortOrCategory();
+    [Virtual(4)] u32 getContentType();
+    [Virtual(5)] bool isPvP();
+    [Virtual(6)] u32 getImage();
+    [Virtual(7)] u32 getIcon();
+    [Virtual(8)] u32 getContentTypeIcon();
+    [Virtual(9)] u16 getRequiredLevel();
+    [Virtual(10)] u16 getSyncedLevel();
+    [Virtual(11)] u16 getItemLevelRequired();
+    [Virtual(12)] u16 getItemLevelSync();
+    [Virtual(13)] bool isHighestAverageItemLevelApplied();
+    [Virtual(14)] bool isUnlocked();
+    [Virtual(16)] bool isCompleted();
+    [Virtual(17)] bool isInDutyFinderAndIsUnlocked();
+    [Virtual(18)] u32 getClassJobCategory();
+    [Virtual(19)] bool hasOnePlayerPerJobDetails();
+    [Virtual(20)] bool isSeparatedDpsRoles();
+    [Virtual(21)] bool isSeparatedHealerRoles();
+    [Virtual(22)] bool isCrystallineConflict();
+    [Virtual(23)] bool isLimitedJobAllowed();
+    [Virtual(24)] u8 getNumParties();
+    [Virtual(25)] u8 getQueueMaxPlayers();
+    [Virtual(26)] u8 getQueueMinPlayers();
+    [Virtual(27)] u8 getTanksPerParty();
+    [Virtual(28)] u8 getHealersPerParty();
+    [Virtual(29)] u8 getTotalDpsPerParty();
+    [Virtual(30)] u8 getMeleesPerParty();
+    [Virtual(31)] u8 getRangedPerParty();
+    [Virtual(32)] u8 getPartyCount();
+    [Virtual(33)] u8 getAlliancePartyCount();
+    [Virtual(35)] bool isRoleIndependent();
+    [Virtual(36)] bool isFixedItemLevelSync();
+    [Virtual(37)] bool isUnrestrictedPartyAllowed();
+    [Virtual(38)] bool isMatchingForAlliancesUnavailable();
+    [Virtual(39)] bool isMemberRequiredInEveryParty();
+    [Virtual(40)] i32 getLootModeType();
+    [Virtual(41)] bool isAdditionalLootRulesAvailable();
+    [Virtual(42)] bool isMinimumIlAllowed();
+    [Virtual(44)] bool isAllianceRegistrationAllowed();
+    [Virtual(46)] u32 getAllianceRegistrationMinPlayers();
+    [Virtual(48)] bool isGrandCompanyRequired();
+    [Virtual(49)] bool isBattleMentorWithCurrentCertificationOnly();
+    [Virtual(52)] bool isRegistrationDataCenterLimited();
+    [Virtual(53)] bool isExplorerModeAllowed();
+    [Virtual(54)] u8 getRewardResetType();
+    [Virtual(55)] u8 getEchoSetting();
+    [Virtual(56)] u8 getRequiredExVersion();
+    [Virtual(57)] u16 getTimeLimit();
+    [Virtual(58)] u16 getTimeLimitMax();
+    [Virtual(60)] u8 getContentUiCategory();
+    [Virtual(61)] u32 getJournalGenre();
+    [Virtual(62)] bool isReplacementAllowed();
+    [Virtual(63)] u16 getTerritoryType();
+    [Virtual(64)] bool unknown63();
+    [Virtual(65)] bool isInDutyFinder();
+    [Virtual(66)] bool isHighEndDuty();
+    [Virtual(67)] bool isConsumableItemAllowed();
+    [Virtual(68)] u16 getSortKey();
+    [Virtual(69)] u32 getGoldSaucerRegisterConditionCount();
+    [Virtual(70)] u32 getGoldSaucerRegisterConditionAddonId(i32 index);
+    [Virtual(74)] bool isOnlyPvPTeamMembers();
+    [Virtual(76)] u32 getContentCloseCycle();
+    [Virtual(77)] bool isDutyRecorderAllowed();
+    [Virtual(78)] bool isRegistrationHomeWorldLimited();
+    [Virtual(82)] bool isCurrentUnreal();
+    [Virtual(83)] bool isRegistrationAllowedFromAnyDataCenter();
+    [Virtual(84)] u32 getCrystallineConflictGameplayFeatureCount();
+    [Virtual(85)] u32 getCrystallineConflictGameplayFeatureAddonId(i32 index);
+    [Virtual(86)] u8 getUnlockType();
+    [Virtual(87)] u32 getUnlockCriteria();
+    [Virtual(89)] u8 getPenaltyTimestampArrayIndex();
+    [Virtual(90)] bool isLimitedTimeBonus();
+    [Virtual(91)] bool isPhoenixDownAllowed();
+}
+
+[Size(0x10)]
+struct ContentRoulette : ContentInterface {
+    [0x8] u8 content_roulette_row_id;
+    [0x9] u8 content_roulette_open_rule_type;
+    [0xA] bool unlocked;
+}
+
+[Size(0xB0)]
+struct ContentsFinder {
+    [0x18] ContentsFinder.LootRule loot_rules;
+    [0x19] bool is_unrestricted_party;
+    [0x1A] bool is_minimal_il;
+    [0x1B] bool is_silence_echo;
+    [0x1C] bool is_explorer_mode;
+    [0x1D] bool is_level_sync;
+    [0x1E] bool is_limited_leveling_roulette;
+    [0x20] ContentsFinderQueueInfo queue_info;
+    [Sig("0F B6 FA 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 80 78 59 02", FirstMatch, Offset(6), Rel32)] static ContentsFinder instance;
+    [Sig("E8 ?? ?? ?? ?? 33 FF 0F B6 48", FirstMatch, Offset(1), Rel32)] ContentsFinderQueueInfo* getQueueInfo();
+}
+
+[Size(0x90)]
+struct ContentsFinderQueueInfo {
+    [0x0] UI.Agent.ContentsId[5] queued_entries;
+    [0x28] u32 queued_class_job_id;
+    [0x38] u64 popped_content_in_progress_start_timestamp;
+    [0x40] i32 entered_queue_timestamp;
+    [0x44] i32 queue_ready_timestamp;
+    [0x4C] i32 next_queue_update_timestamp;
+    [0x55] Enums.ContentsFinderQueueState queue_state;
+    [0x5A] u8 queued_content_roulette_id;
+    [0x5B] i8 clamped_position_in_queue;
+    [0x5C] i8 position_in_queue;
+    [0x5D] ContentsFinder.LootRule popped_content_loot_rule;
+    [0x60] bool popped_content_is_in_progress;
+    [0x62] QueueInfoState info_state;
+    [0x7C] UI.Agent.ContentsId popped_queue_entry;
+    [0x88] bool popped_content_is_unrestricted_party;
+    [0x89] bool popped_content_is_minimal_il;
+    [0x8A] bool popped_content_is_level_sync;
+    [0x8B] bool popped_content_is_silence_echo;
+    [0x8C] bool popped_content_is_explorer_mode;
+    [0x8D] bool popped_content_is_limited_leveling;
+    [Sig("40 53 56 57 41 57 48 83 EC ?? 0F B6 41", FirstMatch)] void processInfoState(Enums.ContentsFinderQueueState new_state, QueueInfoState* new_info_state);
+    [Sig("E8 ?? ?? ?? ?? 0F B6 13 44 0F B6 C7", FirstMatch, Offset(1), Rel32)] void setQueuedLanguages(u8 language_flags);
+    [Sig("C6 01 00 44 8B CA", FirstMatch)] void setQueuedContentFinderConditions(u32 condition_count, i32* condition_ids);
+    [Sig("41 0F B6 C0 89 51 28", FirstMatch)] void setQueuedJobAndRoulette(u32 class_job_id, u8 a3, u8 a4, u8 content_roulette_id);
+    [Sig("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 8B FA 48 8B D9 45 84 C0", FirstMatch)] void updateQueueState(Enums.ContentsFinderQueueState new_state, bool began_queue);
+    [Sig("4C 8B DC 55 41 54 41 56 49 8D 6B ?? 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 45 ?? 80 79 ?? 00", FirstMatch)] void queueRoulette(u8 content_roulette_id, u8 a3);
+    [Sig("E8 ?? ?? ?? ?? B0 ?? 45 88 A7 ?? ?? ?? ?? E9 ?? ?? ?? ?? 45 0F B6 87", FirstMatch, Offset(1), Rel32)] void queueDuties(u32* entries, i32 entry_count, u8 a4);
+    [Sig("40 53 48 83 EC ?? 48 8B D9 0F B6 49 ?? 8D 41", FirstMatch)] void cancelQueue();
+    [Sig("4C 8B DC 53 41 56 41 57 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 4C 8B F1", FirstMatch)] void onQueueWithdrawn(u32 log_message_id, u64 content_id);
+    [Sig("48 89 5C 24 ?? 57 48 83 EC 20 80 79 55 00", FirstMatch)] void onQueuePop(Enums.ContentsFinderQueueState new_state, u32 content_id, isize a4, bool is_in_progress_party, ContentsFinder.LootRule loot_rule, u64 in_progress_party_start_timestamp, isize a8, bool is_unrestricted_party, bool is_minimal_il, bool is_silence_echo, bool is_explorer_mode, bool is_level_sync, bool is_limited_leveling);
+}
+
+[Size(0xB8)]
+struct ContentsNote {
+    [0x8] u8[13] completion_flags;
+    [0x18] ContentsNote.ContentsNoteState state;
+    [0x1C] u8 selected_tab;
+    [0x1D] u8 display_count;
+    [0x20] i32[19] display_ids;
+    [0x6C] i32[19] display_statuses;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 83 F8 02 75 16", FirstMatch, Offset(3), Rel32)] static ContentsNote instance;
+}
+
+[Size(0x3E8)]
+struct DailyQuestSupply : Component.GUI.AtkModuleInterface.AtkEventInterface {
+}
+
+[Size(0x148)]
+struct DirectorTodo {
+    [0x0] Event.Director* director;
+    [0x8] System.String.Utf8String title;
+    [0x70] System.String.Utf8String objective;
+    [0xD8] System.String.Utf8String relief_text;
+    [0x140] bool is_full_update_pending;
+    [0x141] bool is_shown;
+}
+
+// Squadron, Trust, Duty Support
+[Size(0x28)]
+struct DutyHelperInfo {
+    [0x0] Buddy.BuddyMember* duty_helpers;
+    [0x9] bool has_helpers;
+    [0xC] u32[7] e_npc_ids;
+}
+
+[Size(0x38)]
+struct Emj {
+}
+
+[Size(0x18)]
+struct EurekaElementalEdit {
+}
+
+[Size(0x20)]
+struct FieldMarker {
+    [0x0] Vec3 position;
+    [0x10] i32 x;
+    [0x14] i32 y;
+    [0x18] i32 z;
+    [0x1C] bool active;
+}
+
+[Size(0x338)]
+struct FishRecord {
+}
+
+[Size(0xE0)]
+struct FishingNote {
+    [0x0] GameEventCallback* game_event_callback;
+    [0x48] FishingNoteLoadState[2] load_states;
+    [0x50] u64 mode;
+    [0x70] Common.Component.Excel.ExcelSheetWaiter* fishing_spot_sheet_waiter;
+    [0x78] Common.Component.Excel.ExcelSheetWaiter* fish_parameter_sheet_waiter;
+    [0x80] Common.Component.Excel.ExcelSheetWaiter* spearfishing_notebook_sheet_waiter;
+    [0x88] Common.Component.Excel.ExcelSheetWaiter* spearfishing_item_sheet_waiter;
+    [0x90] Common.Component.Excel.ExcelSheetWaiter* fishing_note_sheet_waiter;
+}
+
+enum FishingNoteLoadState : i32 {
+    none = 0,
+    loading = 1,
+    ready = 2,
+}
+
+[Size(0x2C28)]
+struct GCSupply {
+}
+
+[Size(0x8)]
+struct GameEventCallback {
+}
+
+[Size(0x728)]
+struct GatheringNote {
+}
+
+[Size(0x18)]
+struct GoldSaucerContent : ContentFinderConditionInterface {
+    [0x10] u32 gold_saucer_content_id;
+}
+
+[Size(0x60)]
+struct GuildOrderReward {
+    [0x50] Common.Component.Excel.ExcelSheet* guild_order_sheet;
+    [0x58] Common.Component.Excel.ExcelSheetWaiter* guild_order_sheet_waiter;
+}
+
+[Size(0x108)]
+struct Hate {
+    [0x0] HateInfo[32] hate_info;
+    [0x100] i32 hate_array_length;
+    [0x104] u32 hate_target_id;
+}
+
+[Size(0x8)]
+struct HateInfo {
+    [0x0] u32 entity_id;
+    [0x4] i32 enmity;
+}
+
+[Size(0x908)]
+struct Hater {
+    [0x0] HaterInfo[32] haters;
+    [0x900] i32 hater_count;
+}
+
+[Size(0x48)]
+struct HaterInfo {
+    [0x0] utf8[64] name;
+    [0x40] u32 entity_id;
+    [0x44] i32 enmity;
+}
+
+[Size(0x8), VirtualTable("48 8D 05 ?? ?? ?? ?? ?? ?? ?? 48 8B F1 0F 11 81", FirstMatch, Offset(3), Rel32)]
+struct Hotbar : UI.Misc.RaptureHotbarModule.ClearCallback {
+    [Sig("48 83 EC 38 33 D2 C7 44 24 ?? ?? ?? ?? ?? 45 33 C9", FirstMatch)] void cancelCast();
+    // Resets the PvE hotbars for the specified class, including all skills available at the specified
+    // class level. Will reset the hotbars written to disk!
+    [Sig("40 53 55 41 56 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ??", FirstMatch)] void resetPvEHotbarsForClassAtLevel(u32 class_job_id, u32 class_level);
+    // Resets the PvP hotbars for the specified ClassJobId to their default values. Will reset the hotbars
+    // written to disk! Has no effect if the specified class job ID doesn't have PVP actions.
+    [Sig("40 55 57 48 83 EC ?? 48 8B 0D", FirstMatch)] void resetPvPHotbarsForClassInner(u32 class_job_id);
+}
+
+[Size(0x2A0)]
+struct Inspect {
+    [0x0] bool is_inspect_requested;
+    [0x4] f32 request_cooldown;
+    [0xC] u32 entity_id;
+    // 0 = Not set/Retainer, 3 = Companion (Buddy), 4 = Player Character
+    [0x10] u8 type;
+    [0x12] u16 world_id;
+    [0x14] utf8[64] name;
+    // PSN-Online-ID or Xbox-Gamertag
+    [0x54] u8[17] online_id;
+    // Used for Grand Company rank. 0 = Male, 1 = Female
+    [0x74] u8 sex;
+    [0x75] u8 class_job_id;
+    [0x76] u8 level;
+    [0x77] u8 synced_level;
+    [0x78] u16 average_item_level;
+    [0x7A] u16 title_id;
+    [0x7C] u8 grand_company_index;
+    [0x7D] u8 grand_company_rank;
+    [0x7E] Character.CustomizeData customize_data;
+    // Only valid when `type` == 3.
+    [0x98] u8 buddy_equip_top;
+    // Only valid when `type` == 3.
+    [0x99] u8 buddy_equip_body;
+    // Only valid when `type` == 3.
+    [0x9A] u8 buddy_equip_legs;
+    [0xA0] Character.WeaponModelId[2] weapon_model_ids;
+    [0xB0] Character.EquipmentModelId[10] equipment_model_ids;
+    [0x100] u16[2] glasses_ids;
+    [0x104] u32[74] base_params;
+    [0x22C] i16 unk_word22_c;
+    [0x22E] InspectGearVisibilityFlag gear_visibility_flag;
+    [0x230] UI.Agent.CrestData free_company_crest_data;
+    [0x238] u8 free_company_crest_bitfield;
+    [0x239] utf8[64] buddy_owner_name;
+    [0x279] u8 buddy_rank;
+    [0x27A] u8 buddy_stain;
+    [0x27B] u8 buddy_defender_level;
+    [0x27C] u8 buddy_attacker_level;
+    [0x27D] u8 buddy_healer_level;
+    // For easier access, use `getContentValue`.
+    [0x284] STD.StdPair<u32, u32>[3] content_key_value_data;
+}
+
+bitfield InspectGearVisibilityFlag : u8 {
+    [Bit(0)] bool visor_closed;
+    [Bit(1)] bool headgear_hidden;
+    [Bit(2)] bool weapon_hidden;
+    // none is none of them
+}
+
+[Size(0x78)]
+struct InstanceContent {
+    [0x38] u32[8] spectator_ids;
+    [0x6C] u8 ranked_crystalline_conflict_hosting_data_center_id;
+    [0x70] bool is_limited_time_bonus_active;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 0F 94 C3", FirstMatch, Offset(3), Rel32)] static InstanceContent instance;
+    // Provides the number of minutes remaining on the penalty.
+    [Sig("E8 ?? ?? ?? ?? 8B 0E 3B C8", FirstMatch, Offset(1), Rel32)] u32 getPenaltyRemainingInMinutes(u8 index);
+    [Sig("48 83 EC 28 84 D2 74 33", FirstMatch)] bool isRouletteIncomplete(u8 roulette);
+    [Sig("8B 02 4C 8B C9 89 41", FirstMatch)] void processSpectatorListPacket(Network.SpectatorListPacket* packet);
+}
+
+[Size(0x18)]
+struct InstanceContentExcelWrapper : ContentFinderConditionInterface {
+    [0x10] u32 instance_content_id;
+}
+
+[Size(0x4768)]
+struct Journal {
+    [Sig("48 8D 0D ?? ?? ?? ?? 66 89 83", FirstMatch, Offset(3), Rel32)] static Journal instance;
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 35 41 8B CE", FirstMatch, Offset(1), Rel32)] bool isQuestAccepted(u16 quest_id);
+    [Sig("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 41 8B F8 8B DA 48 8B F1 E8 ?? ?? ?? ?? 48 8B C8", FirstMatch)] void abandonQuest(Journal.QuestType type, u32 quest_id);
+}
+
+[Size(0x10)]
+struct LimitBreakController {
+    [0x8] u8 bar_count;
+    [0xA] u16 current_units;
+    [0xC] u16 bar_units;
+    [0xF] bool is_pv_p;
+    [Sig("44 8B C7 48 8D 0D ?? ?? ?? ?? 48 8B D3", FirstMatch, Offset(6), Rel32)] static LimitBreakController instance;
+    // Get the spell action id for character's current class limit break of specified level.
+    [Sig("E8 ?? ?? ?? ?? 8B F8 85 C0 75 ?? 45 33 C0", FirstMatch, Offset(1), Rel32)] u32 getActionId(Character.Character* character, u8 level);
+}
+
+[Size(0x6E0)]
+struct Loot : Component.GUI.AtkModuleInterface.AtkEventInterface {
+    [0x10] LootItem[16] items;
+    [0x450] i32 selected_index;
+    [0x458] u32 unk_object_id;
+    [0x6B8] u32 unk_object_id2;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 89 44 24 60", FirstMatch, Offset(3), Rel32)] static Loot instance;
+}
+
+[Size(0x44)]
+struct LootItem {
+    [0x0] u32 chest_object_id;
+    [0x4] u32 chest_item_index;
+    [0x8] u32 item_id;
+    [0xC] u16 item_count;
+    [0xE] LootItemMateria[5] materia;
+    [0x18] u8[2] glamour_stain_ids;
+    [0x1C] u32 glamour_item_id;
+    [0x20] RollState roll_state;
+    [0x24] RollResult roll_result;
+    [0x28] u8 roll_value;
+    [0x2C] f32 time;
+    [0x30] f32 max_time;
+    [0x34] bool weekly_loot_item;
+    [0x38] LootMode loot_mode;
+}
+
+[Size(0x2)]
+struct LootItemMateria {
+    [0x0] u8 materia_id;
+    [0x1] u8 materia_grade;
+}
+
+enum LootMode : i32 {
+    normal = 0,
+    greed_only = 1,
+    unavailable = 2,
+    loot_master_greed_only = 3,
+    unknown = 4,
+}
+
+[Size(0x1C3C)]
+struct LovmRanking {
+}
+
+[Size(0x4020)]
+struct Map {
+    [0xC0] MarkerInfo[30] quest_markers;
+    [0x11A0] MarkerInfo[16] levequest_markers;
+    [0x1AA8] MarkerInfo active_levequest_marker;
+    [0x1B40] STD.StdList<MarkerInfo> unaccepted_quest_markers;
+    [0x1B88] STD.StdList<MarkerInfo> guild_leve_assignment_markers;
+    [0x1BD0] STD.StdList<MarkerInfo> guild_order_guide_markers;
+    [0x1BE0] MarkerInfo[62] housing_markers;
+    [0x3EC0] STD.StdList<MarkerInfo> triple_triad_markers;
+    [0x3ED0] STD.StdList<MarkerInfo> custom_talk_markers;
+    [0x3F78] STD.StdList<MarkerInfo> gemstone_trader_markers;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B CF E8 ?? ?? ?? ?? 40 84 F6", FirstMatch, Offset(3), Rel32)] static Map instance;
+    [Sig("83 FA 3E 0F 83", FirstMatch)] void addHousingMarker(u32 index, u32 level_id, OutdoorTerritory.HousingMapMarkerInfo* housing_map_marker_info, u16 territory_type_id, i32 icon_id);
+}
+
+[Size(0x50)]
+struct MapMarkerData {
+    [0x0] u32 level_id;
+    [0x4] u32 objective_id;
+    [0x8] System.String.Utf8String* tooltip_string;
+    [0x10] u32 icon_id;
+    [0x1C] Vec3 position;
+    [0x28] f32 radius;
+    [0x30] u32 map_id;
+    [0x34] u32 place_name_zone_id;
+    [0x38] u32 place_name_id;
+    [0x3C] i32 end_timestamp;
+    [0x40] u16 recommended_level;
+    [0x42] u16 territory_type_id;
+    [0x44] u16 data_id;
+    [0x46] u8 marker_type;
+    [0x47] i8 event_state;
+    [0x48] u8 flags;
+    [Sig("E8 ?? ?? ?? ?? 48 8B 53 ?? 8B 86", FirstMatch, Offset(1), Rel32)] MapMarkerData* setData(u32 level_id, System.String.Utf8String* tooltip_string, u32 icon_id, f32 x, f32 y, f32 z, f32 radius, u16 territory_type_id, u32 map_id, u32 place_name_zone_id, u32 place_name_id, u16 recommended_level, i8 event_state);
+}
+
+[Size(0x90)]
+struct MarkerInfo {
+    [0x4] u32 objective_id;
+    [0x8] System.String.Utf8String label;
+    [0x70] STD.StdVector<MapMarkerData> marker_data;
+    [0x88] u16 recommended_level;
+    [0x8B] bool should_render;
+}
+
+[Size(0x68)]
+struct MarkerPresetPlacement {
+    [0x0] bool[8] active;
+    [0x8] i32[8] x;
+    [0x28] i32[8] y;
+    [0x48] i32[8] z;
+}
+
+[Size(0x2E0)]
+struct MarkingController {
+    [0x10] Object.GameObjectId[17] markers;
+    [0x98] u32[26] letter_markers;
+    [0x100] i64[17] marker_times;
+    [0x1E0] FieldMarker[8] field_markers;
+    [Sig("48 8D 0D ?? ?? ?? ?? 4C 8B 85", FirstMatch, Offset(3), Rel32)] static MarkingController instance;
+    [Sig("E8 ?? ?? ?? ?? 84 C0 EB 5C", FirstMatch, Offset(1), Rel32)] u8 placeFieldMarker(u32 index, Vec3* position);
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 1B B0 01", FirstMatch, Offset(1), Rel32)] u8 placePreset(MarkerPresetPlacement* placement);
+    // 0 - Success 1 - Invalid index 2 - Operation lock (too frequent) (500ms) 3 - All markers pending 4 -
+    // In combat 5 - No markers allowed in territory
+    [Sig("E8 ?? ?? ?? ?? EB D8 83 FB 09", FirstMatch, Offset(1), Rel32)] u8 clearFieldMarker(u32 index);
+    // 0 - Success 1 - Invalid index 2 - Operation lock (too frequent) (500ms) 3 - All markers pending 4 -
+    // In combat 5 - No markers allowed in territory
+    [Sig("41 55 48 83 EC 50 4C 8B E9", FirstMatch)] u8 clearFieldMarkers();
+}
+
+[Size(0x150)]
+struct MassivePcContentTodo {
+    [0x0] Common.Component.Excel.ExcelSheetWaiter* excel_sheet_waiter;
+    [0x8] MassivePcContent.MassivePcContentDirector* director;
+    [0x10] System.String.Utf8String title;
+    [0x78] System.String.Utf8String objective;
+    [0xE0] System.String.Utf8String relief_text;
+    [0x148] bool full_update_pending;
+    [0x149] bool shown;
+}
+
+[Size(0x48)]
+struct MateriaTrade : Component.GUI.AtkModuleInterface.AtkEventInterface {
+    [0x10] InventoryType[5] containers;
+    [0x24] u16[5] slots2;
+    [0x30] u32[5] quantities;
+}
+
+// NB: The game does not clear the data when a mark is completed. Index Order is a little weird The `A
+// Realm Reborn Elite` was added after Heavensward Others follow logical sequential order: 0 - A Realm
+// Reborn Level 1 1 - Heavensward Level 1 2 - Heavensward Level 2 3 - Heavensward Level 3 4 - A Realm
+// Reborn Elite 5 - Heavensward Elite 6 - Stormblood Level 1 7 - Stormblood Level 2 8 - Stormblood
+// Level 3 9 - Stormblood Elite 10 - Shadowbringers Level 1 11 - Shadowbringers Level 2 12 -
+// Shadowbringers Level 3 13 - Shadowbringers Elite 14 - Endwalker Level 1 15 - Endwalker Level 2 16 -
+// Endwalker Level 3 17 - Endwalker Elite 18 - Dawntrail Level 1 19 - Dawntrail Level 2 20 - Dawntrail
+// Level 3 21 - Dawntrail Elite
+[Size(0x1F0)]
+struct MobHunt {
+    [0x8] u8[22] available_mark_id;
+    [0x1E] u8[22] obtained_mark_id;
+    [0x34] MobHunt.KillCounts[22] current_kills;
+    [0x1EC] i32 obtained_flags;
+    [Sig("48 8D 0D ?? ?? ?? ?? 0F B6 50 08 E8 ?? ?? ?? ?? 84 C0 48 8B 47 28", FirstMatch, Offset(3), Rel32)] static MobHunt instance;
+    [Sig("80 FA 16 73 19", FirstMatch)] i32 getKillCount(u8 mark_index, u8 mob_index);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4B ?? 39 41", FirstMatch, Offset(1), Rel32)] i32 getObtainedHuntOrderRowId(u8 mark_index);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 57 ?? 48 8D 0D ?? ?? ?? ?? 8B D8", FirstMatch, Offset(1), Rel32)] i32 getAvailableHuntOrderRowId(u8 mark_index);
+    [Sig("4C 8B DC 49 89 53 ?? 53 41 55", FirstMatch)] bool isHuntTarget(Character.Character* chara);
+    [Sig("E8 ?? ?? ?? ?? 0F B6 D0 48 8D 0D ?? ?? ?? ?? 44 0F B6 E8", FirstMatch, Offset(1), Rel32)] u8 getMarkIndexFromItemId(u32 item_id);
+    [Sig("48 89 5C 24 ?? 56 48 83 EC 20 0F B6 DA 40 32 F6", FirstMatch)] bool isMarkBillUnlocked(u8 mark_index);
+}
+
+[Size(0x328)]
+struct NpcTrade {
+    [0x0] void* virtual_table;
+    [0x8] NpcTrade.ItemRequests requests;
+    [Sig("0F B6 91 ?? ?? ?? ?? C6 81 ?? ?? ?? ?? ?? 48 83 C1 08", FirstMatch)] bool canSatisfyRequests();
+    [Virtual(0)] NpcTrade* dtor(u8 free_flags);
+}
+
+[Size(0x2850)]
+struct NpcYell {
+    // Null until at least one NpcYell has been queued.
+    [0x10] Common.Component.Excel.ExcelSheet* npc_yell_sheet;
+    // Entries at index `unhandled_yell_count` and above are stale.
+    [0x48] NpcYell.NpcYellSlot[32] yell_slots;
+    // Entries at index `unhandled_yell_count` and above are stale.
+    [0x548] NpcYell.NpcYellInfo[32] yell_info;
+    // The number of new `YellSlots` and `YellInfo` entries that have not yet been handled.
+    [0x2848] u8 unhandled_yell_count;
+    [0x2849] u8 unhandled_battle_talk_count;
+    [0x284A] bool unk284_a;
+    [Sig("48 8D 0D ?? ?? ?? ?? 0F 11 44 24 ?? C6 44 24", FirstMatch, Offset(3), Rel32)] static NpcYell instance;
+}
+
+[Size(0x18)]
+struct PartyContent : ContentFinderConditionInterface {
+    [0x10] u32 party_content_id;
+}
+
+// Carbuncle, Eos/Selene, Machinists Rook Autoturret/Automaton Queen, Whitemages Lilybell, probably
+// more
+[Size(0x10)]
+struct PetInfo {
+    [0x0] Buddy.BuddyMember* pet;
+    [0x8] u8 order;
+    [0x9] u8 stance;
+}
+
+// Mirrors BaseParam sheet values for ease of lookup
+enum PlayerAttribute : u32 {
+    strength = 1,
+    dexterity = 2,
+    vitality = 3,
+    intelligence = 4,
+    mind = 5,
+    piety = 6,
+    health_points = 7,
+    magic_points = 8,
+    tactical_points = 9,
+    gathering_points = 10,
+    crafting_points = 11,
+    physical_damage = 12,
+    magic_damage = 13,
+    delay = 14,
+    additional_effect = 15,
+    attack_speed = 16,
+    block_rate = 17,
+    block_strength = 18,
+    tenacity = 19,
+    attack_power = 20,
+    defense = 21,
+    direct_hit_rate = 22,
+    evasion = 23,
+    magic_defense = 24,
+    critical_hit_power = 25,
+    critical_hit_resilience = 26,
+    critical_hit = 27,
+    critical_hit_evasion = 28,
+    slashing_resistance = 29,
+    piercing_resistance = 30,
+    blunt_resistance = 31,
+    projectile_resistance = 32,
+    attack_magic_potency = 33,
+    healing_magic_potency = 34,
+    enhancement_magic_potency = 35,
+    elemental_bonus = 36,
+    fire_resistance = 37,
+    ice_resistance = 38,
+    wind_resistance = 39,
+    earth_resistance = 40,
+    lightning_resistance = 41,
+    water_resistance = 42,
+    magic_resistance = 43,
+    determination = 44,
+    skill_speed = 45,
+    spell_speed = 46,
+    haste = 47,
+    morale = 48,
+    enmity = 49,
+    enmity_reduction = 50,
+    desynthesis_skill_gain = 51,
+    exp_bonus = 52,
+    regen = 53,
+    special_attribute = 54,
+    main_attribute = 55,
+    secondary_attribute = 56,
+    slow_resistance = 57,
+    petrification_resistance = 58,
+    paralysis_resistance = 59,
+    silence_resistance = 60,
+    blind_resistance = 61,
+    poison_resistance = 62,
+    stun_resistance = 63,
+    sleep_resistance = 64,
+    bind_resistance = 65,
+    heavy_resistance = 66,
+    doom_resistance = 67,
+    reduced_durability_loss = 68,
+    increased_spiritbond_gain = 69,
+    craftsmanship = 70,
+    control = 71,
+    gathering = 72,
+    perception = 73,
+}
+
+[Size(0x928)]
+struct PlayerState {
+    [0x0] bool is_loaded;
+    [0x1] utf8[64] character_name;
+    // PSN-Online-ID or Xbox-Gamertag
+    [0x41] utf8[17] online_id;
+    [0x64] u32 entity_id;
+    [0x68] u64 content_id;
+    // 0 = Duty Finder penalty 1 = Inactivity penalty, presumably (e.g. for Crystalline Conflict Ranked
+    // Match) See also: `getPenaltyRemainingInMinutes`
+    [0x70] i32[2] penalty_timestamps;
+    // Causes LogMessage 906 when queueing into content. Seems to be unused.
+    [0x78] bool has_addiction_restrictions;
+    [0x79] u8 max_level;
+    // Row Id of ExVersion sheet
+    [0x7A] u8 max_expansion;
+    // 0 = Male, 1 = Female
+    [0x7B] u8 sex;
+    // Row Id of Race sheet
+    [0x7C] u8 race;
+    // Row Id of Tribe sheet
+    [0x7D] u8 tribe;
+    // Row Id of ClassJob sheet
+    [0x7E] u8 current_class_job_id;
+    [0x80] isize current_class_job_row;
+    [0x88] i16 current_level;
+    // Index is ExpArrayIndex from the ClassJob sheet.
+    [0x8A] i16[35] class_job_levels;
+    // Index is ExpArrayIndex from the ClassJob sheet.
+    [0xD0] i32[35] class_job_experience;
+    [0x15C] i16 synced_level;
+    [0x15E] bool is_level_synced;
+    [0x15F] bool has_premium_saddlebag;
+    [0x162] u8 guardian_deity;
+    [0x163] u8 birth_month;
+    [0x164] u8 birth_day;
+    [0x165] u8 first_class;
+    [0x166] u8 start_town;
+    [0x167] u8 quest_special_flags { [Bit(0)] bool is_legacy; [Bit(1)] bool is_warrior_of_light; }
+    [0x168] u16[8] active_festival_ids;
+    [0x178] u16[8] active_festival_phases;
+    [0x190] i32 base_strength;
+    [0x194] i32 base_dexterity;
+    [0x198] i32 base_vitality;
+    [0x19C] i32 base_intelligence;
+    [0x1A0] i32 base_mind;
+    [0x1A4] i32 base_piety;
+    [0x1A8] i32[74] attributes;
+    [0x2D0] u8 grand_company;
+    // 0 = Maelstrom 1 = Order of the Twin Adder 2 = Immortal Flames
+    [0x2D1] u8[3] gc_ranks;
+    [0x2D4] u16 home_aetheryte_id;
+    [0x2D6] u8 favourite_aetheryte_count;
+    [0x2D8] u16[4] favourite_aetherytes;
+    // 0 = Security Token 1 = PlayStation Plus 2 = Nintendo Switch Online
+    [0x2E0] u16[3] free_aetheryte_ids;
+    [0x2E8] u32 base_rested_experience;
+    [0x300] i8 unk2_dc;
+    // Use `isMountUnlocked`.
+    [0x301] u8[45] unlocked_mounts;
+    // Use `isOrnamentUnlocked`.
+    [0x32E] u8[8] unlocked_ornaments;
+    // Use `isGlassesUnlocked`.
+    [0x336] u8[8] unlocked_glasses_styles;
+    [0x340] u16 num_owned_mounts;
+    [0x342] u16 num_owned_mounts_minus1;
+    [0x3F4] u8[42] unlocked_fishing_spots;
+    // Use `isFishCaught`.
+    [0x41F] u8[191] caught_fish;
+    [0x4E0] u32 num_fish_caught;
+    [0x4E4] u32 fishing_bait;
+    [0x4E8] u8[8] unlocked_spearfishing_notebooks;
+    // Use `isSpearfishCaught`.
+    [0x4F1] u8[38] caught_spearfish;
+    [0x518] u32 num_spearfish_caught;
+    [0x51C] i32 unknown_unix_timestamp;
+    // Use `isRouletteComplete`. Not a bit array.
+    [0x520] u8[10] content_roulette_completion;
+    [0x52C] i16 player_commendations;
+    [0x52E] u8[8] selected_poses;
+    [0x536] u8[3] player_state_flags;
+    // Use `isSecretRecipeBookUnlocked`.
+    [0x539] u8[14] unlocked_secret_recipe_books;
+    [0x563] u8 sightseeing_log_unlock_state;
+    [0x564] u8 sightseeing_log_unlock_state_ex;
+    // Use `isAdventureComplete`.
+    [0x565] u8[43] completed_adventures;
+    [0x591] u8[43] unk_adventure_bitmask;
+    // Use `isAetherCurrentUnlocked`.
+    [0x5C1] u8[56] unlocked_aether_currents;
+    // Use `isAetherCurrentZoneComplete`.
+    [0x5F9] u8[4] unlocked_aether_current_comp_flg_sets;
+    // Carrier Level of Delivery Moogle Quests
+    [0x5FD] u8 delivery_level;
+    // Flag containing information about which DoH job the player is specialized in. Use these instead:
+    // `isMeisterFlag` `isMeisterFlagMaxCount` `isMeisterFlagAndHasSoulStoneEquipped`
+    [0x5FF] u8 meister_flag;
+    [0x600] u8 weekly_lockout_info;
+    [0x604] i32 squadron_mission_completion_timestamp;
+    [0x608] i32 squadron_training_completion_timestamp;
+    [0x60C] u16 active_gc_army_expedition;
+    [0x60E] u16 active_gc_army_training;
+    [0x610] bool has_new_gc_army_candidate;
+    [0x611] bool can_fly;
+    [0x612] u8[2] unlocked_miner_folklore_tomes;
+    [0x614] u8[2] unlocked_botanist_folklore_tomes;
+    [0x616] u8[2] unlocked_fishing_folklore_tomes;
+    // Use `isOrchestrionRollUnlocked`.
+    [0x618] u8[112] unlocked_orchestrion_rolls;
+    [0x688] u8[4] completed_beginner_training;
+    [0x68C] u8[4] completed_masked_carnivale;
+    [0x690] u8[7] completed_vvd_notebook_contents;
+    // Used for Mahjong and Rival Wings content.
+    [0x697] u8[1] unlocked_special_content;
+    [0x698] u8[28] unlocked_raids;
+    [0x6B4] u8[18] unlocked_dungeons;
+    [0x6C6] u8[10] unlocked_guild_orders;
+    [0x6D0] u8[14] unlocked_trials;
+    [0x6DE] u8[3] unlocked_crystalline_conflicts;
+    [0x6E1] u8[2] unlocked_frontlines;
+    [0x6E3] u8[28] completed_raids;
+    [0x6FF] u8[18] completed_dungeons;
+    [0x711] u8[10] completed_guild_orders;
+    [0x71B] u8[14] completed_trials;
+    [0x729] u8[3] completed_crystalline_conflicts;
+    [0x72C] u8[2] completed_frontlines;
+    // Used for content like VC Dungeons, Faux Hallows trials and standalone deep dungeon bosses (The Final
+    // Verse).
+    [0x72E] u8[4] unlocked_misc_content;
+    [0x733] u8[4] completed_misc_content;
+    // Flags: 1 = Chocobo Race Unlocked 2 = Has Race Chocobo 4 = Advanced Mahjong Unlocked
+    [0x738] u8 gold_saucer_content_status;
+    [0x739] u8 completed_lo_vm_stages;
+    // RowIds of WeeklyBingoOrderData sheet
+    [0x744] u8[16] weekly_bingo_order_data;
+    // RowIds of WeeklyBingoRewardData sheet
+    [0x754] u8[4] weekly_bingo_reward_data;
+    // Bitflags of placed stickers. Use IsWeeklyBingoStickerPlaced(index) and WeeklyBingoNumPlacedStickers
+    // instead.
+    [0x758] u16 weekly_bingo_stickers;
+    // Use GetWeeklyBingoExpireUnixTimestamp(), WeeklyBingoNumSecondChancePoints and HasWeeklyBingoJournal
+    // instead
+    [0x75C] u32 weekly_bingo_flags;
+    [0x760] u8[4] weekly_bingo_task_status;
+    [0x764] u8 weekly_bingo_request_open_bingo_no;
+    [0x7A0] u8 weekly_bingo_exp_multiplier;
+    [0x7A1] bool weekly_bingo_unk63;
+    // For easier access, use `getContentValue`.
+    [0x7A8] STD.StdPair<u32, u32>[3] content_key_value_data;
+    // 1 = Shadowbringers 2 = Endwalker 3 = Dawntrail
+    [0x838] u8 mentor_version;
+    // Index is DohDolJobIndex from the ClassJob sheet.
+    [0x83C] u32[8] desynthesis_levels;
+    [0x85C] i32 faux_hollows_timestamp;
+    [0x860] i32 faux_hollows_state;
+    [0x868] STD.StdVector<u16> completed_crystarium_delivery_quests;
+    [0x880] STD.StdSet<u8> unlocked_mc_guffins;
+    [0x890] u8[44] unlocked_framers_kits;
+    [0x8D8] i32 unk_tofu_timestamp;
+    [0x8E0] STD.StdMap<u32, bool> tracked_statuses;
+    [0x8F0] STD.StdMap<u32, bool> tracked_action_unlocks;
+    [0x900] STD.StdMap<u32, bool> tracked_trait_unlocks;
+    [0x910] bool tracked_trait_unlocks_dirty;
+    [0x911] bool tracked_action_unlocks_dirty;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 75 06 F6 43 18 02", FirstMatch, Offset(3), Rel32)] static PlayerState instance;
+    [Sig("E8 ?? ?? ?? ?? 44 8B C8 44 0F B7 C3", FirstMatch, Offset(1), Rel32)] i32 getAttributeByIndex(PlayerAttribute attribute);
+    [Sig("E8 ?? ?? ?? ?? 3A 43 01", FirstMatch, Offset(1), Rel32)] u8 getGrandCompanyRank();
+    [Sig("E8 ?? ?? ?? ?? 3A 43 29 72 08", FirstMatch, Offset(1), Rel32)] u8 getBeastTribeRank(u8 beast_tribe_id);
+    [Sig("E8 ?? ?? ?? ?? 41 3A DE", FirstMatch, Offset(1), Rel32)] u16 getBeastTribeCurrentReputation(u8 beast_tribe_id);
+    [Sig("E8 ?? ?? ?? ?? 66 3B D8 8B CE", FirstMatch, Offset(1), Rel32)] u16 getBeastTribeNeededReputation(u8 beast_tribe_id);
+    // Returns whether the player is possessing the maximum amount of specialized souls.
+    [Sig("0F B6 81 ?? ?? ?? ?? 4C 8D 05 ?? ?? ?? ?? 89 44 24 08", FirstMatch)] bool isMeisterFlagMaxCount();
+    // Returns whether the player is specialized in the given DoH ClassJob.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 8B CF 8B C5", FirstMatch, Offset(1), Rel32)] bool isMeisterFlag(u32 class_job_id);
+    // Returns whether the player is specialized in the given DoH ClassJob and has the specialization stone
+    // equipped.
+    [Sig("E8 ?? ?? ?? ?? 38 43 45", FirstMatch, Offset(1), Rel32)] bool isMeisterFlagAndHasSoulStoneEquipped(u32 class_job_id);
+    // Get the level of a specific job.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 0D ?? ?? ?? ?? 4C 8D 3D", FirstMatch, Offset(1), Rel32)] u16 getClassJobLevel(i32 class_job_id, bool should_get_synced);
+    [Sig("40 53 48 83 EC ?? 48 8B D9 83 FA ?? 77 ?? 8B CA", FirstMatch)] u32 getClassJobExp(u32 class_job_id);
+    [Sig("E8 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? 42 8D 1C", FirstMatch, Offset(1), Rel32)] u32 getCurrentClassJobExp();
+    [Sig("E8 ?? ?? ?? ?? 40 0F B6 D7 48 8D 0D ?? ?? ?? ?? 44 8B E8", FirstMatch, Offset(1), Rel32)] u32 getClassJobNeededExp(i32 class_job_id);
+    [Sig("E8 ?? ?? ?? ?? 8B E8 F3 0F 10 35", FirstMatch, Offset(1), Rel32)] u32 getCurrentClassJobNeededExp();
+    [Sig("0F B6 51 7E 80 FA 24", FirstMatch)] u8 getCurrentClassJobMaxLevel();
+    [Sig("E8 ?? ?? ?? ?? 0F B6 C8 66 3B F1", FirstMatch, Offset(1), Rel32)] u8 getCurrentClassJobContentMaxLevel();
+    // Check if a specific mount has been unlocked by the player.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? 48 0B EE", FirstMatch, Offset(1), Rel32)] bool isMountUnlocked(u32 mount_id);
+    // Check if a specific ornament (fashion accessory) has been unlocked by the player.
+    [Sig("E8 ?? ?? ?? ?? BA ?? ?? ?? ?? 41 0F B6 CE", FirstMatch, Offset(1), Rel32)] bool isOrnamentUnlocked(u32 ornament_id);
+    [Sig("48 89 5C 24 ?? 57 48 83 EC ?? 8B DA 41 0F B6 F8 C1 EA", FirstMatch)] void setOrnamentUnlocked(u32 ornament_id, bool is_unlocked);
+    // Check if a specific orchestrion roll has been unlocked by the player.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 D8 0F B6 87", FirstMatch, Offset(1), Rel32)] bool isOrchestrionRollUnlocked(u32 roll_id);
+    // Check if a Secret Recipe Book (DoH Master Tome) is unlocked and (indirectly) if the player can craft
+    // recipes from that specific book.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 4D 9A", FirstMatch, Offset(1), Rel32)] bool isSecretRecipeBookUnlocked(u32 tome_id);
+    // Check if a Folklore Book (DoL Master Tome) is unlocked and (indirectly) if the player can find
+    // legendary nodes revealed by that book.
+    [Sig("E9 ?? ?? ?? ?? 0F B7 57 70", FirstMatch, Offset(1), Rel32)] bool isFolkloreBookUnlocked(u32 tome_id);
+    // Check if a specific McGuffin (Collectible/Curiosity) has been unlocked by the player.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 48 8D 76", FirstMatch, Offset(1), Rel32)] bool isMcGuffinUnlocked(u32 mc_guffin_id);
+    // Check if a particular Framer's Kit is unlocked and can be used. How IDs are located is a bit weird
+    // and not necessarily fully understood at time of writing. They appear on Framer Kit items in the
+    // AdditionalData field, and at +0 in BannerCondition EXDs when +0xE == 9.
+    [Sig("E8 ?? ?? ?? ?? EB ?? 33 ED 66 0F 1F 44 00", FirstMatch, Offset(1), Rel32)] bool isFramersKitUnlocked(u32 kit_id);
+    // Returns whether all aether currents of a zone were discovered.
+    [Sig("4C 8B C9 85 D2 74 1D", FirstMatch)] bool isAetherCurrentZoneComplete(u32 aether_current_comp_flg_set_id);
+    // Check if a Sightseeing Log vista has been discovered.
+    [Sig("E8 ?? ?? ?? ?? 88 84 24 ?? ?? ?? ?? 48 85 FF", FirstMatch, Offset(1), Rel32)] bool isAdventureComplete(u32 adventure_index);
+    // Check if a specific set of Glasses are unlocked. Internally, this will look up the associated
+    // GlassesStyle for the specified pair and check that it's valid and marked as unlocked in
+    // `UnlockedGlassesStyles`.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 0B 66 FF C3", FirstMatch, Offset(1), Rel32)] bool isGlassesUnlocked(u16 glasses_id);
+    [Sig("E8 ?? ?? ?? ?? 41 3A FE 75 ?? 84 C0", FirstMatch, Offset(1), Rel32)] bool isGlassesStyleUnlocked(u16 glasses_style_id);
+    [Sig("48 89 5C 24 ?? 57 48 83 EC ?? 0F BF DA 41 0F B6 F8", FirstMatch)] void setGlassesStyleUnlocked(u16 glasses_style_id, bool is_unlocked);
+    // Returns the value of the requested flag.
+    [Sig("E8 ?? ?? ?? ?? 3B C3 0F 93 C0", FirstMatch, Offset(1), Rel32)] u32 getWeeklyBingoFlagsValue(u32 mode);
+    // Returns whether the Wondrous Tails Journal has expired or not.
+    [Sig("40 53 48 83 EC 20 48 8B D9 E8 ?? ?? ?? ?? 8D 90 ?? ?? ?? ??", FirstMatch)] bool isWeeklyBingoExpired();
+    // Returns the expiration of the players Wondrous Tails Journal as a unix timestamp.
+    [Sig("8B 81 ?? ?? ?? ?? C1 E8 04 25", FirstMatch)] i32 getWeeklyBingoExpireUnixTimestamp();
+    // Returns whether the task is complete or not.
+    [Sig("E8 ?? ?? ?? ?? 8B D3 41 88 06", FirstMatch, Offset(1), Rel32)] bool isWeeklyBingoStickerPlaced(i32 index);
+    // Returns the stored state of the indexed task.
+    [Sig("48 8B C1 83 FA 10", FirstMatch)] PlayerState.WeeklyBingoTaskStatus getWeeklyBingoTaskStatus(i32 index);
+    // Returns the experience multiplier. The experience reward is being calculated as: Current Job
+    // Experience / 100 * WeeklyBingoExpMultiplier
+    [Sig("E8 ?? ?? ?? ?? 0F B6 C0 0F AF C3", FirstMatch, Offset(1), Rel32)] u32 getWeeklyBingoExpMultiplier();
+    // Returns whether the player is any kind of Mentor (Battle or Trade Mentor).
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 48 8B 3D", FirstMatch, Offset(1), Rel32)] bool isMentor();
+    // Returns whether the player is a Battle Mentor.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 80 3D ?? ?? ?? ?? ?? 75 ?? 8D 56", FirstMatch, Offset(1), Rel32)] bool isBattleMentor();
+    // Returns whether the player is a Trade Mentor.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 53 ?? F6 D8", FirstMatch, Offset(1), Rel32)] bool isTradeMentor();
+    // Returns whether the player is a novice (aka. Sprout or New Adventurer). Can be false if /nastatus
+    // was used to deactivate it.
+    [Sig("E8 ?? ?? ?? ?? 88 05 ?? ?? ?? ?? 66 C7 43 ?? ?? ??", FirstMatch, Offset(1), Rel32)] bool isNovice();
+    // Returns whether the player is a returner.
+    [Sig("E8 ?? ?? ?? ?? 41 88 46 ?? 41 38 76", FirstMatch, Offset(1), Rel32)] bool isReturner();
+    // Returns whether the specified PlayerStateFlag is set.
+    [Sig("E8 ?? ?? ?? ?? 3A C3 74 ?? EB", FirstMatch, Offset(1), Rel32)] bool isPlayerStateFlagSet(PlayerStateFlag flag);
+}
+
+enum PlayerStateFlag : u32 {
+    is_login_security_token = 1,
+    is_buddy_in_stable = 2,
+    is_mentor_status_active = 7,
+    is_novice_network_auto_join_enabled = 8,
+    is_battle_mentor_status_active = 9,
+    is_trade_mentor_status_active = 10,
+    is_pv_p_mentor_status_active = 11,
+    unknown14 = 14,
+}
+
+[Size(0x18)]
+struct PublicContent : ContentFinderConditionInterface {
+    [0x10] u32 public_content_id;
+}
+
+[Size(0x28)]
+struct PublicInstance {
+    [0x0] u32 addon_id;
+    [0x4] f32 close_countdown;
+    [0x8] u32 territory_type_id;
+    [0x10] PublicInstance.Listener event_listener;
+    [0x20] u32 instance_id;
+    [Sig("4D 85 C9 0F 84 ?? ?? ?? ?? 89 54 24", FirstMatch)] void showInstanceSelection(u32 territory_type, u32 instance_count, u32* instance_player_counts, u32 instance_player_counts_length);
+    [Sig("40 53 48 83 EC ?? 48 8B D9 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 85 C0 74 ?? 83 3B ?? 74 ?? 48 8B 10 48 8B C8 FF 52 ?? 8B 13 48 8B C8 4C 8B 00 41 FF 90", FirstMatch)] void closeInstanceSelection();
+}
+
+[Size(0x8C)]
+struct PvPProfile {
+    [0x0] bool is_loaded;
+    [0x4] u32 experience_maelstrom;
+    [0x8] u32 experience_twin_adder;
+    [0xC] u32 experience_immortal_flames;
+    [0x10] u8 rank_maelstrom;
+    [0x11] u8 rank_twin_adder;
+    [0x12] u8 rank_immortal_flames;
+    [0x24] u8 series;
+    [0x25] u8 series_current_rank;
+    [0x26] u8 series_claimed_rank;
+    [0x28] u16 series_experience;
+    [0x2A] u8 previous_series_claimed_rank;
+    [0x2B] u8 previous_series_rank;
+    [0x34] u32 frontline_total_matches;
+    [0x38] u32 frontline_total_first_place;
+    [0x3C] u32 frontline_total_second_place;
+    [0x40] u32 frontline_total_third_place;
+    [0x44] u16 frontline_weekly_matches;
+    [0x46] u16 frontline_weekly_first_place;
+    [0x48] u16 frontline_weekly_second_place;
+    [0x4A] u16 frontline_weekly_third_place;
+    [0x4D] u8 crystalline_conflict_season;
+    [0x4E] u16 crystalline_conflict_casual_matches;
+    [0x50] u16 crystalline_conflict_casual_matches_won;
+    [0x52] u16 crystalline_conflict_ranked_matches;
+    [0x54] u16 crystalline_conflict_ranked_matches_won;
+    [0x5A] u16 crystalline_conflict_current_crystal_credit;
+    [0x5C] u16 crystalline_conflict_highest_crystal_credit;
+    [0x62] u8 crystalline_conflict_current_rank;
+    [0x63] u8 crystalline_conflict_highest_rank;
+    [0x64] u8 crystalline_conflict_current_riser;
+    [0x65] u8 crystalline_conflict_highest_riser;
+    [0x66] u8 crystalline_conflict_current_rising_stars;
+    [0x67] u8 crystalline_conflict_highest_rising_stars;
+    [0x7C] u32 rival_wings_total_matches;
+    [0x80] u32 rival_wings_total_matches_won;
+    [0x84] u32 rival_wings_weekly_matches;
+    [0x88] u32 rival_wings_weekly_matches_won;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 3C ?? 75 ?? B8 ?? ?? ?? ?? EB ?? B8", FirstMatch, Offset(3), Rel32)] static PvPProfile instance;
+    // Gets the current PvP rank for the active Grand Company.
+    [Sig("E8 ?? ?? ?? ?? 38 43 4F", FirstMatch, Offset(1), Rel32)] u8 getPvPRank();
+    // Gets the total accumulated PvP experience for the active Grand Company.
+    [Sig("0F B6 05 ?? ?? ?? ?? FE C8 3C 02 77 08", FirstMatch)] u32 getPvPTotalExperience();
+    // Gets the experience for the current PvP rank for the active Grand Company.
+    [Sig("40 53 48 83 EC 20 0F B6 05 ?? ?? ?? ?? 48 8B D9 FE C8", FirstMatch)] u32 getPvPCurrentRankExperience();
+    // Gets the needed experience for the current PvP rank for the active Grand Company.
+    [Sig("48 83 EC 28 0F B6 05 ?? ?? ?? ?? FE C8", FirstMatch)] u32 getPvPCurrentRankNeededExperience();
+    // Gets the current PvP Series rank.
+    [Sig("E8 ?? ?? ?? ?? 8B 8D ?? ?? ?? ?? 0F B6 D0", FirstMatch, Offset(1), Rel32)] u8 getSeriesCurrentRank();
+    // Gets the claimed PvP Series rank.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 C0 FF C0 3B D8", FirstMatch, Offset(1), Rel32)] u8 getSeriesClaimedRank();
+    // Gets the current PvP Series rank experience.
+    [Sig("E8 ?? ?? ?? ?? 0F B7 F8 BA ?? ?? ?? ?? 44 8B C7", FirstMatch, Offset(1), Rel32)] u16 getSeriesExperience();
+    // Returns whether the player had a rank last PvP Series.
+    [Sig("E8 ?? ?? ?? ?? 49 8B 4F ?? 0F B6 F0 ?? ?? ?? 41 FF 52", FirstMatch, Offset(1), Rel32)] bool hasPreviousSeriesRank();
+    // Gets the previous PvP Series achieved rank.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 D8 EB ?? BA", FirstMatch, Offset(1), Rel32)] u8 getPreviousSeriesRank();
+    // Gets the previous PvP Series claimed rank.
+    [Sig("E8 ?? ?? ?? ?? 41 8D 54 24 ?? 0F B6 D8 49 8D 4E 50", FirstMatch, Offset(1), Rel32)] u8 getPreviousSeriesClaimedRank();
+}
+
+[Size(0x28)]
+struct QTE : Component.GUI.AtkModuleInterface.AtkEventInterface {
+    [0x18] UI.Agent.AgentId agent_id;
+    [0x26] u8 flags1;
+    [0x27] u8 flags2;
+}
+
+[Size(0x440)]
+struct QuestTodoList {
+    [0xA8] QuestTodoList.TodoStruct todo;
+    [0x33C] i32 pending_gathering_leve_row_id_index;
+    [0x340] Common.Component.Excel.ExcelSheet* quest_sheet;
+    [0x348] Common.Component.Excel.ExcelSheetWaiter* quest_sheet_waiter;
+    [0x350] Common.Component.Excel.ExcelSheet* leve_sheet;
+    [0x358] Common.Component.Excel.ExcelSheetWaiter* leve_sheet_waiter;
+    [0x360] Common.Component.Excel.ExcelSheet* craft_leve_sheet;
+    [0x368] Common.Component.Excel.ExcelSheetWaiter* craft_leve_sheet_waiter;
+    [0x370] Common.Component.Excel.ExcelSheet* item_sheet;
+    [0x378] Common.Component.Excel.ExcelSheetWaiter* item_sheet_waiter;
+    [0x380] Common.Component.Excel.ExcelSheet* gathering_leve_sheet;
+    [0x388] Common.Component.Excel.ExcelSheetWaiter* gathering_leve_sheet_waiter;
+    [0x390] Common.Component.Excel.ExcelSheet* fishing_spot_sheet;
+    [0x398] Common.Component.Excel.ExcelSheetWaiter*[10] fishing_spot_sheet_waiters;
+    [0x3E8] Common.Component.Excel.ExcelSheet* spearfishing_notebook_sheet;
+    [0x3F0] Common.Component.Excel.ExcelSheetWaiter*[10] spearfishing_notebook_sheet_waiters;
+}
+
+[Size(0x1000)]
+struct QuestUI {
+}
+
+[Size(0x10)]
+struct QueueInfoState {
+    [0x2] QueueInfoState.QueueContentType content_type;
+    [0x3] bool is_reserving_server;
+    [0x4] u8 position_in_queue;
+    [0x5] u8 average_wait_time;
+    [0x8] u8 tanks_found;
+    [0x9] u8 tanks_needed;
+    [0xA] u8 healers_found;
+    [0xB] u8 healers_needed;
+    [0xC] u8 dps_found;
+    [0xD] u8 dps_needed;
+    [0xE] u8 players_found;
+    [0xF] u8 players_needed;
+}
+
+[Size(0xB40)]
+struct RecipeNote {
+    [0x0] u32[8] jobs;
+    [0xB8] RecipeNote.RecipeData* recipe_list;
+    [0xC0] RecipeNote.ActiveCraftRequiredIngredient[6] active_craft_required_ingredients;
+    [0x110] u32 active_craft_status_required;
+    [0x114] u32 active_craft_item_required;
+    [0x118] u16 active_craft_recipe_id;
+    [0x11A] u16 active_craft_required_craftsmanship;
+    [0x11C] u16 active_craft_required_control;
+    [0x11E] u16 active_craft_quick_synth_craftsmanship;
+    [0x120] u16 active_craft_quick_synth_control;
+    [0x122] u16 active_craft_secret_recipe_book;
+    [0x124] u8 active_craft_crystals0_amount;
+    [0x125] u8 active_craft_crystals1_amount;
+    [0x126] u8 active_craft_craft_type;
+    [0x127] bool unk127;
+    [0x128] bool unk128;
+    [0x12A] u8 active_craft_requires_meister_soul_crystal;
+    [0x12C] u16 crafting_recipe_id;
+    [0x12E] u8[6] craft_ingredient_nq_amounts;
+    [0x134] u8[6] craft_ingredient_hq_amounts;
+    [0xB0C] bool is_recipe_list_ready;
+    [Sig("48 8D 0D ?? ?? ?? ?? 8B D6 85 FF", FirstMatch, Offset(3), Rel32)] static RecipeNote instance;
+    [Sig("48 89 4C 24 ?? 53 55 56 57 41 54 41 55 41 56 41 57 48 83 EC ?? 4C 8B E1 E8", FirstMatch)] void initializeRecipeList();
+    [Sig("4C 8B 81 ?? ?? ?? ?? 4D 85 C0 74 ?? ?? ?? ?? 4D 85 C9", FirstMatch)] bool isRecipeUnlocked(u16 recipe_id);
+    [Sig("E8 ?? ?? ?? ?? 0F B7 F8 6B 83", FirstMatch, Offset(1), Rel32)] u16 getCraftTypeLevel(u8 craft_type);
+    [Sig("E8 ?? ?? ?? ?? 48 63 76", FirstMatch, Offset(1), Rel32)] u32 getNoteBookDivisionIdByRecipe(void* recipe_row);
+}
+
+[Size(0x18)]
+struct RelicNote {
+    [0x8] u8 relic_id;
+    [0x9] u8 relic_note_id;
+    [0xA] u8[10] monster_progress;
+    [0x14] i32 objective_progress;
+    [Sig("48 8D 0D ?? ?? ?? ?? 48 8B F8 E8 ?? ?? ?? ?? 45 33 F6", FirstMatch, Offset(3), Rel32)] static RelicNote instance;
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 41 54 41 55 41 56 41 57 48 83 EC ?? 48 8B DA 4C 8B F1", FirstMatch)] bool isMonsterNoteTarget(Character.Character* chara);
+}
+
+[Size(0x78)]
+struct RelicSphereUpgrade : Component.GUI.AtkModuleInterface.AtkEventInterface {
+}
+
+[Size(0x30)]
+struct Revive : Component.GUI.AtkModuleInterface.AtkEventInterface {
+    [0x10] ReviveState state;
+    [0x14] f32 timer;
+    [0x18] f32 unk18;
+    [0x1C] f32 unk1_c;
+    [0x20] i32 feast_medals_previous;
+    [0x24] i32 feast_medals_current;
+}
+
+enum ReviveState : i32 {
+    alive = 0,
+    dying = 1,
+    revivable = 2,
+    reviving = 3,
+}
+
+[Size(0x40)]
+struct RidePillon {
+}
+
+enum RollResult : i32 {
+    un_awarded = 0,
+    needed = 1,
+    greeded = 2,
+    passed = 5,
+    awarded = 6,
+    unknown = 7,
+}
+
+enum RollState : u8 {
+    up_to_need = 0,
+    up_to_greed = 1,
+    up_to_pass = 2,
+    rolled = 17,
+    unavailable = 21,
+    unknown = 28,
+}
+
+[Size(0x58)]
+struct Telepo : Component.GUI.AtkModuleInterface.AtkEventInterface {
+    [0x10] STD.StdVector<TeleportInfo> teleport_list;
+    [0x28] Telepo.SelectUseTicketInvoker use_ticket_invoker;
+    [0x51] bool active_teleport_request;
+    [Sig("48 8D 0D ?? ?? ?? ?? 48 8B 12", FirstMatch, Offset(3), Rel32)] static Telepo instance;
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4B 10 84 C0 48 8B 01 74 2C", FirstMatch, Offset(1), Rel32)] bool teleport(u32 aetheryte_id, u8 sub_index);
+    [Sig("E8 ?? ?? ?? ?? 49 89 47 ?? BA", FirstMatch, Offset(1), Rel32)] STD.StdVector<TeleportInfo>* updateAetheryteList();
+    [Sig("E8 ?? ?? ?? ?? 89 44 24 ?? 49 8D 4D", FirstMatch, Offset(1), Rel32)] u32 getTeleportCost(void* aetheryte_row, i16 multiplier, bool favored, bool resident_area);
+}
+
+[Size(0x20)]
+struct TeleportInfo {
+    [0x0] u32 aetheryte_id;
+    [0x4] u32 gil_cost;
+    [0x8] u16 territory_id;
+    [0xC] EstateType estate_type;
+    [0x10] HouseId house_id;
+    [0x18] u8 ward;
+    [0x19] u8 plot;
+    [0x1A] u8 sub_index;
+    [0x1B] bool is_favourite;
+    [0x1C] bool is_free_aetheryte;
+}
+
+// Contains the PlaceName values of where the player is currently located.
+[Size(0x60)]
+struct TerritoryInfo {
+    [0x8] f32 flying_height_max_err_timer;
+    [0xC] f32 dismount_timer;
+    [0x10] f32 lalafell_only_area_teleport_timer;
+    // For example, used for housing subdivisions.
+    [0x14] u32 map_id_override;
+    [0x18] u32 chat_link_map_id_override;
+    [0x1C] bool in_sanctuary;
+    [0x1D] bool lift_enabled;
+    [0x1E] bool flying_disabled;
+    [0x1F] bool mounts_and_ornaments_disabled;
+    [0x20] bool lalafell_only;
+    [0x24] u32 area_place_name_id;
+    [0x28] u32 sub_area_place_name_id;
+    [Sig("48 8D 0D ?? ?? ?? ?? BA ?? ?? ?? ?? F3 0F 5C 05", FirstMatch, Offset(3), Rel32)] static TerritoryInfo instance;
+    [Sig("48 89 5C 24 ?? 56 48 83 EC 40 48 83 79 ?? ?? 8B F2", FirstMatch)] void loadAreaVfxToLocalPlayer(u32 area_vfx);
+}
+
+[Size(0x1830)]
+struct TripleTriad : Component.GUI.AtkModuleInterface.AtkEventInterface {
+}
+
+[Size(0x1A400)]
+struct UIState {
+    [0x0] Hotbar hotbar;
+    [0x8] Hate hate;
+    [0x110] Hater hater;
+    [0xA18] Chain chain;
+    [0xA20] WeaponState weapon_state;
+    [0xA38] PlayerState player_state;
+    [0x1360] Revive revive;
+    [0x1390] Inspect inspect;
+    [0x1630] Telepo telepo;
+    [0x1688] Cabinet cabinet;
+    [0x16A8] Achievement achievement;
+    [0x1EF0] Buddy buddy;
+    [0x42EC] PvPProfile pv_p_profile;
+    [0x4378] void* unk4378;
+    [0x4380] ContentsNote contents_note;
+    [0x4438] RelicNote relic_note;
+    [0x4450] MateriaTrade materia_trade;
+    [0x4498] PublicInstance public_instance;
+    [0x44C0] RelicSphereUpgrade relic_sphere_upgrade;
+    [0x4538] DailyQuestSupply daily_quest_supply;
+    [0x4920] RidePillon ride_pillon;
+    [0x4960] Loot loot;
+    [0x5040] GatheringNote gathering_note;
+    [0x5768] RecipeNote recipe_note;
+    [0x62A8] FishingNote fishing_note;
+    [0x6388] FishRecord fish_record;
+    [0x66C0] Journal journal;
+    [0xAE28] QuestUI quest_ui;
+    [0xBE28] QuestTodoList quest_todo_list;
+    [0xC268] NpcTrade npc_trade;
+    [0xC590] DirectorTodo director_todo;
+    [0xC6D8] DirectorTodo fate_director_todo;
+    [0xC820] MassivePcContentTodo massive_pc_content_todo;
+    [0xC970] Map map;
+    [0x10990] MarkingController marking_controller;
+    [0x10C70] LimitBreakController limit_break_controller;
+    [0x10C80] TitleController title_controller;
+    [0x10C88] TitleList title_list;
+    [0x10D28] GCSupply gc_supply;
+    [0x13950] InstanceContent instance_content;
+    [0x139C8] GuildOrderReward guild_order_reward;
+    [0x13A28] ContentsFinder contents_finder;
+    [0x13AD8] Wedding wedding;
+    [0x13B40] MobHunt mob_hunt;
+    [0x13D30] WeatherForecast weather_forecast;
+    [0x13D58] TripleTriad triple_triad;
+    [0x15588] EurekaElementalEdit eureka_elemental_edit;
+    [0x155A0] LovmRanking lovm_ranking;
+    [0x171E0] CollectablesShop collectables_shop;
+    [0x174D8] QTE qte;
+    [0x17500] Emj emj;
+    [0x17538] NpcYell npc_yell;
+    [0x19D88] CharaCard chara_card;
+    [0x19FD0] Application.Network.WorkDefinitions.ClientSelectDataConfigFlags client_select_data_config_flags;
+    [0x19FD2] u16 current_glamour_errors_bitmask;
+    [0x19FD4] u16 current_item_level;
+    [0x19FE0] i64 next_map_allowance_timestamp;
+    [0x19FE8] i64 next_challenge_log_reset_timestamp;
+    // Use `isUnlockLinkUnlocked`.
+    [0x19FF4] u8[92] unlock_links;
+    // Use `isAetheryteUnlocked`.
+    [0x1A050] u8[30] unlocked_aetherytes;
+    // Use `isHowToUnlocked`.
+    [0x1A06E] u8[38] unlocked_how_tos;
+    // Use `isCompanionUnlocked`.
+    [0x1A094] u8[75] unlocked_companions;
+    // Use `isChocoboTaxiStandUnlocked`.
+    [0x1A0DF] u8[12] unlocked_chocobo_taxi_stands;
+    // Use `isCutsceneSeen`.
+    [0x1A0EB] u8[183] seen_cutscenes;
+    // Use `isTripleTriadCardUnlocked`.
+    [0x1A1A3] u8[60] unlocked_triple_triad_cards;
+    [0x1A1E0] u64 unlocked_triple_triad_cards_count;
+    // Use `isTripleTriadNpcBeaten`.
+    [0x1A1E8] u8[17] beaten_triple_triad_residents;
+    [0x1A1FA] i32 territory_type_transient_offset_z;
+    [0x1A1FE] u8 beginner_guide_flags;
+    [0x1A1FF] u8 battle_effect_self;
+    [0x1A200] u8 battle_effect_party;
+    [0x1A201] u8 battle_effect_other;
+    [0x1A203] u8 battle_effect_pv_p_enemy_pc;
+    [0x1A208] u32 unlocked_companions_count;
+    [0x1A3F9] bool territory_type_transient_row_loaded;
+    [0x1A3FB] u8 gm_rank;
+    [Sig("48 8D 0D ?? ?? ?? ?? 45 33 C0 BA ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? BA", FirstMatch, Offset(3), Rel32)] static UIState instance;
+    [Sig("E8 ?? ?? ?? ?? 3C 01 74 23", FirstMatch, Offset(1), Rel32)] bool isUnlockLinkUnlocked(u32 unlock_link);
+    // Checks to see if an unlock link is unlocked, or if the passed value is greater than 0x10000, checks
+    // if the quest is completed.
+    [Sig("E8 ?? ?? ?? ?? 44 22 F0", FirstMatch, Offset(1), Rel32)] bool isUnlockLinkUnlockedOrQuestCompleted(u32 unlock_link_or_quest_id, u8 min_quest_progression, bool a4);
+    // Check an item (by EXD row) to see if the action associated with the item is unlocked or
+    // "obtained/registered." This method will call EXD, so the usual caveats there apply. Where possible,
+    // use a by-ID check as they're generally faster and/or rely less on EXD.
+    [Sig("E8 ?? ?? ?? ?? 48 8B CD 89 87", FirstMatch, Offset(1), Rel32)] i64 isItemActionUnlocked(void* item_exd_ptr);
+    // Check if a Triple Triad card is obtained by the character.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 66 0F 44 FD", FirstMatch, Offset(1), Rel32)] bool isTripleTriadCardUnlocked(u16 card_id);
+    // Check if a Triple Triad Npc has been beaten once.
+    [Sig("40 53 48 83 EC 20 8D 82 FE FF DC FF", FirstMatch)] bool isTripleTriadNpcBeaten(u32 triple_triad_resident_id);
+    // Check if an emote (by ID) is unlocked. This method *will* perform an EXD get. If the unlock link is
+    // known it is better to call `isUnlockLinkUnlockedOrQuestCompleted` in order to prevent the extra
+    // call, as it performs functionally the same checks.
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? ?? ?? 41 B8", FirstMatch, Offset(1), Rel32)] bool isEmoteUnlocked(u16 emote_id);
+    // Announce a HowTo entry Marks the HowTo unlocked when it was not already, unless already unlocked and
+    // `force` is false.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 93 D8 19 00 00 48 8B CB", FirstMatch, Offset(1), Rel32)] void announceHowTo(u32 how_to_id, UI.Agent.HowToOpenType open_type, bool force);
+    [Sig("E8 ?? ?? ?? ?? 88 43 ?? B0", FirstMatch, Offset(1), Rel32)] static bool isInstanceContentCompleted(u32 instance_content_id);
+    [Sig("E8 ?? ?? ?? ?? 3C 01 74 44", FirstMatch, Offset(1), Rel32)] static bool isInstanceContentUnlocked(u32 instance_content_id);
+    [Sig("48 83 EC 28 E8 ?? ?? ?? ?? 48 85 C0 74 14 0F B7 40 2A", FirstMatch)] static bool isPublicContentCompleted(u32 public_content_id);
+    [Sig("E9 ?? ?? ?? ?? 0F B6 05 ?? ?? ?? ?? 24 01", FirstMatch, Offset(1), Rel32)] static bool isPublicContentUnlocked(u32 public_content_id);
+    // Check if the player has seen the cutscene before. Only tracks skippable cutscenes (for that, check
+    // if WorkIndex is not 0 in CutsceneWorkIndex sheet).
+    [Sig("E8 ?? ?? ?? ?? 33 D2 0F B6 CB 3A C3", FirstMatch, Offset(1), Rel32)] bool isCutsceneSeen(u32 cutscene_id);
+    // Requests timestamps for `next_map_allowance_timestamp` and `next_challenge_log_reset_timestamp`.
+    [Sig("48 83 EC 38 48 C7 81", FirstMatch)] bool requestResetTimestamps();
+    [Sig("E8 ?? ?? ?? ?? 48 8B F8 E8 ?? ?? ?? ?? 8D 48 05", FirstMatch, Offset(1), Rel32)] i64 getNextMapAllowanceTimestamp();
+    [Sig("E8 ?? ?? ?? ?? 48 8B D8 E8 ?? ?? ?? ?? 44 8B C8", FirstMatch, Offset(1), Rel32)] i64 getNextChallengeLogResetTimestamp();
+    // Checks if the local player can dismount in the air.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 24 4D 85 F6", FirstMatch, Offset(1), Rel32)] bool getIsAirDismountable(Common.Math.Vector3* out_position);
+}
+
+[Size(0xE8)]
+struct WarpInfo {
+    [0x0] u32 state;
+    [0x4] f32 elapsed_time_since_last_warp;
+    [0x8] f32 unk8;
+    [0xC] WarpType warp_type;
+    [0x10] LayoutEngine.Layer.ExitRangeLayoutInstance* exit_range;
+    [0x18] i32 unk18;
+    [0x1C] i32 unk1_c;
+    [0x20] Common.Math.Vector3 zone_line_last_hit;
+    [0x30] Common.Math.Vector3 warp_pos;
+    [0x40] u8 unk40;
+    [0x41] u8 unk41;
+    [0x42] u8 unk42;
+    [0x43] u8 unk43;
+    [0x44] i32 unk44;
+    [0x48] u8 unk48;
+    [0x4C] u32 pop_range_id;
+    [0x50] u8 unk50;
+    [0x51] u8 unk51;
+    [0x52] u8 unk52;
+    [0x53] u8 unk53;
+    [0x54] u8 unk54;
+    [0x55] u8 unk55;
+    [0x56] u8 unk56;
+    [0x57] u8 unk57;
+    [0x58] i32 unk58;
+    [0x5C] u8 unk5_c;
+    [0x5D] u8 unk5_d;
+    [0x5E] u8 unk5_e;
+    [0x5F] u8 unk5_f;
+    [0x60] f32 unk60;
+    [0x68] Common.Component.BGCollision.Collider* prefetch_collider;
+    [0x70] LayoutEngine.Layer.PrefetchRangeLayoutInstance* prefetch_range;
+    [0x78] u32 prefetch_range_bound_instance_id;
+    [0x7C] i16 prefetch_range_priority;
+    [0x80] u32 prefetch_exit_range_id;
+    [0x88] LayoutEngine.Layer.ExitRangeLayoutInstance* prefetch_exit_range;
+    [0x90] Common.Math.Vector3 prefetch_exit_range_pos;
+    [0xA0] u16 prefetch_exit_range_territory_type;
+    [0xA4] i32 prefetch_exit_range_dest_instance_id;
+    [0xA8] i32 unk_a8;
+    [0xB0] u8* territory_type_bg;
+    [0xB8] LayoutEngine.InstanceType instance_type;
+    [0xBC] u32 dest_instance_id;
+    [0xC0] u32 territory_type_id;
+    [0xC4] u8 unk_c4;
+    [0xC5] u8 unk_c5;
+    [0xC6] u8 unk_c6;
+    [0xC7] u8 unk_c7;
+    [0xC8] Graphics.Scene.DrawObject* local_player_draw_object;
+    [0xD0] Graphics.Scene.Weapon*[3] weapons;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 75 ?? 48 8B D7", FirstMatch, Offset(3), Rel32)] static WarpInfo instance;
+    // Finishes the current warp/loading screen after the ready check in Update succeeds. Clears loading,
+    // shows ui. Runs various post-login events like near achievements, play guide, returner dialog. This
+    // is a good post-login event if you check `warp_type`
+    [Sig("E8 ?? ?? ?? ?? 66 0F 1F 44 00 ?? 48 C7 87 ?? ?? ?? ?? ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] void completeWarp(i32 event_param, i32 event_id);
+}
+
+enum WarpType : i32 {
+    none = 0,
+    normal = 1,
+    unk2 = 2,
+    translate = 3,
+    teleport = 4,
+    revive = 5,
+    unk6 = 6,
+    return = 7,
+    resurrection = 8,
+    rental_chocobo = 9,
+    chocobo_taxi = 10,
+    unk11 = 11,
+    enter_instance_content = 12,
+    leave_instance_content = 13,
+    unk14 = 14,
+    town_translate = 15,
+    unk16 = 16,
+    login = 17,
+    unk18 = 18,
+    unk19 = 19,
+    housing_teleport = 20,
+    unk21 = 21,
+    unk22 = 22,
+    unk23 = 23,
+    unk24 = 24,
+    event = 25,
+    dive = 26,
+    world_transfer = 27,
+    unk28 = 28,
+    unk29 = 29,
+    unk30 = 30,
+}
+
+// Represents the in-memory layout of the WeaponState structure.
+[Size(0x18)]
+struct WeaponState {
+    [0x0] bool is_unsheathed;
+    [0x4] f32 sheathe_cooldown;
+    [0x8] f32 auto_sheath_timer;
+    [0xC] bool auto_sheathe_state;
+    [0x10] AutoAttackState auto_attack_state;
+    // Checks whether auto-sheathing is enabled. Internally, this checks a config option and the current
+    // AutoSheatheState.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 0F 85 ?? ?? ?? ?? 45 33 C0 48 8D 8B", FirstMatch, Offset(1), Rel32)] bool canAutoSheathe();
+    // Extends the auto-sheath timer based on configuration settings. Sets AutoSheatheState and resets
+    // AutoSheathTimer.
+    [Sig("E8 ?? ?? ?? ?? EB ?? 84 C0 79", FirstMatch, Offset(1), Rel32)] void extendAutoSheatheTimer();
+    // Called when the actor's weapon drawn state changes. Updates the provided flag and triggers
+    // additional behavior.
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 48 8B 3D ?? ?? ?? ?? 41 0F B6 E8 0F B6 DA", FirstMatch)] void onActorControlWeaponDrawn(bool new_unsheathed_state, bool is_instant);
+    // Updates the state every frame. This method decrements timers, resets them if necessary, and triggers
+    // auto-attack disablement via the global auto-attack state.
+    [Sig("E8 ?? ?? ?? ?? 48 8D 8F ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 87 ?? ?? ?? ?? 48 8B 18", FirstMatch, Offset(1), Rel32)] void tick();
+    // Sets the unsheathed state using the first method. This method may trigger animations or effects as
+    // needed.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 47 ?? 3C ?? 77", FirstMatch, Offset(1), Rel32)] bool setUnsheathed(bool new_state, bool send_packet, bool is_instant);
+    // Sets the unsheathed state using the alternative variant (SetUnsheathed2). This version may update
+    // state without sending network packets.
+    [Sig("E9 ?? ?? ?? ?? 48 8D 8E ?? ?? ?? ?? 40 84 FF", FirstMatch, Offset(1), Rel32)] bool setUnsheathed2(bool new_state);
+}
+
+[Size(0x20)]
+struct WeatherForecast {
+}
+
+[Size(0x68)]
+struct Wedding {
+}
+
+namespace Achievement {
+    // A 4078-bit achievement completion bitmap.
+    [Size(0x1FE)]
+    struct AchievementBitmap {
+        [0x0] u8[510] bits;
+    }
+
+    // Represents the loaded state of Achievement
+    enum AchievementState : i32 {
+        // Achievement is initialized at this state. Debug output calls it "invalide".
+        invalid = 0,
+        // This state is set between the client request and receiving the data from the server. Debug output
+        // calls it "waiting".
+        requested = 1,
+        // Set upon data being received. Debug output calls it "effective".
+        loaded = 2,
+    }
+
+    // Identifies a near-completion result slot.
+    enum NearCompletionAchievementSlot : u32 {
+        // Data used by the login notification.
+        login_notification = 0,
+        // Data used by the Achievement addon's Near Completion page.
+        achievement_addon = 1,
+    }
+}
+
+namespace Buddy {
+    [Size(0x3F0)]
+    struct BuddyMember {
+        [0x0] u32 entity_id;
+        [0x4] u32 current_health;
+        [0x8] u32 max_health;
+        [0xC] u8 data_id;
+        [0xD] u8 synced;
+        [0x10] StatusManager status_manager;
+    }
+}
+
+namespace Cabinet {
+    // Represents the loaded state of Cabinet
+    enum CabinetState : i32 {
+        invalid = 0,
+        requested = 1,
+        loaded = 2,
+    }
+}
+
+namespace CharaCardData {
+    [Size(0x36)]
+    struct Data16Struct {
+        [0x0] u16 banner_timeline;
+        [0x2] u16 animation_progress;
+        [0x4] u16 head_direction_y;
+        [0x6] u16 head_direction_x;
+        [0x8] u16 eye_direction_y;
+        [0xA] u16 eye_direction_x;
+        [0xC] u16 camera_position_x;
+        [0xE] u16 camera_position_y;
+        [0x10] u16 camera_position_z;
+        [0x12] u16 camera_target_x;
+        [0x14] u16 camera_target_y;
+        [0x16] u16 camera_target_z;
+        [0x18] u16 image_rotation;
+        [0x1A] u16 directional_lighting_vertical_angle;
+        [0x1C] u16 directional_lighting_horizontal_angle;
+        [0x1E] u16 banner_decoration;
+        [0x20] u16 banner_bg;
+        [0x22] u16 banner_frame;
+        [0x24] u16 title_id;
+        [0x26] u16 base_plate;
+        [0x28] u16[5] decorations;
+        [0x32] u16[2] glasses_ids;
+    }
+
+    [Size(0x34)]
+    struct Data32Struct {
+        [0x0] u32 timestamp;
+        [0x4] u32[12] item_ids;
+    }
+
+    [Size(0x52)]
+    struct Data8Struct {
+        [0x0] u8 version;
+        [0x1] u8 expression;
+        [0x2] u8 camera_zoom;
+        [0x3] u8 directional_lighting_color_red;
+        [0x4] u8 directional_lighting_color_green;
+        [0x5] u8 directional_lighting_color_blue;
+        [0x6] u8 directional_lighting_brightness;
+        [0x7] u8 ambient_lighting_color_red;
+        [0x8] u8 ambient_lighting_color_green;
+        [0x9] u8 ambient_lighting_color_blue;
+        [0xA] u8 ambient_lighting_brightness;
+        [0xB] u8 class_job_id;
+        [0xC] Character.CustomizeData customize_data;
+        [0x26] u8[12] item_stain0_ids;
+        [0x32] u8 gear_visibility_flag;
+        [0x33] u8 top_border;
+        [0x34] u8 bottom_border;
+        [0x35] u8 preferred_class_job_id;
+        [0x36] u8[3] active_hours_weekdays;
+        [0x39] u8[3] active_hours_weekends;
+        [0x3C] u8[6] play_styles;
+        [0x42] u8 flags;
+        [0x43] u8 unk43;
+        [0x44] u8 privacy_flags;
+        [0x45] u8[12] item_stain1_ids;
+        [0x51] u8 unk51;
+    }
+}
+
+namespace ContentsFinder {
+    enum LootRule : u8 {
+        normal = 0,
+        greed_only = 1,
+        lootmaster = 2,
+    }
+}
+
+namespace ContentsNote {
+    enum ContentsNoteState : i32 {
+        invalid = 0,
+        requested = 1,
+        loaded = 2,
+    }
+}
+
+namespace InstanceContent {
+    [Size(0x80)]
+    struct ContentUI {
+        [0x0] void* virtual_table;
+        [0x8] UI.Agent.ContentsId lookup_info;
+        [0x10] InstanceContentExcelWrapper instance_content;
+        [0x28] ContentRoulette content_roulette;
+        [0x38] PartyContent party_content;
+        [0x50] PublicContent public_content;
+        [0x68] GoldSaucerContent gold_saucer_content;
+        [Sig("45 33 C0 C6 41 08 00", FirstMatch)] ContentUI* ctor();
+        [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 48 8D 4E ?? 48 8B 5C 24", FirstMatch, Offset(1), Rel32)] bool loadByContentLookupInfo(UI.Agent.ContentsId* lookup_info);
+        [Sig("E9 ?? ?? ?? ?? 44 0F B6 43 ?? 48 8D 51", FirstMatch, Offset(1), Rel32)] bool loadByContentFinderConditionId(u32 row_id);
+        [Sig("E8 ?? ?? ?? ?? 89 BB ?? ?? ?? ?? 8B CD", FirstMatch, Offset(1), Rel32)] ContentInterface* getContentInterface();
+        [Virtual(0)] ContentUI* dtor(u8 free_flags);
+    }
+}
+
+namespace Journal {
+    enum QuestType : i32 {
+        normal_quest = 1,
+        leve_quest = 2,
+    }
+}
+
+namespace MobHunt {
+    [Size(0x14)]
+    struct KillCounts {
+        [0x0] i32[5] counts;
+    }
+}
+
+namespace NpcTrade {
+    [Size(0x90)]
+    struct Item {
+        [0x0] u32 item_id;
+        [0x4] i32 required_quantity;
+        [0x8] u32 icon_id;
+        [0x10] System.String.Utf8String item_name;
+        [0x78] bool want_hq;
+        [0x7A] u16[5] want_materia_ids;
+        [0x84] u8[5] want_materia_grades;
+        [0x89] u8 want_materia_filled_slots;
+        [0x8A] u16 min_collectibility;
+        [0x8C] bool want_collectible;
+        [0x8D] bool stackable;
+    }
+
+    [Size(0x2D8)]
+    struct ItemRequests {
+        [0x0] u8 count;
+        [0x8] Item[5] items;
+    }
+}
+
+namespace NpcYell {
+    bitfield NpcYellFlags : u8 {
+        // Controls the corresponding flag in the `NpcYellBalloon`.
+        [Bit(0)] bool skip_close_checks;
+        // Controls the corresponding flag in the `NpcYellBalloon`. Also checked when formatting NPC name.
+        [Bit(1)] bool skip_range_check;
+        [Bit(2)] bool unk4;
+        // Causes speaker name to be an empty string.
+        [Bit(3)] bool hide_speaker_name;
+        // Indicates that this slot is currently ready to be assigned yell information. If this is set, all
+        // other information in the structure should be considered stale.
+        [Bit(4)] bool slot_available;
+        [Bit(5)] bool unk20;
+        [Bit(6)] bool unk40;
+        // none is none of them
+    }
+
+    [Size(0x118)]
+    struct NpcYellInfo {
+        [0x0] u32 npc_yell_row_id;
+        [0x8] Object.GameObjectId object_id;
+        // In the case of the speaker being an event NPC (i.e., for Gold Saucer announcements), this will
+        // instead contain the ENpcResident row ID.
+        [0x10] u32 name_id;
+        [0x18] System.String.Utf8String name;
+        [0x80] System.String.Utf8String message;
+        [0xE8] u32[4] message_params;
+        // How much longer (in seconds) before the yell should be handled.
+        [0xF8] f32 delay;
+        // How long (in seconds) to display the message as a balloon. Only used if `output_type` includes
+        // `show_balloon`.
+        [0xFC] f32 balloon_time;
+        // How long (in seconds) to display the message in the BattleTalk addon. Only used if `output_type`
+        // includes `show_battle_talk`.
+        [0x100] f32 battle_talk_time;
+        // The method(s) used to show the dialogue to the player.
+        [0x104] NpcYellOutputFlags output_type;
+        // The background style used if `output_type` includes `show_battle_talk`. 6 is linkshell-style. 7 is
+        // dark. 9 and 11 are robot-style (blue). Others are default white.
+        [0x105] u8 battle_talk_style;
+        // The icon ID to show as the BattleTalk portrait if `output_type` includes `show_battle_talk`.
+        [0x108] u32 battle_talk_image;
+        // The index of the character bone to which to attach the `NpcYellBalloon`. Only used if `output_type`
+        // includes `show_balloon`.
+        [0x10C] u8 parent_bone;
+        [0x10E] u16 unk10_e;
+        [0x110] NpcYellFlags flags;
+    }
+
+    bitfield NpcYellOutputFlags : u8 {
+        [Bit(0)] bool print_to_log;
+        [Bit(1)] bool show_balloon;
+        [Bit(2)] bool show_battle_talk;
+        // none is none of them
+    }
+
+    [Size(0x28)]
+    struct NpcYellSlot {
+        [0x0] Object.GameObjectId object_id;
+        // Only valid before this slot is handled.
+        [0x8] u32 npc_yell_row_id;
+        // In the case of the speaker being an event NPC (i.e., for Gold Saucer announcements), this will
+        // instead contain the ENpcResident row ID.
+        [0xC] u32 name_id;
+        [0x10] u32[4] message_params;
+        // How much longer (in seconds) before the yell should be expanded into a `NpcYellInfo`.
+        [0x20] f32 delay;
+        [0x24] bool unk24;
+    }
+}
+
+namespace PlayerState {
+    enum WeeklyBingoTaskStatus : i32 {
+        // Incomplete task.
+        open = 0,
+        // Completed task, but sticker not placed.
+        claimable = 1,
+        // Completed task and sticker placed.
+        claimed = 2,
+    }
+}
+
+namespace PublicInstance {
+    [Size(0x10)]
+    struct Listener : Component.GUI.AtkModuleInterface.AtkEventInterface {
+    }
+}
+
+namespace QuestTodoList {
+    [Size(0x228)]
+    struct TodoStruct {
+        [0x20C] u8 unk20_c;
+        [0x210] STD.StdVector<TrackedQuest> tracked_quests;
+    }
+
+    [Size(0x2FC8)]
+    struct TrackedQuest {
+        [0x0] System.String.Utf8String name;
+        [0x68] System.String.Utf8String id;
+        [0xD0] u8 sequence;
+        [0xD2] u16 quest_id;
+        [0xD4] i32 unk_d4;
+        [0xD8] u32 icon_id;
+        [0xE0] i32 objectives_count;
+        [0xE8] TrackedQuest.QuestObjective[24] objectives;
+        [0x2F78] i32 current_objective;
+        [0x2F7C] i32 unk2_f7_c;
+        [0x2F80] i32 leve_data_id;
+        [0x2F84] i32 leve_assignment_type;
+        [0x2F88] i32 leve_fishing_spot;
+        [0x2F8C] i32 leve_spearfishing_notebook;
+        [0x2F90] u32[8] item_ids;
+        [0x2FB4] i32 item_count;
+        [0x2FB8] u32 leve_levemete_level;
+        [0x2FBC] i32 level_place_name_start_zone;
+        [0x2FC0] u16 class_job_level;
+    }
+}
+
+namespace QuestTodoList.TrackedQuest {
+    [Size(0x1C)]
+    struct LevelEntry {
+        [0x0] u32 place_name_id;
+        [0x4] u32 level_id;
+        [0x8] f32 x;
+        [0xC] f32 y;
+        [0x10] f32 z;
+        [0x14] f32 radius;
+        [0x18] u32 icon;
+    }
+
+    [Size(0x1F0)]
+    struct QuestObjective {
+        [0x0] bool is_todo_checked;
+        [0x8] System.String.Utf8String objective;
+        [0x70] u32 sequence;
+        [0x78] System.String.Utf8String progress_text;
+        [0xE0] i32 todo_arg0;
+        [0xE4] i32 todo_arg1;
+        [0xE8] u32 territory_type_id;
+        [0xEC] u32 map_id;
+        [0xF0] u32 place_name_zone_id;
+        [0xF4] LevelEntry[8] level_entries;
+        [0x1E0] u32 quest_class_job;
+        [0x1E4] i32 todo_arg2;
+        [0x1E8] u8 to_do_param_countable_num;
+    }
+}
+
+namespace QueueInfoState {
+    enum QueueContentType : u8 {
+        position_and_wait_time = 0,
+        thd_and_wait_time = 1,
+        players_and_wait_time = 2,
+        wait_time = 3,
+        none4 = 4,
+        none5 = 5,
+    }
+}
+
+namespace RecipeNote {
+    [Size(0xC)]
+    struct ActiveCraftRequiredIngredient {
+        [0x0] u32 item_id;
+        [0x4] u16 unk4;
+        [0x6] u16 unk6;
+        [0x8] u8 nq_amount;
+        [0x9] u8 hq_amount;
+    }
+
+    [Size(0x86)]
+    struct NoteBookDivisionIdsArray {
+        [0x0] u16[67] note_book_division_ids;
+    }
+
+    [Size(0x2)]
+    struct RecipeCrystal {
+        [0x0] i8 id;
+        [0x1] u8 amount;
+    }
+
+    [Size(0x480)]
+    struct RecipeData {
+        [0x0] RecipeEntry* recipes;
+        [0x8] i32 recipe_count;
+        [0x28] NoteBookDivisionIdsArray[8] note_book_division_ids;
+        [0x468] u16 selected_index;
+        [0x46C] u8 unk46_c;
+        [0x46F] u8[8] num_available_note_book_divisions;
+        [0x477] u8[8] num_available_secret_note_book_divisions;
+    }
+
+    [Size(0x400)]
+    struct RecipeEntry {
+        [0x0] RecipeIngredient[6] ingredients;
+        [0x330] RecipeCrystal[2] crystals;
+        [0x338] System.String.Utf8String item_name;
+        [0x3A0] u32 icon_id;
+        [0x3A4] u32 item_id;
+        [0x3A8] u32 status_required;
+        [0x3AC] u32 item_required;
+        [0x3B0] bool requires_meister_soul_crystal;
+        [0x3B2] u16 recipe_id;
+        [0x3B4] u16 difficulty;
+        [0x3B8] u32 quality;
+        [0x3BC] u16 durability;
+        [0x3BE] u8 material_quality_factor;
+        [0x3C0] u16 required_craftsmanship;
+        [0x3C2] u16 required_control;
+        [0x3C4] u16 quick_synth_craftsmanship;
+        [0x3C6] u16 quick_synth_control;
+        [0x3C8] u16 secret_recipe_book;
+        [0x3CC] u32 required_quality;
+        [0x3D0] u16 suggested_craftsmanship;
+        [0x3D2] u16 conditions_flag;
+        [0x3D6] u8 amount_result;
+        [0x3D7] u8 craft_type;
+        [0x3D8] u8 class_job_level;
+        [0x3DA] u8 stars;
+        [0x3DE] u8 flags;
+        [0x3DF] u8 flags2;
+        [0x3E0] u32 number;
+        [0x3E4] u16 recipe_level_table_id;
+        [0x3E6] u16 patch_number;
+        [0x3F0] u16 display_priority;
+        [0x3F2] u16 max_adjustable_job_level;
+        [0x3F4] u16 difficulty_factor;
+        [0x3F6] u16 quality_factor;
+        [0x3F8] u16 durability_factor;
+    }
+
+    [Size(0x88)]
+    struct RecipeIngredient {
+        [0x0] u16 unk0;
+        [0x2] u16 unk2;
+        [0x8] u8 nq_count;
+        [0x9] u8 hq_count;
+        [0x10] System.String.Utf8String name;
+        [0x78] u32 item_id;
+        [0x7C] u32 icon_id;
+        [0x82] u8 amount;
+        [0x83] u8 flags;
+    }
+}
+
+namespace Telepo {
+    [Size(0x28)]
+    struct SelectUseTicketInvoker {
+        [0x10] Telepo* telepo;
+        [0x1C] u32 addon_id;
+        [Sig("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 80 79 ?? 00 41 0F B6 F8 8B F2", FirstMatch)] bool teleportWithTickets(u32 aetheryte_id, u8 sub_index);
+    }
+}

@@ -1,0 +1,23 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Graphics.Vfx;
+
+[Size(0x1E0)]
+struct VfxData {
+    [0x1C0] VfxDataListenner* data_listenner;
+}
+
+[Size(0x8)]
+struct VfxDataListenner {
+}
+
+[Size(0xD0)]
+struct VfxResourceInstance {
+    [0x8] VfxResourceObject* vfx_resource_object;
+}
+
+[Size(0x20)]
+struct VfxResourceObject {
+    [0x18] System.Resource.Handle.ApricotResourceHandle* apricot_resource_handle;
+}

@@ -1,0 +1,18 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace SQEX.CDev.Engine.Sd.Driver;
+
+[Size(0x20)]
+struct SoundController : SdMemoryAllocator {
+    // The id the driver finds the sound by, the result of virtual function 63 of the sound.
+    [0x8] i32 sound_id;
+    [0x10] isize unk10;
+    [0x18] isize shared_mutex;
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 41 8B BE", FirstMatch, Offset(1), Rel32)] void setPosition(Common.Math.Vector4* position);
+    [Sig("E8 ?? ?? ?? ?? 48 8D 4B 38 40 84 FF", FirstMatch, Offset(1), Rel32)] void setIsNonPositional(bool is_non_positional);
+    // Sets `layout_volume` of the sound. Used by the layout sounds.
+    [Sig("E8 ?? ?? ?? ?? 48 8D 55 88 49 8D 4E 08", FirstMatch, Offset(1), Rel32)] void setLayoutVolume(f32 volume);
+    // Calls `setLevel` on the sound.
+    [Sig("E8 ?? ?? ?? ?? 8B 96 D4 00 00 00 48 8B CD", FirstMatch, Offset(1), Rel32)] void setLevel(u32 level);
+}

@@ -1,0 +1,40 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Component.SteamApi.Interface;
+
+// A concrete type of a `steam_interface_context` for accessing the pointer to the `ISteamApps`
+// instance used by the game. This struct does not provide or define any API surface related to this
+// interface.
+[Size(0x18)]
+struct ISteamApps : SteamInterfaceContext {
+    // Gets the instance of the context wrapper used for managing the `ISteamApps` API.
+    [Sig("48 8D 0D ?? ?? ?? ?? FF 15 ?? ?? ?? ?? C7 44 24", FirstMatch, Offset(3), Rel32)] static ISteamApps instance;
+}
+
+// A concrete type of a `steam_interface_context` for accessing the pointer to the `ISteamFriends`
+// instance used by the game. This struct does not provide or define any API surface related to this
+// interface.
+[Size(0x18)]
+struct ISteamFriends : SteamInterfaceContext {
+    // Gets the instance of the context wrapper used for managing the `ISteamFriends` API.
+    [Sig("48 8D 0D ?? ?? ?? ?? 48 8B 10 48 89 93", FirstMatch, Offset(3), Rel32)] static ISteamFriends instance;
+}
+
+// A concrete type of a `steam_interface_context` for accessing the pointer to the `ISteamUser`
+// instance used by the game. This struct does not provide or define any API surface related to this
+// interface.
+[Size(0x18)]
+struct ISteamUser : SteamInterfaceContext {
+    // Gets the instance of the context wrapper used for managing the `ISteamUser` API.
+    [Sig("48 8D 0D ?? ?? ?? ?? FF 15 ?? ?? ?? ?? 48 8D 54 24 ?? 48 8B 08", FirstMatch, Offset(3), Rel32)] static ISteamUser instance;
+}
+
+// A concrete type of a `steam_interface_context` for accessing the pointer to the `ISteamUtils`
+// instance used by the game. This struct does not provide or define any API surface related to this
+// interface.
+[Size(0x18)]
+struct ISteamUtils : SteamInterfaceContext {
+    // Gets the instance of the context wrapper used for managing the `ISteamUtils` API.
+    [Sig("48 8D 0D ?? ?? ?? ?? FF 15 ?? ?? ?? ?? 48 8B 08 48 8B 01 48 83 C4 28 48 FF A0 10 01 00 00", FirstMatch, Offset(3), Rel32)] static ISteamUtils instance;
+}

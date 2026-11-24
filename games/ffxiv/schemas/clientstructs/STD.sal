@@ -1,0 +1,142 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace STD;
+
+// A `List`-like view for `std::basic_string`. The object must be pinned on use, if the instance of
+// this struct itself is allocated in heap.
+struct StdBasicString<T> {
+    u8[16] buffer_bytes;
+    u64 u_long_length;
+    u64 u_long_capacity;
+}
+
+struct StdDeque<T> {
+    ContainerInterface.ContainerProxy<T>* container_base;
+    T** map;
+    u64 map_size;
+    u64 my_off;
+    u64 my_size;
+}
+
+struct StdLinkedList<T> {
+    StdLinkedList.Node<T>* end;
+    StdLinkedList.Node<T>* start;
+    u32 count;
+}
+
+struct StdList<T> {
+    ContainerInterface.IStdList.Node<T>* head;
+    u64 size;
+}
+
+struct StdList2<T> {
+    ContainerInterface.IStdList.Node<T>* head;
+    u64 size;
+}
+
+struct StdMap<TKey, TValue> {
+    Helper.RedBlackTree<StdPair<TKey, TValue>, TKey> tree;
+}
+
+struct StdMap2<TKey, TValue> {
+    Helper.RedBlackTree<StdPair<TKey, TValue>, TKey> tree;
+}
+
+// A `ValueTuple`-like view for `std::pair`.
+struct StdPair<T1, T2> {
+    T1 item1;
+    T2 item2;
+}
+
+struct StdSet<T> {
+    Helper.RedBlackTree<T, T> tree;
+}
+
+struct StdSet2<T> {
+    Helper.RedBlackTree<T, T> tree;
+}
+
+struct StdSpan<T> {
+    T* begin;
+    isize count;
+}
+
+struct StdSpanReadOnly<T> {
+    T* begin;
+    isize count;
+}
+
+// A `StdBasicString` using `Default`, `System` and `Byte`. Encoding contained within is assumed to be
+// the system default encoding.
+[Size(0x20)]
+struct StdString {
+    // One of buffer_ptr, buffer
+    [0x0] StdString.BufferUnion Buffer;
+    // This string's length, as a `UInt64`.
+    [0x10] u64 length;
+    [0x18] u64 capacity;
+}
+
+struct StdUnorderedMap<TKey, TValue> {
+    Helper.HashTable<StdPair<TKey, TValue>, TKey> with_ops;
+}
+
+// A `StdVector` using `Default` and `StdOps`.
+struct StdVector<T> {
+    // The pointer to the first element of the vector. `null` if empty.
+    T* first;
+    // The pointer to next of the last element of the vector. `null` if empty.
+    T* last;
+    // The pointer to the end of the memory allocation. `null` if empty.
+    T* end;
+}
+
+// A `List`-like view for `std::vector`.
+struct StdVector2<T> {
+    // The pointer to the first element of the vector. `null` if empty.
+    T* first;
+    // The pointer to next of the last element of the vector. `null` if empty.
+    T* last;
+    // The pointer to the end of the memory allocation. `null` if empty.
+    T* end;
+}
+
+// A `StdBasicString` using `Default`, `Unicode` and `Byte`. Encoding contained within is assumed to be
+// UTF-16.
+[Size(0x20)]
+struct StdWString {
+    [0x0] StdBasicString<u16> basic_string;
+}
+
+[Size(0x24)]
+struct Tm {
+    [0x0] i32 tm_sec;
+    [0x4] i32 tm_min;
+    [0x8] i32 tm_hour;
+    [0xC] i32 tm_mday;
+    [0x10] i32 tm_mon;
+    [0x14] i32 tm_year;
+    [0x18] i32 tm_wday;
+    [0x1C] i32 tm_yday;
+    [0x20] i32 tm_isdst;
+}
+
+namespace StdLinkedList {
+    struct Enumerator<T> {
+        Node<T>* current;
+    }
+
+    struct Node<T> {
+        T value;
+        Node<T>* next;
+        Node<T>* previous;
+    }
+}
+
+namespace StdString {
+    union BufferUnion {
+        u8* buffer_ptr;
+        u8[16] buffer;
+    }
+}

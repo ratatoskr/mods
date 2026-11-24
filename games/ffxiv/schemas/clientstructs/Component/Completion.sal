@@ -1,0 +1,68 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Component.Completion;
+
+[Size(0xC0)]
+struct CategoryData {
+    [0x8] STD.StdVector<cstring> completion_texts;
+    [0x20] STD.StdVector<CategoryData.CompletionDataStruct> completion_data;
+    [0x50] Client.System.String.Utf8String unk50;
+    // Zero-indexed (Group - 1)
+    [0xB8] u8 group;
+    // Index of `sheet_names`
+    [0xB9] u8 sheet_name_index;
+    [0xBA] i16 unk_ba;
+    [Sig("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 48 8D 05 ?? ?? ?? ?? 48 8B F1 48 89 01 41 0F B6 F8", FirstMatch)] CategoryData* ctor(u8 group, u8 sheet_name_index);
+    [Sig("40 57 48 8B 79 28", FirstMatch)] void sortEntries();
+}
+
+[Size(0x378)]
+struct CompletionModule : CompletionModuleInterface {
+    // Inherited parent class accessor for `FixedSheetInterface`
+    [0x8] Text.TextModuleInterface.FixedSheetInterface fixed_sheet_interface;
+    // Inherited parent class accessor for `ExcelLanguageEvent`
+    [0x10] Excel.ExcelLanguageEvent excel_language_event;
+    [0x18] Excel.ExcelModuleInterface* excel_module_interface;
+    [0x20] Client.UI.Misc.RaptureTextModule* rapture_text_module;
+    [0x28] bool unk28;
+    [0x29] u8 unk29;
+    [0x30] STD.StdVector<CategoryData*> category_data;
+    [0x48] STD.StdVector<cstring> category_names;
+    [0x60] STD.StdVector<CategoryData.CompletionDataStruct> unk60;
+    [0x78] STD.StdVector<u8> unk78;
+    [0xD0] Client.System.String.Utf8String unk_d0;
+    [0x138] Client.System.String.Utf8String unk138;
+    [0x1A0] Client.System.String.Utf8String unk1_a0;
+    [0x208] Client.System.String.Utf8String unk208;
+    [0x278] STD.StdVector<Client.System.String.Utf8String> companion_names;
+    [0x290] STD.StdVector<CompletionModule.SheetName> sheet_names;
+    [0x2A8] Client.System.String.Utf8String open_icon_macro;
+    [0x310] Client.System.String.Utf8String close_icon_macro;
+    [Sig("E8 ?? ?? ?? ?? 41 8B 56 ?? 85 D2 7E", FirstMatch, Offset(1), Rel32)] void addCompletionEntry(i64 group_index, u32 row_id, cstring item_text, cstring group_title, u16 item_key);
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 3C 23", FirstMatch, Offset(1), Rel32)] CategoryData* addCategoryData(i64 group_index, cstring item_text, cstring group_title, CategoryData* category_data);
+    [Sig("E8 ?? ?? ?? ?? 48 8D 8D ?? ?? ?? ?? E8 ?? ?? ?? ?? 4C 8B 64 24 ?? 4C 8B 7C 24", FirstMatch, Offset(1), Rel32)] void clearCompletionData();
+    [Sig("E8 ?? ?? ?? ?? 49 8D 8E ?? ?? ?? ?? 0F 28 CE", FirstMatch, Offset(1), Rel32)] void update(Client.System.String.Utf8String* completion_sheet_name, Client.System.String.Utf8String* open_icon_macro, Client.System.String.Utf8String* close_icon_macro, isize a5);
+    [Virtual(5)] i32 getSelection(CategoryData.CompletionDataStruct* data_structs, i32 index, Client.System.String.Utf8String* output_string, Client.System.String.Utf8String* output_display_string);
+}
+
+[Size(0x8)]
+struct CompletionModuleInterface {
+}
+
+namespace CategoryData {
+    [Size(0x8)]
+    struct CompletionDataStruct {
+        [0x0] u16 group;
+        [0x2] u16 key;
+        [0x4] u32 row_id;
+    }
+}
+
+namespace CompletionModule {
+    [Size(0x70)]
+    struct SheetName {
+        [0x0] Client.System.String.Utf8String name;
+        [0x68] bool is_noun;
+    }
+}

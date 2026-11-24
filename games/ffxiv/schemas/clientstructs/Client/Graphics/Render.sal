@@ -1,0 +1,825 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Graphics.Render;
+
+[Size(0x18E00)]
+struct BGInstancingRenderer : BaseRenderer {
+    // Single task, scheduled at the start of every Manager.RenderView and waited on in Render.
+    [0x181F8] System.Framework.JobListNoArg prepare_job_list;
+    [0x18538] bool wireframe;
+}
+
+[Size(0x8)]
+struct BaseRenderer {
+}
+
+[Size(0x290)]
+struct Camera : ReferencedClassBase {
+    [0x10] Common.Math.Matrix4x4 view_matrix;
+    [0x50] Common.Math.Matrix4x4 projection_matrix2;
+    [0x90] Common.Math.Vector3 origin;
+    [0x1A0] Common.Math.Matrix4x4 projection_matrix;
+    [0x1E8] f32 fo_v;
+    [0x1EC] f32 fo_v_2;
+    [0x1F0] f32 aspect_ratio;
+    [0x1F4] f32 near_plane;
+    [0x1F8] f32 far_plane;
+    [0x1FC] f32 ortho_height;
+    [0x200] bool is_ortho;
+    [0x203] bool standard_z;
+    [0x204] bool finite_far_plane;
+}
+
+[Size(0x480)]
+struct CloudRenderer : BaseRenderer {
+    [0x110] ShadowCamera shadow_camera;
+}
+
+[Size(0x70)]
+struct Decal : ReferencedClassBase {
+    [0x18] Transform* transform;
+}
+
+// Draws decals into the G-buffers, sorted, each with a draw index that wraps at 100.
+[Size(0x230)]
+struct DecalRenderer : BaseRenderer {
+    [0x148] JobSystem decal_jobs;
+    // Decals registered for this frame.
+    [0x208] STD.StdVector<Decal*> decals;
+}
+
+// Value of `dlss_quality`. 1 to 6 select an NGX quality mode, other values make `updateSettings` fail.
+enum DlssQualityPreset : u8 {
+    // Picks a mode from the output pixel count: DLAA below 2,073,600 (1920x1080), Quality up to 3,686,400
+    // (2560x1440), Performance up to 8,294,400 (3840x2160), Ultra Performance above.
+    automatic = 0,
+    dlaa = 1,
+    ultra_quality = 2,
+    quality = 3,
+    balanced = 4,
+    performance = 5,
+    ultra_performance = 6,
+}
+
+[Size(0x68)]
+struct FigureRenderer : BaseRenderer {
+}
+
+[Size(0x40)]
+struct Footprint {
+    [0x8] Footprint.Renderer* footprint_renderer;
+}
+
+[Size(0xD8)]
+struct GraphicsConfig {
+    [0x8] u32 update_flags;
+    [0xC] u8 gamma;
+    [0x10] bool lod_type;
+    [0x12] bool shadow_lod;
+    [0x13] bool shadow_bg_lod;
+    // Gates the occlusion tests in `CullingManager`. Not tied to a ConfigOption, set on load.
+    [0x14] bool occlusion_culling;
+    [0x15] bool chara_wetness;
+    [0x16] bool chara_outline;
+    [0x17] bool parallax_occlusion;
+    [0x18] bool tessellation;
+    [0x20] u8 reflection_type;
+    [0x21] bool glare_representation;
+    [0x22] u8 grass_quality;
+    [0x23] u8 ssao;
+    [0x24] u8 glare;
+    [0x25] bool glare_strong;
+    [0x26] bool depth_of_field;
+    [0x28] bool radial_blur;
+    [0x29] bool vignetting;
+    [0x2C] u32 anti_aliasing;
+    [0x30] u8 texture_filter_quality;
+    [0x31] u8 texture_anisotropic_quality;
+    [0x33] bool translucent_quality;
+    [0x34] u8 shadow_visibility_type_flags;
+    [0x35] u8 shadow_soft_shadow_type;
+    [0x36] u8 shadow_texture_size_type;
+    [0x37] u8 shadow_cascade_count_type;
+    [0x39] u8 target_circle_type;
+    [0x3A] u8 target_line_type;
+    [0x3B] u8 link_line_type;
+    [0x40] u8 chara_light;
+    [0x41] u8 shadow_light_valid_type;
+    // Set when the DynamicRezoType option is not 0.
+    [0x44] u8 dynamic_rezo_enable;
+    // Enables render scaling together with `dynamic_rezo_enable` or DLSS. While false the render height
+    // stays at `max_render_height` and DLSS uses DLAA. Set from the flags of the scene. False when a scene
+    // starts.
+    [0x45] bool dynamic_rezo_active;
+    [0x46] bool dynamic_rezo_enable_cut_scene;
+    [0x49] u8 dynamic_rezo_threshold;
+    [0x4C] f32 graphics_rezo_scale;
+    // The option value plus one: 1 = AMD FSR, 2 = NVIDIA DLSS. Reset to 1 without `IsDlssSupported`.
+    [0x54] u8 graphics_rezo_upscale_type;
+    // Quality mode of `updateSettings`. Set to `balanced` when `graphics_rezo_upscale_type` changes.
+    // Ignored while `dynamic_rezo_active` is false.
+    [0x55] DlssQualityPreset dlss_quality;
+    [0x56] bool grass_enable_dynamic_interference;
+    [0x65] bool housing_ssao_enable;
+    [0x66] bool portrait_preview;
+    [0x67] bool portrait_mode;
+    [0x6A] bool is_indoor;
+    [0x78] f32 jitter_multiplier;
+    [0x80] u64 pending_event_flags;
+    [0x88] u64 event_flags;
+    [Sig("48 8B 05 ?? ?? ?? ?? 0F B6 8B ?? ?? ?? ?? 88 48", FirstMatch, Offset(3), Rel32)] static GraphicsConfig* instance;
+}
+
+[Size(0x7A20)]
+struct GrassRenderer : BaseRenderer {
+}
+
+[Size(0x130)]
+struct Light : ReferencedClassBase {
+    [0x18] LightFlags light_flags;
+    [0x1C] LightShape light_shape;
+    [0x20] Transform* transform;
+    [0x28] Common.Math.Vector4 color_intensity;
+    [0x40] Common.Math.AxisAlignedBounds max_range;
+    [0x60] f32 shadow_plane_near;
+    [0x64] f32 shadow_plane_far;
+    [0x68] LightFalloffType falloff_type;
+    [0x70] Common.Math.Vector2 flat_light_skew_angle_degrees;
+    [0x80] f32 falloff_factor;
+    [0x84] f32 spot_light_angle_degrees;
+    [0x88] f32 angular_falloff_degrees;
+    [0x8C] f32 range;
+    [0x90] f32 character_shadow_range;
+    // Set by UpdateCulling based on ComputeAxisAlignedBounds
+    [0xA0] Common.Math.AxisAlignedBounds culling_bounds;
+    // Set by UpdateCulling based on applying this light's transform to MaxRange
+    [0xC0] Common.Math.AxisAlignedBounds range_bounds;
+    [0xE0] bool enable_ssao_maybe;
+    [0xE8] f32 shadow_bias_maybe;
+    [0xEC] f32 shadow_depth_near;
+    [0xF0] f32 shadow_depth_far;
+    [0xF4] f32 shadow_start_dist;
+    [0xF8] f32 shadow_end_dist;
+    [0x100] f32 light_fade;
+    [0x104] f32 light_fade_length;
+    [0x110] f32 light_select;
+    [0x120] Kernel.Texture* projected_texture;
+}
+
+// How the brightness of light hitting a surface varies with the distance to the surface.
+enum LightFalloffType : u32 {
+    linear = 0,
+    quadratic = 1,
+    cubic = 2,
+}
+
+bitfield LightFlags : u32 {
+    [Bit(0)] bool specular_highlights;
+    [Bit(1)] bool dynamic_shadows;
+    [Bit(2)] bool character_shadows;
+    [Bit(3)] bool object_shadows;
+    [Bit(4)] bool time_adjusted;
+    [Bit(5)] bool ssao_omnishadows;
+}
+
+[Size(0xE0)]
+struct LightShaftRenderer : BaseRenderer {
+}
+
+enum LightShape : u32 {
+    // A uniform ambient light with no distinct shape that applies everywhere. Only seems to function in
+    // exterior areas.
+    world_light = 1,
+    // A light that emits from its location equally in all directions.
+    point_light = 2,
+    // A light that emits from its location in a cone along its positive Z axis.
+    spot_light = 3,
+    // A light that emits from its location in a parallelogram along its positive Z axis.
+    flat_light = 4,
+}
+
+[Size(0x38390)]
+struct Manager {
+    [0x8] View[87] views;
+    [0x87F8] JobSystem manager_job_system;
+    [0x88B8] PostBoneDeformerBaseUpdater post_bone_deformer_base_updater;
+    [0x10908] ShaderManager shader_manager;
+    [0x10AF8] ModelRenderer model_renderer;
+    [0x10F40] BGInstancingRenderer bg_instancing_renderer;
+    [0x29D40] TerrainRenderer terrain_renderer;
+    [0x2E160] DecalRenderer decal_renderer;
+    [0x2E390] WaterRenderer water_renderer;
+    [0x2E910] VerticalFogRenderer vertical_fog_renderer;
+    [0x2EA68] LightShaftRenderer light_shaft_renderer;
+    [0x2EB50] GrassRenderer grass_renderer;
+    [0x36570] StarRenderer star_renderer;
+    [0x36640] CloudRenderer cloud_renderer;
+    [0x36AC0] WeatherRenderer rain_renderer;
+    [0x36BB0] WeatherRenderer unk_weather_renderer;
+    [0x36CA0] WeatherRenderer dust_renderer;
+    [0x36D90] ShadowMaskRenderer shadow_mask_renderer;
+    [0x36F38] FigureRenderer figure_renderer;
+    [0x370E8] Footprint footprint;
+    [0x37128] Raindrop raindrop;
+    [0x3834C] u32 initialization_flags;
+    [0x38358] bool is3_d_rendering_disabled;
+    [Sig("48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 74 ?? 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 33 C9", FirstMatch, Offset(3), Rel32)] static Manager* instance;
+    [Sig("40 53 57 41 54 41 55 48 83 EC ?? 65 48 8B 04 25", FirstMatch)] void render();
+    [Sig("E8 ?? ?? ?? ?? FF C5 49 83 C6 ?? BA", FirstMatch, Offset(1), Rel32)] void renderView(bool enabled, Manager.RenderViews view_index);
+}
+
+// Represents a renderer material. This structure is the header of a memory block of size
+// sizeof(Material) + sizeof(uint) * ShaderKeyCount + sizeof(Material.TextureEntry) * TextureCount. On
+// construction, ShaderKeyCount is determined by `material_key_count`, and TextureCount is the number
+// of `samplers` with `slot` == `sampler_slot_material`.
+[Size(0x58)]
+struct Material : ReferencedClassBase {
+    // The resource handle this material was instantiated from. Its `material` will be the current
+    // structure.
+    [0x10] System.Resource.Handle.MaterialResourceHandle* material_resource_handle;
+    [0x18] u32 shader_flags;
+    // Each of these values corresponds to a key in `material_keys`, in the same order.
+    [0x20] u32* shader_key_values;
+    [0x28] Kernel.ConstantBuffer* material_parameter_c_buffer;
+    [0x48] Material.TextureEntry* textures;
+    [0x50] u16 texture_count;
+}
+
+[Size(0x180)]
+struct Model : ReferencedClassBase {
+    [0x18] Model* previous;
+    [0x20] Model* next;
+    [0x30] System.Resource.Handle.ModelResourceHandle* model_resource_handle;
+    [0x40] Skeleton* skeleton;
+    [0x48] ModelRenderer.Callback* render_model_callback;
+    [0x50] ModelRenderer.Callback* render_material_callback;
+    [0x58] void** bone_list;
+    [0x60] i32 bone_count;
+    [0x98] Material** materials;
+    [0xA0] i32 material_count;
+    [0xAC] u32 enabled_attribute_index_mask;
+    [0xC8] u32 enabled_shape_key_index_mask;
+    [0x118] u32 slot_index;
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 29 48 8B 13", FirstMatch, Offset(1), Rel32)] bool modelDrawInit(System.Resource.Handle.ModelResourceHandle* mdl_handle, ModelRenderer.Callback* render_model_callback, ModelRenderer.Callback* render_material_callback);
+    [Sig("E8 ?? ?? ?? ?? 66 41 3B C7 74 ?? 41 83 FE", FirstMatch, Offset(1), Rel32)] i16 getAttributeIndex(cstring attribute_name);
+    [Sig("E8 ?? ?? ?? ?? 66 41 3B C4 74 ?? 0F B6 C8 8B D7", FirstMatch, Offset(1), Rel32)] i16 getShapeIndex(cstring shape_name);
+}
+
+[Size(0x448)]
+struct ModelRenderer : BaseRenderer {
+    [0x8] u32[23] constant_sampler_ids;
+    [0x68] Kernel.ShaderSceneKey[20] scene_keys;
+    [0x1A8] Kernel.ShaderSubViewKey[5] sub_view_keys;
+    [0x1F8] System.Resource.Handle.ShaderCodeResourceHandle* character_selection_model_vs;
+    [0x200] System.Resource.Handle.ShaderCodeResourceHandle* character_selection_model_ps;
+    [0x208] System.Resource.Handle.TextureResourceHandle* dither_texture;
+    [0x210] System.Resource.Handle.ShaderPackageResourceHandle* iris_shader_package;
+    [0x218] System.Resource.Handle.ShaderPackageResourceHandle* character_glass_shader_package;
+    [0x220] System.Resource.Handle.ShaderPackageResourceHandle* character_transparency_shader_package;
+    [0x228] System.Resource.Handle.ShaderPackageResourceHandle* character_tattoo_shader_package;
+    [0x230] System.Resource.Handle.ShaderPackageResourceHandle* character_occlusion_shader_package;
+    [0x350] System.Resource.Handle.ShaderCodeResourceHandle* skining_connection_vertex_cs;
+    [0x388] JobSystem job_system;
+    [Sig("E8 ?? ?? ?? ?? 40 38 75 ?? 74 ?? 8B 45", FirstMatch, Offset(1), Rel32)] u16* onRenderMaterial(ModelRenderer.OnRenderMaterialParams2* param, Material* material, u32 material_index);
+}
+
+[Size(0x190)]
+struct OffscreenRenderingManager {
+    [0xC8] Camera*[8] cameras;
+    [0x108] Kernel.Texture*[8] background_textures;
+    [0x148] System.Resource.Handle.ShaderPackageResourceHandle* primitive_vs_handle;
+    [0x150] System.Resource.Handle.ShaderPackageResourceHandle* primitive_ps_handle;
+    [0x158] Kernel.ShaderPackage* primitive_vs_package;
+    [0x160] Kernel.ShaderPackage* primitive_ps_package;
+    [Sig("48 89 98 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? E8 ?? ?? ?? ??", FirstMatch, Offset(10), Rel32)] static OffscreenRenderingManager* instance;
+}
+
+[Size(0x230)]
+struct PartialSkeleton : Animation.IAnimationControllerListener {
+    [0x20] Havok.Animation.Playback.SampleAndBlend.hkaSampleBlendJob[2] jobs;
+    [0x120] i16 connected_parent_bone_index;
+    [0x122] i16 connected_bone_index;
+    [0x138] u64[2] havok_animated_skeletons;
+    [0x148] u64[4] havok_poses;
+    [0x168] Skeleton* skeleton;
+    [0x188] System.Resource.Handle.SkeletonParamResourceHandle* skeleton_param_resource_handle;
+    [0x190] System.Resource.Handle.SkeletonResourceHandle* skeleton_resource_handle;
+    [0x198] STD.StdSet<Animation.AnimationController*> animation_controllers;
+    [0x1A8] STD.StdSet<Animation.AnimationController*> animation_controllers_easing_out;
+    [0x1B8] STD.StdSet<Animation.AnimationController*> animation_controllers_eased_out;
+}
+
+[Size(0x8050)]
+struct PostBoneDeformerBaseUpdater {
+}
+
+[Size(0x40)]
+struct Raindrop {
+    [0x8] Raindrop.Renderer* raindrop_renderer;
+}
+
+[Size(0x740)]
+struct RenderTargetManager : Kernel.Notifier {
+    // | Index | Type | | ----- | ------------------------------------ | | 0 | RGB: World-space normal map
+    // / A: ??? | | 1 | ??? | | 2 | RGB: Diffuse map / A: ??? | | 3 | ??? | | 4 | ??? |
+    [0x20] Kernel.Texture*[5] g_buffers;
+    [0x48] Kernel.Texture* unk48;
+    [0x50] Kernel.Texture* shadow;
+    [0x58] Kernel.Texture* light_diffuse;
+    [0x60] Kernel.Texture* light_specular;
+    [0x68] Kernel.Texture* unk68;
+    [0x70] Kernel.Texture* depth_stencil;
+    [0x78] Kernel.Texture* unk78;
+    [0x80] Kernel.Texture* unk80;
+    [0x88] Kernel.Texture* unk88;
+    [0x90] Kernel.Texture* unk90;
+    [0x98] Kernel.Texture*[5] semitransparent_g_buffers;
+    [0xC0] Kernel.Texture* unk_c0;
+    [0xC8] Kernel.Texture* semitransparent_shadow;
+    [0xD0] Kernel.Texture* semitransparent_light_diffuse;
+    [0xD8] Kernel.Texture* semitransparent_light_specular;
+    [0xE0] Kernel.Texture* unk_e0;
+    [0xE8] Kernel.Texture* unk_e8;
+    [0xF0] Kernel.Texture* unk_f0;
+    [0xF8] Kernel.Texture* unk_f8;
+    [0x100] Kernel.Texture* unk100;
+    [0x108] Kernel.Texture* unk108;
+    [0x110] Kernel.Texture* view_position;
+    [0x118] Kernel.Texture* unk118;
+    [0x120] Kernel.Texture* unk120;
+    [0x128] Kernel.Texture* unk128;
+    [0x130] Kernel.Texture* unk130;
+    [0x138] Kernel.Texture* unk138;
+    [0x140] Kernel.Texture* unk140;
+    [0x148] Kernel.Texture* unk148;
+    [0x150] Kernel.Texture* unk150;
+    [0x158] Kernel.Texture* unk158;
+    [0x160] Kernel.Texture*[4] unk160;
+    [0x180] Kernel.Texture* unk180;
+    [0x188] Kernel.Texture*[20] unk188;
+    [0x228] Kernel.Texture* unk228;
+    [0x230] Kernel.Texture*[4] unk230;
+    [0x250] Kernel.Texture* unk250;
+    [0x258] Kernel.Texture* unk258;
+    [0x260] Kernel.Texture* unk260;
+    [0x268] Kernel.Texture* unk268;
+    [0x270] Kernel.Texture* unk270;
+    [0x278] Kernel.Texture* unk278;
+    [0x280] Kernel.Texture* unk280;
+    [0x288] Kernel.Texture* unk288;
+    [0x290] Kernel.Texture* unk290;
+    [0x298] Kernel.Texture* unk298;
+    [0x2A0] Kernel.Texture*[3] unk2_a0;
+    [0x2B8] Kernel.Texture*[2] unk2_b8;
+    // Use `getCharaViewTexture` instead.
+    [0x2C8] Kernel.Texture*[8] chara_view_textures;
+    [0x308] Kernel.Texture*[5] chara_view_g_buffers;
+    [0x330] Kernel.Texture* unk330;
+    [0x338] Kernel.Texture* unk338;
+    [0x340] Kernel.Texture* unk340;
+    [0x348] Kernel.Texture* unk348;
+    [0x350] Kernel.Texture* unk350;
+    [0x358] Kernel.Texture* unk358;
+    [0x360] Kernel.Texture* unk360;
+    [0x368] Kernel.Texture* unk368;
+    [0x370] Kernel.Texture* tone_adjust_source;
+    [0x378] Kernel.Texture*[5] chara_view_semitransparent_g_buffers;
+    [0x3A0] Kernel.Texture* unk3_a0;
+    [0x3A8] Kernel.Texture* unk3_a8;
+    [0x3B0] Kernel.Texture* unk3_b0;
+    [0x3B8] Kernel.Texture* unk3_b8;
+    [0x3C0] Kernel.Texture* unk3_c0;
+    [0x3C8] Kernel.Texture* unk3_c8;
+    [0x3D0] Kernel.Texture* unk3_d0;
+    [0x3D8] Kernel.Texture* unk3_d8;
+    [0x3E0] Kernel.Texture* unk3_e0;
+    [0x3E8] Kernel.Texture*[2] unk3_e8;
+    [0x3F8] Kernel.Texture*[2] unk3_f8;
+    [0x408] Kernel.Texture*[3] unk408;
+    [0x420] Kernel.Texture* unk420;
+    [0x428] u32 resolution_width;
+    [0x42C] u32 resolution_height;
+    [0x430] u32 shadow_map_width;
+    [0x434] u32 shadow_map_height;
+    [0x438] u32 near_shadow_map_width;
+    [0x43C] u32 near_shadow_map_height;
+    [0x440] u32 far_shadow_map_width;
+    [0x444] u32 far_shadow_map_height;
+    [0x448] bool unk_bool_1;
+    [0x45E] u8 depth_of_field_source_index;
+    [0x4A8] Kernel.Texture* unk4_a8;
+    [0x4B0] Kernel.Texture* unk4_b0;
+    [0x4C0] Kernel.Texture* unk4_c0;
+    [0x4C8] Kernel.Texture* unk4_c8;
+    [0x4D0] Kernel.Texture* unk4_d0;
+    [0x4D8] Kernel.Texture* unk4_d8;
+    [0x4E0] Kernel.Texture* unk4_e0;
+    [0x4E8] Kernel.Texture* unk4_e8;
+    [0x528] Kernel.Texture* unk528;
+    [0x530] Kernel.Texture* unk530;
+    [0x540] Kernel.Texture* unk540;
+    [0x548] Kernel.Texture* unk548;
+    [0x550] Kernel.Texture* unk550;
+    [0x558] Kernel.Texture* unk558;
+    [0x560] Kernel.Texture* unk560;
+    [0x568] Kernel.Texture* unk568;
+    [0x570] Kernel.Texture* swap_chain_back_buffer;
+    [0x578] Kernel.Texture* swap_chain_depth_stencil;
+    [0x580] Kernel.Texture* unk580;
+    [0x588] Kernel.Texture* unk588;
+    [0x590] Kernel.Texture* unk590;
+    [0x598] Kernel.Texture* unk598;
+    [0x5A0] Kernel.Texture* unk5_a0;
+    [0x5A8] Kernel.Texture* unk5_a8;
+    [0x5B0] Kernel.Texture* unk5_b0;
+    [0x5B8] Kernel.Texture* unk5_b8;
+    [0x5C0] Kernel.Texture* unk5_c0;
+    [0x5C8] Kernel.Texture* unk5_c8;
+    [0x5D0] Kernel.Texture* unk5_d0;
+    [0x5D8] Kernel.Texture* unk5_d8;
+    [0x5E0] Kernel.Texture* unk5_e0;
+    [0x5E8] Kernel.Texture* unk5_e8;
+    [0x5F0] Kernel.Texture* unk5_f0;
+    [0x5F8] Kernel.Texture* depth_history0;
+    [0x600] Kernel.Texture* depth_history1;
+    [0x608] Kernel.Texture* unk608;
+    [0x610] Kernel.Texture* unk610;
+    [0x618] Kernel.Texture* unk618;
+    [0x620] Kernel.Texture* unk620;
+    [0x628] Kernel.Texture* unk628;
+    [0x630] Kernel.Texture* unk630;
+    [0x638] Kernel.Texture* unk638;
+    [0x640] Kernel.Texture* unk640;
+    [0x648] Kernel.Texture* unk648;
+    [0x650] Kernel.Texture* velocity;
+    [0x658] Kernel.Texture* unk658;
+    [0x660] Kernel.Texture* unk660;
+    [0x668] Kernel.Texture* depth_of_field_source0;
+    [0x670] Kernel.Texture* depth_of_field_source1;
+    [0x678] Kernel.Texture* depth_of_field_coc_lut;
+    [0x680] Kernel.Texture* depth_of_field_effect_mask;
+    [0x688] Kernel.Texture* unk688;
+    [0x690] Kernel.Texture* unk690;
+    [0x698] Kernel.Texture* unk698;
+    [0x6A0] isize unk6_a0;
+    [0x6A8] isize unk6_a8;
+    // Height the scene targets are rendered at.
+    [0x702] u16 render_height;
+    // Display height times GraphicsRezoScale, or the maximum of `render_size_callback`.
+    [0x704] u16 max_render_height;
+    // Two thirds of `max_render_height`, or the minimum of `render_size_callback`.
+    [0x706] u16 min_render_height;
+    [0x710] f32 frametime_average;
+    // `max_render_height` over the display height, from `render_size_callback`.
+    [0x71C] f32 upscaler_render_scale;
+    [0x720] f32 graphics_rezo_scale;
+    [0x724] f32 graphics_rezo_scale_y;
+    // Size query of `Dlss`, set with DLSS support. Takes the display size and fills the optimal, minimum
+    // and maximum render size (width, height each). Returns false without a size.
+    [0x730] void* render_size_callback;
+    [Sig("48 8B 05 ?? ?? ?? ?? 44 8B 86", FirstMatch, Offset(3), Rel32)] static RenderTargetManager* instance;
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4F ?? 48 8B D0 FF D3", FirstMatch, Offset(1), Rel32)] Kernel.Texture* getCharaViewTexture(u32 client_object_index);
+}
+
+[Size(0x1F0)]
+struct ShaderManager {
+    [0x8] System.Resource.Handle.ShaderPackageResourceHandle*[60] shader_package_resource_handles;
+    [0x1E8] System.Resource.Handle.ShaderCodeResourceHandle* copy_env_location_shader_code_resource_handle;
+}
+
+[Size(0x2B0)]
+struct ShadowCamera : Camera {
+}
+
+[Size(0x1A8)]
+struct ShadowMaskRenderer : BaseRenderer {
+}
+
+[Size(0x100)]
+struct Skeleton : ReferencedClassBase {
+    [0x10] Skeleton* linked_list_previous;
+    [0x18] Skeleton* linked_list_next;
+    [0x20] Transform transform;
+    [0x50] u16 partial_skeleton_count;
+    [0x58] System.Resource.Handle.SkeletonResourceHandle** skeleton_resource_handles;
+    [0x60] Animation.AnimationResourceHandle** animation_resource_handles;
+    [0x68] PartialSkeleton* partial_skeletons;
+    [0x70] Animation.LookAtIkModule* look_at_ik_module;
+    [0x78] Animation.ChainIkModule* chain_ik_module;
+    [0x80] Animation.SlopeIkModule* slope_ik_module;
+    [0x88] Skeleton.Bone* attach_bones;
+    [0x98] Skeleton.BoneIndexMask* attach_bone_masks;
+    [0xA0] u32 attach_bone_count;
+    [0xB8] Scene.CharacterBase* owner;
+    // The index of the `"eyes"` or `"Eyes"` group in `look_at_ik_module`, or `-1`.
+    [0xE8] i8 eyes_look_at_group_index;
+    // The index of the `"eyes2"` or `"Eyes2"` group in `look_at_ik_module`, or `-1`.
+    [0xE9] i8 eyes2_look_at_group_index;
+    [0xEC] i32 is_updating_ik;
+    [Sig("E8 ?? ?? ?? ?? 48 8B 8B ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 74 5D", FirstMatch, Offset(1), Rel32)] void createLookIkModule();
+    [Sig("E8 ?? ?? ?? ?? 8B 8B ?? ?? ?? ?? C1 E9 09", FirstMatch, Offset(1), Rel32)] void createChainIkModule();
+    [Sig("E8 ?? ?? ?? ?? B0 01 48 83 C4 60 5B C3 32 C0", FirstMatch, Offset(1), Rel32)] void createSlopeIkModule();
+    // Samples and finishes the animation of every skeleton from `first` on.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? 48 8B 6C 24 58", FirstMatch, Offset(1), Rel32)] static void updateAnimations(Skeleton* first, f32 delta_time);
+    // Blend timers and pose copies after sampling. Run by `updateAnimations` in attach depth order,
+    // parents first.
+    [Sig("48 89 5C 24 18 55 48 83 EC 30 48 8B E9", FirstMatch)] void finishAnimation(f32 delta_time);
+    // Skeletons in attach depth order, parents first. Rebuilt by `updateAnimations`.
+    [Sig("89 35 ?? ?? ?? ?? 48 8D 3D ?? ?? ?? ?? 83 FE 01", FirstMatch, Offset(9), Rel32)] static Skeleton.SortedSkeletonList sorted_skeletons;
+    // Count of `sortedSkeletons`, -1 once the frame's look-at IK has run.
+    [Sig("89 35 ?? ?? ?? ?? 48 8D 3D ?? ?? ?? ?? 83 FE 01", FirstMatch, Offset(2), Rel32)] static i32 sorted_skeleton_count;
+}
+
+[Size(0x1)]
+struct SkeletonHelper {
+    // Calls hkaPose::syncModelSpace on every partial skeleton, from `first` on.
+    [Sig("E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 41 8B FF", FirstMatch, Offset(1), Rel32)] static void syncModelSpacePoses(Skeleton* first);
+}
+
+// Samples skeleton animations on the job pool, 8 skeletons per job.
+[Size(0x100)]
+struct SkeletonUpdater {
+    [0x8] u8[40] lock;
+    // Writers are found through TLS block +0x298.
+    [0x30] JobSystem updater_jobs;
+    [0xF0] f32 delta_time;
+    // Havok sample jobs collected by `updater_jobs`, run on the Havok job queue after `sampleAnimations`
+    // returns.
+    [0xF8] Havok.Common.Base.Container.Array.hkArray<Havok.Animation.Playback.SampleAndBlend.hkaSampleBlendJob*>* sample_jobs;
+    [Sig("48 8B 05 ?? ?? ?? ?? 48 8B D9 F3 0F 11 88 F0 00 00 00", FirstMatch, Offset(3), Rel32)] static SkeletonUpdater* instance;
+    // Appends every skeleton from `first` on, then runs `updater_jobs` and waits.
+    [Sig("48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 20 48 8B 05 ?? ?? ?? ?? 48 8B D9 F3 0F 11 88 F0 00 00 00", FirstMatch)] static void sampleAnimations(Skeleton* first, f32 delta_time, Havok.Common.Base.Container.Array.hkArray<Havok.Animation.Playback.SampleAndBlend.hkaSampleBlendJob*>* sample_jobs);
+    // Adds one skeleton to the calling thread's writer of `updater_jobs`.
+    [Sig("40 53 55 41 54 48 83 EC 20 8B 0D ?? ?? ?? ?? 4C 8B E2 65 48 8B 04 25 ?? ?? ?? ?? BD 98 02 00 00", FirstMatch)] void appendSkeleton(Skeleton* skeleton);
+}
+
+[Size(0xD0)]
+struct StarRenderer : BaseRenderer {
+}
+
+[Size(0x18)]
+struct SubView {
+    [0x8] u32 flags;
+    [0xC] u32 unk;
+    [0x10] Camera* camera;
+}
+
+[Size(0x50)]
+struct TerrainPlate : ReferencedClassBase {
+    [0x10] u8 unk10;
+    [0x18] System.Resource.Handle.TerrainGridCoordinates grid_coordinates;
+    [0x20] Common.Math.Vector3 bounds_center;
+    [0x30] System.Resource.Handle.ModelResourceHandle* model_resource_handle;
+    [0x38] u16 tile_width;
+    [0x3A] u16 linear_grid_index;
+    [0x40] void* model_thing_buffer_ptr;
+    [0x48] u32 model_thing_buffer_length;
+    [Sig("48 83 EC 38 48 8B 41 30 4C 8B D2", FirstMatch)] Common.Math.AxisAlignedBounds* computeAxisAlignedBounds(Common.Math.AxisAlignedBounds* out_bounds);
+}
+
+[Size(0x4420)]
+struct TerrainRenderer : BaseRenderer {
+    [0x43B1] bool wireframe;
+}
+
+[Size(0x30)]
+struct VerticalFogPlate : ReferencedClassBase {
+    [0x10] u8 unk10;
+    [0x18] u16 tile_width;
+    [0x1A] System.Resource.Handle.TerrainGridCoordinates grid_coordinates;
+    [0x20] System.Resource.Handle.ModelResourceHandle* model_resource_handle;
+    [0x28] Kernel.ConstantBufferPointer<VerticalFogPlateConstants> constant_buffer;
+    [Sig("48 83 EC 38 48 8B 41 20 0F 57 DB", FirstMatch)] Common.Math.AxisAlignedBounds* computeAxisAlignedBounds(Common.Math.AxisAlignedBounds* out_bounds);
+}
+
+[Size(0x10)]
+struct VerticalFogPlateConstants {
+    [0x0] Common.Math.Vector3 translation;
+}
+
+[Size(0x158)]
+struct VerticalFogRenderer : BaseRenderer {
+}
+
+[Size(0x190)]
+struct View {
+    [0x8] u32 flags;
+    [0xC] u32 unk;
+    [0x10] SubView[16] sub_views;
+}
+
+[Size(0x40)]
+struct WaterPlate : ReferencedClassBase {
+    [0x10] u8 unk10;
+    [0x18] u16 tile_width;
+    [0x1A] System.Resource.Handle.TerrainGridCoordinates grid_coordinates;
+    [0x20] u64 unk20;
+    [0x28] System.Resource.Handle.ModelResourceHandle* model_resource_handle;
+    [0x30] Kernel.ConstantBufferPointer<WaterPlateConstants> constant_buffer;
+    [0x38] u8 unk38;
+    [Sig("48 83 EC 38 48 8B 41 28 4C 8B D2", FirstMatch)] Common.Math.AxisAlignedBounds* computeAxisAlignedBounds(Common.Math.AxisAlignedBounds* out_bounds);
+}
+
+[Size(0x40)]
+struct WaterPlateConstants {
+}
+
+[Size(0x580)]
+struct WaterRenderer : BaseRenderer {
+    [0x2D8] bool wireframe;
+}
+
+[Size(0xF0)]
+struct WeatherRenderer : BaseRenderer {
+    [0x78] WeatherRenderer.WeatherType type;
+}
+
+namespace Footprint {
+    [Size(0x68)]
+    struct Renderer {
+    }
+}
+
+namespace Manager {
+    enum RenderSubViews : u32 {
+        shadow0 = 0,
+        shadow1 = 1,
+        shadow2 = 2,
+        shadow3 = 3,
+        roof = 4,
+        cube1 = 5,
+        cube2 = 6,
+        cube3 = 7,
+        cube4 = 8,
+        cube5 = 9,
+        omni_shadow0 = 10,
+        omni_shadow1 = 11,
+        omni_shadow2 = 12,
+        omni_shadow3 = 13,
+        shadow = 14,
+        main = 15,
+        query = 16,
+        hud = 17,
+    }
+
+    enum RenderViews : u32 {
+        omni_shadow0 = 0,
+        omni_shadow1 = 1,
+        omni_shadow2 = 2,
+        omni_shadow3 = 3,
+        omni_shadow4 = 4,
+        omni_shadow5 = 5,
+        omni_shadow6 = 6,
+        omni_shadow7 = 7,
+        omni_shadow8 = 8,
+        omni_shadow9 = 9,
+        omni_shadow10 = 10,
+        omni_shadow11 = 11,
+        omni_shadow12 = 12,
+        omni_shadow13 = 13,
+        omni_shadow14 = 14,
+        omni_shadow15 = 15,
+        omni_shadow16 = 16,
+        omni_shadow17 = 17,
+        omni_shadow18 = 18,
+        omni_shadow19 = 19,
+        omni_shadow20 = 20,
+        omni_shadow21 = 21,
+        omni_shadow22 = 22,
+        omni_shadow23 = 23,
+        environment = 24,
+        view25 = 25,
+        offscreen_renderer0 = 26,
+        offscreen_renderer1 = 27,
+        offscreen_renderer2 = 28,
+        offscreen_renderer3 = 29,
+        main = 30,
+        presentation = 31,
+        offscreen = 85,
+    }
+}
+
+namespace Material {
+    [Size(0x18)]
+    struct TextureEntry {
+        // Cross-reference this with `id`.
+        [0x0] u32 id;
+        [0x8] u32 sampler_flags;
+        [0x10] System.Resource.Handle.TextureResourceHandle* texture;
+    }
+}
+
+namespace ModelRenderer {
+    [Size(0x20)]
+    struct Callback {
+        [0x0] void* function;
+        [0x8] void* this_arg;
+        [0x10] void* sub_function;
+    }
+
+    [Size(0x38)]
+    struct OnRenderMaterialParams {
+        [0x0] Model* model;
+        [0x28] u32* out_flags;
+        [0x30] u32 material_index;
+    }
+
+    [Size(0x48)]
+    struct OnRenderMaterialParams2 {
+        [0x0] OnRenderModelParams* inner;
+        [0x8] System.Resource.Handle.ModelResourceHandle* unk8;
+        [0x10] u32 out_flags;
+    }
+
+    [Size(0x20)]
+    struct OnRenderModelParams {
+        [0x0] Model* model;
+        [0x10] Kernel.ConstantBuffer* unk10;
+    }
+
+    // Indices of `ConstantSamplerIds` for well-known constant buffers.
+    enum WellKnownConstant : i32 {
+        // The g_LightDirection constant buffer (CRC: 0xEF4E7491).
+        light_direction = 0,
+        // The g_WorldViewMatrix constant buffer (CRC: 0x76BB3DC0).
+        world_view_matrix = 1,
+        // The g_JointMatrixArray constant buffer (CRC: 0x88AA546A).
+        joint_matrix_array = 2,
+        // The g_JointMatrixArrayPrev constant buffer (CRC: 0xB531360D).
+        joint_matrix_array_prev = 3,
+        // The g_WrinklessWeightRate constant buffer (CRC: 0x17FB799E).
+        wrinkless_weight_rate = 5,
+        // The g_AuraParam constant buffer (CRC: 0x07EF6FA3).
+        aura_param = 6,
+        // The g_InstancingMatrix constant buffer (CRC: 0x8413183B).
+        instancing_matrix = 11,
+        // The g_PrevInstancingMatrix constant buffer (CRC: 0xC38E361C).
+        prev_instancing_matrix = 12,
+        // The g_SelectionModelParameter constant buffer (CRC: 0x04543FA3).
+        selection_model_parameter = 13,
+    }
+
+    // Indices of `ConstantSamplerIds` for well-known samplers/textures.
+    enum WellKnownSampler : i32 {
+        // The g_SamplerFinalColor sampler/texture (CRC: 0x8EA9DF48).
+        sampler_final_color = 4,
+        // The g_CompositeCommonSampler sampler (CRC: 0x7FE24A4B).
+        composite_common_sampler = 7,
+        // The g_SamplerAuraTexture texture (CRC: 0x07A92F70).
+        sampler_aura_texture = 8,
+        // The g_SamplerAuraTexture1 texture (CRC: 0x01DCD829).
+        sampler_aura_texture1 = 9,
+        // The g_SamplerAuraTexture2 texture (CRC: 0x98D58993).
+        sampler_aura_texture2 = 10,
+        // The g_SamplerNormal sampler/texture (CRC: 0x0C5EC1F1).
+        sampler_normal = 14,
+        // The g_SamplerIndex sampler/texture (CRC: 0x565F8FD8).
+        sampler_index = 15,
+        // The g_SamplerViewPosition sampler/texture (CRC: 0xBC615663).
+        sampler_view_position = 16,
+        // The g_SamplerDepthWithWater sampler/texture (CRC: 0xE4B2A798).
+        sampler_depth_with_water = 17,
+    }
+}
+
+namespace Raindrop {
+    [Size(0xB0)]
+    struct Renderer {
+    }
+}
+
+namespace Skeleton {
+    [Size(0x40)]
+    struct Bone {
+        [0x0] STD.StdString bone_name;
+        [0x20] u32 bone_index;
+    }
+
+    [Size(0x2)]
+    struct BoneIndexMask {
+        [0x0] u16 skeleton_idx_bone_idx { [Bit(0)] u16 bone_idx : 12; [Bit(12)] u8 partial_skeleton_idx : 4; }
+    }
+
+    [Size(0x10)]
+    struct SortedSkeleton {
+        [0x0] Skeleton* skeleton;
+        [0x8] i32 depth;
+    }
+
+    [Size(0x8800)]
+    struct SortedSkeletonList {
+        [0x0] SortedSkeleton[2048] entries;
+        // Set where an entry starts a new depth.
+        [0x8000] bool[2048] depth_changed;
+    }
+}
+
+namespace WeatherRenderer {
+    enum WeatherType : i32 {
+        rain = 0,
+        snow = 1,
+        dust = 2,
+        unk3 = 3,
+    }
+}

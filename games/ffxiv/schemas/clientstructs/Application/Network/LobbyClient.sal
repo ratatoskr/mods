@@ -1,0 +1,19 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Application.Network.LobbyClient;
+
+[Size(0x8), VirtualTable("48 8D 05 ?? ?? ?? ?? 48 89 03 48 83 C4 20 5B C3 CC CC CC CC CC CC CC CC 33 C0 89 41 08", FirstMatch, Offset(3), Rel32)]
+struct LobbyRequestCallback {
+    [0x0] void* virtual_table;
+    [Virtual(0)] LobbyRequestCallback* dtor(u8 free_flags);
+    [Virtual(4)] void reportError(LobbyStatusCode* status);
+}
+
+[Size(0x80)]
+struct LobbyStatusCode {
+    [0x0] i32 code;
+    [0x8] i32 code_type;
+    [0x10] Client.System.String.Utf8String string;
+    [0x78] u16 error_sheet_row;
+}

@@ -1,0 +1,72 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Shader;
+
+[Size(0x20)]
+struct CameraLight {
+    [0x0] Common.Math.Vector4 diffuse_specular;
+    [0x10] Common.Math.Vector4 rim;
+}
+
+[Size(0x1C0)]
+struct CameraParameter {
+    [0x0] Common.Math.Vector4 view_matrix_x;
+    [0x10] Common.Math.Vector4 view_matrix_y;
+    [0x20] Common.Math.Vector4 view_matrix_z;
+    [0x30] Common.Math.Vector4 inverse_view_matrix_x;
+    [0x40] Common.Math.Vector4 inverse_view_matrix_y;
+    [0x50] Common.Math.Vector4 inverse_view_matrix_z;
+    [0x60] Common.Math.Matrix4x4 view_projection_matrix;
+    [0xA0] Common.Math.Matrix4x4 inverse_view_projection_matrix;
+    [0xE0] Common.Math.Matrix4x4 inverse_projection_matrix;
+    [0x120] Common.Math.Matrix4x4 projection_matrix;
+    [0x160] Common.Math.Matrix4x4 main_view_to_projection_matrix;
+    [0x1A0] Common.Math.Vector3 eye_position;
+    [0x1B0] Common.Math.Vector3 look_at_vector;
+}
+
+[Size(0x40)]
+struct CommonParameter {
+    [0x0] Common.Math.Vector4 render_target;
+    [0x10] Common.Math.Vector4 viewport;
+    [0x20] Common.Math.Vector4 misc;
+    [0x30] Common.Math.Vector4 misc2;
+}
+
+[Size(0x70)]
+struct CustomizeParameter {
+    // XYZ : Skin diffuse color, as squared RGB. W : Muscle tone.
+    [0x0] Common.Math.Vector4 skin_color;
+    // XYZ : Lip diffuse color, as squared RGB. W : Lip opacity.
+    [0x10] Common.Math.Vector4 lip_color;
+    // XYZ : Hair primary color, as squared RGB.
+    [0x20] Common.Math.Vector3 main_color;
+    // XYZ : Hair highlight color, as squared RGB.
+    [0x30] Common.Math.Vector3 mesh_color;
+    // XYZ : Left eye color, as squared RGB. W : Face paint (UV2) U multiplier.
+    [0x40] Common.Math.Vector4 left_color;
+    // XYZ : Right eye color, as squared RGB. W : Face paint (UV2) U offset.
+    [0x50] Common.Math.Vector4 right_color;
+    // XYZ : Race feature color, as squared RGB.
+    [0x60] Common.Math.Vector3 option_color;
+}
+
+[Size(0x50)]
+struct InstanceParameter {
+    [0x0] Common.Math.Vector4 mul_color;
+    [0x10] Common.Math.Vector4 env_parameter;
+    [0x20] CameraLight camera_light;
+    [0x40] Common.Math.Vector4 wetness;
+}
+
+[Size(0x10)]
+struct ModelParameter {
+    [0x0] Common.Math.Vector4 params;
+}
+
+[Size(0x20)]
+struct SceneParameter {
+    [0x0] Common.Math.Vector4 occlusion_intensity;
+    [0x10] Common.Math.Vector4 wetness;
+}

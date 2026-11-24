@@ -1,0 +1,623 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Graphics.Scene;
+
+[Size(0x78)]
+struct Attach {
+    [0x50] i32 execute_type;
+    [0x54] i32 unk_value;
+    [0x58] Render.Skeleton* target_skeleton;
+    // One of owner_skeleton, owner_character
+    [0x60] Attach.OwnerUnion Owner;
+    [0x68] i32 attachment_count;
+    [0x70] Attach.Attachment* skeleton_bone_attachments;
+}
+
+[Size(0xE0)]
+struct BgObject : DrawObject {
+    [0x90] System.Resource.Handle.ModelResourceHandle* model_resource_handle;
+    [0xA0] Common.Math.Matrix4x4* cached_transform_matrices;
+    [0xA8] BgObjectStainBuffer* stain_buffer;
+    [0xB0] Transform* cached_transform;
+    [0xB8] BgObjectAnimationData* loaded_animation_data;
+    [0xCE] u8 color_intensity;
+    [0xD0] ByteColor color;
+    // Loads the skeleton and animation for this BgObject, if any. The skeleton and animation resources are
+    // found by changing the extension of the given model resource path to `.sklb` and `.pap`,
+    // respectively, and are loaded async.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 8B ?? ?? ?? ?? 84 C0 74 21", FirstMatch, Offset(1), Rel32)] bool loadAnimationData(cstring model_resource_path);
+    [Sig("E8 ?? ?? ?? ?? 48 83 C7 10 48 3B FB 75 BB 48 8B BD", FirstMatch, Offset(1), Rel32)] void playAnimation(cstring animation_name, Animation.PlayAnimationParams* play_params, Animation.AnimationControllerHandle** controller_handle);
+    // Resets the `flags`, `outline_flags`, and `object_flags` for this BgObject during its creation.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? 48 8B D3 E8 ?? ?? ?? ?? 48 8B CB E8 ?? ?? ?? ?? 48 8D 4C 24", FirstMatch, Offset(1), Rel32)] void resetFlags();
+    // Loads the model resource at the given path.
+    [Sig("48 89 5C 24 ?? 57 48 83 EC 30 48 8B C2 C7 44 24", FirstMatch)] bool setModel(System.Resource.ResourceCategory* model_resource_category, cstring model_resource_path);
+    [Sig("E8 ?? ?? ?? ?? 48 89 43 30 48 8B D7", FirstMatch, Offset(1), Rel32)] static BgObject* create(cstring model_game_path, cstring pool_name, BgObject* existing_allocation);
+}
+
+[Size(0x120)]
+struct BgObjectAnimationData {
+    [0x0] CharacterBase.SkeletonAnimationContainer skeleton_animation_container;
+    [0x100] System.Resource.Handle.SkeletonResourceHandle* async_skeleton_resource_handle;
+    [0x108] System.Resource.Handle.ResourceHandle* async_pap_resource_handle;
+    [0x110] Render.Skeleton* render_skeleton;
+    [0x118] Animation.AnimationControllerHandle* animation_controller_handle;
+}
+
+[Size(0x38)]
+struct BgObjectStainBuffer {
+    // The original byte color for the stain.
+    [0x0] ByteColor srgb_byte_color;
+    // An approximate linear conversion of the `srgb_byte_color`. The formula is: `pow(value / 255.0f,
+    // 2.0f)`
+    [0x4] Common.Math.Vector4 linear_float_color;
+    [0x18] System.Resource.Handle.MaterialResourceHandle* loaded_custom_material_resource;
+    [0x20] System.Resource.Handle.MaterialResourceHandle* loading_custom_material_resource;
+    // Three flags populated from the model resource.
+    [0x30] u8 flags { [Bit(0)] bool flag0; [Bit(1)] bool flag1; [Bit(2)] bool flag2; }
+    // Sets up this stain buffer to be used with an instance of the given model resource.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 07 41 0F B6 D6", FirstMatch, Offset(1), Rel32)] bool initialize(System.Resource.Handle.ModelResourceHandle* model_resource);
+    [Sig("48 89 5C 24 ?? 57 48 83 EC 20 F6 41 30 02", FirstMatch)] void setCustomMaterialResource(cstring material_resource_path);
+}
+
+[Size(0x100)]
+struct Camera : Object {
+    [0x80] Common.Math.Vector3 look_at_vector;
+    [0x90] Common.Math.Vector3 vector_1;
+    [0xA0] Common.Math.Matrix4x4 view_matrix;
+    [0xE0] Render.Camera* render_camera;
+    [0xF0] u32 flags;
+    [Sig("E8 ?? ?? ?? ?? 4C 8B E0 4C 8B FB", FirstMatch, Offset(1), Rel32)] Ray* screenPointToRay(Ray* ray, i32 x, i32 y);
+    [Sig("E8 ?? ?? ?? ?? 0F 28 C7 0F 28 CE", FirstMatch, Offset(1), Rel32)] static Common.Math.Vector2* worldToScreenPoint(Common.Math.Vector2* screen_point, Common.Math.Vector3* world_point);
+}
+
+[Size(0x130)]
+struct CameraManager {
+    [0x50] i32 camera_index;
+    [0x58] Camera*[14] cameras;
+    [0xE0] OffscreenCamera* offscreen_camera;
+    [Sig("48 8B 05 ?? ?? ?? ?? 48 83 C1 10 48 C7 40 ?? ?? ?? ?? ??", FirstMatch, Offset(3), Rel32)] static CameraManager* instance;
+}
+
+[Size(0xA20), VirtualTable("48 8D 05 ?? ?? ?? ?? 89 AF ?? ?? ?? ?? ?? ?? ?? 48 8D 9F", FirstMatch, Offset(3), Rel32)]
+struct CharacterBase : DrawObject {
+    [0x90] CharacterBase.StateFlag state_flags;
+    [0x9C] i32 slot_count;
+    [0xA0] Render.Skeleton* skeleton;
+    [0xA8] Render.Model** models;
+    [0xB0] Vfx.VfxResourceInstance** vfx_resource_instances;
+    [0xD8] Attach attach;
+    [0x150] void* post_bone_deformer;
+    [0x158] Physics.BonePhysicsModule* bone_physics_module;
+    [0x160] Physics.BoneKineDriverModule* bone_kine_driver_module;
+    [0x178] Render.ModelRenderer.Callback render_model_callback;
+    [0x198] Render.ModelRenderer.Callback render_material_callback;
+    [0x1B8] Render.ModelRenderer.Callback unk_callback3;
+    [0x224] f32 vfx_scale;
+    [0x270] Kernel.ConstantBuffer* character_data_c_buffer;
+    [0x278] Kernel.ConstantBuffer* unk_c_buffer;
+    [0x288] Kernel.Texture** color_table_textures;
+    [0x290] Common.Math.Vector4 tint;
+    [0x2A0] f32 global_scale;
+    [0x2A4] f32 model_scale;
+    [0x2A8] f32 transparency_delta;
+    [0x2AC] i32 target_status;
+    [0x2E0] f32 weather_wetness;
+    [0x2E4] f32 swimming_wetness;
+    [0x2E8] f32 wetness_depth;
+    [0x2EC] f32 forced_wetness;
+    [0x2F0] u32 animation_load_in_progress_bits;
+    [0x2F4] u32 animation_load_done_bits;
+    [0x2F8] u32 has_model_in_slot_loaded;
+    [0x2FC] u32 has_model_files_in_slot_loaded;
+    [0x300] void* temp_data;
+    [0x308] CharacterBase.SlotStagingArea* per_slot_staging_area;
+    [0x350] System.Resource.Handle.MaterialResourceHandle** materials;
+    [0x358] void* eid;
+    [0x360] void** imc_array;
+    [0x368] STD.StdVector<System.Resource.Handle.PartialAnimationPackResourceHandle*> animations_to_load;
+    [0x3D0] System.Resource.Handle.PartialAnimationPackResourceHandle* face_pap_handle;
+    [0x3D8] CharacterBase.SkeletonAnimationContainer[5] skeleton_animation_containers;
+    [0x920] u32 material_animation_load_in_progress_bits;
+    [0x940] System.Resource.Handle.SkeletonResourceHandle* material_animation_skeleton;
+    [0x948] System.Resource.Handle.ResourceHandle** material_animation_packs;
+    [0x950] u64 animation_flags;
+    [0x958] u8 animation_variant;
+    [0x9B0] f32 age_game_seconds_looping;
+    // Creates a new character based on the given model ID, customization data, and equipment IDs.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4F 08 48 8B D0 4C 8B 01", FirstMatch, Offset(1), Rel32)] static CharacterBase* create(u32 model_id, Game.Character.CustomizeData* customize, Game.Character.EquipmentModelId* equip_data, u8 character_usage);
+    [Sig("E8 ?? ?? ?? ?? 40 F6 C7 01 74 3A 40 F6 C7 04 75 27 48 85 DB 74 2F 48 8B 05 ?? ?? ?? ?? 48 8B D3 48 8B 48 30", FirstMatch, Offset(1), Rel32)] void destroy();
+    [Sig("E8 ?? ?? ?? ?? 39 BB ?? ?? ?? ?? 75 08 48 8B CB", FirstMatch, Offset(1), Rel32)] void populateAnimationsFromStaging();
+    // Sets up the given's slot `models` and/or `materials` from the resources newly loaded in
+    // `per_slot_staging_area`. Can also perform other setup tasks on the slot, such as
+    // `color_table_textures`.
+    [Sig("89 54 24 ?? 55 56 41 56 48 81 EC", FirstMatch)] isize setupSlotModel(u32 slot);
+    // Returns whether the given look-at group is currently enabled.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 79 8B C7", FirstMatch, Offset(1), Rel32)] bool isLookAtEnabled(i32 group_index);
+    // Enables the given look-at group.
+    [Sig("E8 ?? ?? ?? ?? F6 44 24 ?? ?? 0F 84 ?? ?? ?? ?? F3 0F 10 84 3B", FirstMatch, Offset(1), Rel32)] void enableLookAt(i32 group_index);
+    // Disables the given look-at group.
+    [Sig("E8 ?? ?? ?? ?? 48 8B CF E8 ?? ?? ?? ?? 0F BE 9F", FirstMatch, Offset(1), Rel32)] void disableLookAt(i32 group_index);
+    // Sets the position for the character to look towards, if its skeleton has a `LookAtIkModule`.
+    // Generally this is called every frame in the `prepare_group_callback`.
+    [Sig("48 8B 89 ?? ?? ?? ?? 49 8B C0", FirstMatch)] void setLookAtTargetPosition(i32 group_index, Common.Math.Vector3* position);
+    // Sets the amount of influence a look-at group has.
+    [Sig("E8 ?? ?? ?? ?? 44 38 A7 ?? ?? ?? ?? 75 19", FirstMatch, Offset(1), Rel32)] void setLookAtInfluence(f32 new_influence, i32 group_index);
+    // Gets the number of look-at groups in this character's `LookAtIkModule`.
+    [Sig("E8 ?? ?? ?? ?? 41 89 86 ?? ?? ?? ?? 48 8D 3D", FirstMatch, Offset(1), Rel32)] u32 getLookAtGroupCount();
+    // Gets the current transform of the last bone in a look-at group.
+    [Sig("E8 ?? ?? ?? ?? 0F 28 44 24 ?? 33 DB", FirstMatch, Offset(1), Rel32)] Common.Math.Matrix4x4* getLookAtGroupTransform(Common.Math.Matrix4x4* out_transform, u32 group_index);
+    // Transforms the given matrix in model space to world space via the `LookAtIkModule`.
+    [Sig("E8 ?? ?? ?? ?? 0F 28 45 C7", FirstMatch, Offset(1), Rel32)] Common.Math.Matrix4x4* transformLookAtModelSpaceToWorldSpace(Common.Math.Matrix4x4* out_world_space_transform, Common.Math.Matrix4x4* in_model_space_transform);
+    // Searches the `LookAtIkModule` for a look-at group with the given ID.
+    [Sig("E8 ?? ?? ?? ?? 89 03 48 8D 5B 04", FirstMatch, Offset(1), Rel32)] i32 findLookAtGroup(cstring group_id);
+    // Sets the callbacks to use when updating the `LookAtIkModule`.
+    [Sig("E8 ?? ?? ?? ?? 8B 83 ?? ?? ?? ?? 85 C0 0F 84 ?? ?? ?? ?? 83 E8 01 74 59", FirstMatch, Offset(1), Rel32)] void setupLookAtCallbacks(void* callback_parameter, void* prepare_group_callback, void* finished_callback);
+    // Begins playing the specified animation, adding to the given animation controller handle or creating
+    // a new one as needed. The animation must exist in a partial animation pack that this character has
+    // already finished loading. This does not stop any previous animation(s) that are already playing.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 44 24 ?? 48 85 C0 75 19", FirstMatch, Offset(1), Rel32)] void playAnimation(cstring animation_name, Animation.PlayAnimationParams* play_params, Animation.AnimationControllerHandle** existing_controller_handle);
+    [Virtual(50)] CharacterBase.ModelType getModelType();
+    [Virtual(56)] void loadSlot(u32 slot);
+    [Virtual(63)] void onRenderModel(Render.Model* model);
+    [Virtual(64)] void onRenderMaterial(Render.ModelRenderer.OnRenderMaterialParams* param);
+    [Virtual(69)] bool setEquipmentSlotModel(u32 slot, Game.Character.EquipmentModelId* slot_data);
+    [Virtual(70)] bool setGlassesSlotModel(u32 glasses_slot, Game.Character.EquipmentModelId* slot_data);
+    [Virtual(71)] void getEquipmentSlotModel(Game.Character.EquipmentModelId* out_slot_data, u32 slot);
+    [Virtual(72)] void getGlassesSlotModel(Game.Character.EquipmentModelId* out_slot_data, u32 slot);
+    [Virtual(75)] cstring resolveRootPath(u8* path_buffer, usize path_buffer_size);
+    [Virtual(76)] cstring resolveSklbPath(u8* path_buffer, usize path_buffer_size, u32 partial_skeleton_index);
+    [Virtual(77)] cstring resolveMdlPath(u8* path_buffer, usize path_buffer_size, u32 slot_index);
+    [Virtual(78)] cstring resolveSkpPath(u8* path_buffer, usize path_buffer_size, u32 partial_skeleton_index);
+    [Virtual(79)] cstring resolvePhybPath(u8* path_buffer, usize path_buffer_size, u32 partial_skeleton_index);
+    [Virtual(80)] cstring resolveKdbPath(u8* path_buffer, usize path_buffer_size, u32 partial_skeleton_index);
+    [Virtual(82)] cstring resolveBnmBPath(u8* path_buffer, usize path_buffer_size, u32 partial_skeleton_index);
+    [Virtual(84)] cstring resolvePapPath(u8* path_buffer, usize path_buffer_size, u32 unk_animation_index, u8* animation_name);
+    [Virtual(85)] cstring resolveTmbPath(u8* path_buffer, usize path_buffer_size, u8* timeline_name);
+    [Virtual(87)] cstring resolveMaterialPapPath(u8* path_buffer, usize path_buffer_size, u32 slot_index, u32 unk_s_id);
+    [Virtual(89)] cstring resolveImcPath(u8* path_buffer, usize path_buffer_size, u32 slot_index);
+    // Caveat: this method will dereference a null pointer if determining the MTRL file path involves an
+    // IMC lookup and it is not called at the "right" moment.
+    [Virtual(90)] cstring resolveMtrlPath(u8* path_buffer, usize path_buffer_size, u32 slot_index, u8* mtrl_file_name);
+    [Virtual(91)] cstring resolveSkinMtrlPath(u8* path_buffer, usize path_buffer_size, u32 slot_index);
+    [Virtual(92)] cstring resolveDecalPath(u8* path_buffer, usize path_buffer_size, u32 slot_index);
+    [Virtual(93)] cstring resolveVfxPath(u8* path_buffer, usize path_buffer_size, u32 slot_index, u32* unk_out_param);
+    [Virtual(94)] cstring resolveEidPath(u8* path_buffer, usize path_buffer_size);
+    [Virtual(95)] u8 getDyeForSlot(u32 slot_index, u32 dye_index);
+    [Virtual(101)] isize createDeformer(u32 slot_index);
+    [Virtual(102)] Render.Model* createRenderModel(System.Resource.Handle.ModelResourceHandle* model_resource_handle, isize deformer);
+    [Virtual(108)] bool isFreeCompanyCrestVisibleOnSlot(u8 slot);
+    [Virtual(109)] void setFreeCompanyCrestVisibleOnSlot(u8 slot, bool is_visible);
+    [Virtual(110)] void setFreeCompanyCrest(Kernel.Texture* free_company_crest);
+}
+
+[Size(0x590)]
+struct CharacterUtility {
+    [0x8] System.Resource.Handle.EquipmentParameterResourceHandle* equipment_parameter_resource_handle;
+    [0x10] System.Resource.Handle.EquipmentVfxParameterResourceHandle* equipment_vfx_parameter_resource_handle;
+    [0x18] System.Resource.Handle.GimmickParameterResourceHandle* gimmick_parameter_resource_handle;
+    [0x20] System.Resource.Handle.EquipmentDeformerParameterResourceHandle*[28] equipment_deformer_parameter_resource_handles;
+    [0x100] System.Resource.Handle.EquipmentDeformerParameterResourceHandle*[28] accessory_deformer_parameter_resource_handles;
+    [0x1E0] System.Resource.Handle.WeaponAttachOffsetExistResourceHandle* attach_offset_exist_resource_handle;
+    [0x1E8] System.Resource.Handle.WeaponTypeDataResourceHandle* weapon_type_attach_resource_handle;
+    [0x1F0] System.Resource.Handle.WeaponTypeDataResourceHandle* weapon_type_motion_resource_handle;
+    [0x1F8] System.Resource.Handle.WeaponTypeDataResourceHandle* weapon_type_se_resource_handle;
+    [0x200] System.Resource.Handle.PreBoneDeformerResourceHandle* human_bone_deformer_resource_handle;
+    [0x208] System.Resource.Handle.SkeletonResourceHandle*[7] retarget_skeleton_resource_handles;
+    [0x240] System.Resource.Handle.CharaMakeParameterResourceHandle* human_parameter_resource_handle;
+    [0x248] System.Resource.Handle.ExSkeletonTableResourceHandle* face_skeleton_template_resource_handle;
+    [0x250] System.Resource.Handle.ExSkeletonTableResourceHandle* hair_skeleton_template_resource_handle;
+    [0x258] System.Resource.Handle.ExSkeletonTableResourceHandle* head_skeleton_template_resource_handle;
+    [0x260] System.Resource.Handle.ExSkeletonTableResourceHandle* body_skeleton_template_resource_handle;
+    [0x268] System.Resource.Handle.TextureResourceHandle* dummy_texture_resource_handle;
+    [0x270] System.Resource.Handle.TextureResourceHandle* black_texture_resource_handle;
+    [0x278] System.Resource.Handle.TextureResourceHandle* white_texture_resource_handle;
+    [0x280] System.Resource.Handle.TextureResourceHandle* transparent_texture_resource_handle;
+    [0x288] System.Resource.Handle.TextureResourceHandle* legacy_tattoo_texture_resource_handle;
+    [0x290] System.Resource.Handle.TextureResourceHandle* tile_orb_array_texture_resource_handle;
+    [0x298] System.Resource.Handle.TextureResourceHandle* tile_norm_array_texture_resource_handle;
+    [0x2A0] System.Resource.Handle.ShaderPackageResourceHandle* iris_shader_package_resource_handle;
+    [0x2A8] System.Resource.Handle.ShaderPackageResourceHandle* skin_shader_package_resource_handle;
+    [0x2B0] System.Resource.Handle.ShaderPackageResourceHandle* stockings_shader_package_resource_handle;
+    [0x2B8] System.Resource.Handle.ShaderPackageResourceHandle* legacy_character_shader_package_resource_handle;
+    [0x2C0] System.Resource.Handle.PapLoadTableResourceHandle* pap_load_table_resource_handle;
+    [0x2C8] System.Resource.Handle.AnimationExchangeTableResourceHandle* animation_exchange_table_resource_handle;
+    [0x2D0] System.Resource.Handle.MotionLineTableResourceHandle* motion_line_table_resource_handle;
+    [0x2D8] System.Resource.Handle.SkeletonResourceHandle* material_animation_skeleton_resource_handle;
+    [0x2E0] System.Resource.Handle.AnimationWorkTableResourceHandle*[4] animation_work_tables;
+    [0x300] System.Resource.Handle.StainingTemplateResourceHandle* staining_template_gud_resource_handle;
+    [0x308] System.Resource.Handle.StainingTemplateResourceHandle* staining_template_resource_handle;
+    [0x310] System.Resource.Handle.TextureResourceHandle* sphere_map_array_texture_resource_handle;
+    [0x318] System.Resource.Handle.ExtraSkeletonLoadResourceHandle*[1] extra_skeleton_load_resource_handles;
+    [0x320] System.Resource.Handle.FacialParameterEditResourceHandle* facial_parameter_edit_resource_handle;
+    [0x328] System.Resource.Handle.EyeAnimationResourceHandle* eye_animation_resource_handle;
+    [0x330] System.Resource.Handle.KineDriverLoadResourceHandle*[7] kine_driver_load_resource_handles;
+    [0x368] System.Resource.Handle.BonamikLoadResourceHandle*[7] bonamik_load_resource_handles;
+    [0x3E0] System.Resource.Handle.MaterialResourceHandle* reaper_eye_material_resource_handle;
+    [0x3E8] Render.Material* reaper_eye_material;
+    [0x3F8] Kernel.ConstantBuffer* legacy_body_decal_color_c_buffer;
+    [0x400] Kernel.ConstantBuffer* free_company_crest_color_c_buffer;
+    [Sig("48 8B 05 ?? ?? ?? ?? 83 B9", FirstMatch, Offset(3), Rel32)] static CharacterUtility* instance;
+}
+
+// Occluder box of a culling box layout instance, added to `occluders` on creation.
+[Size(0x110)]
+struct CullingBox : DrawObject {
+    // World space corners, updated with the transform.
+    [0x90] Common.Math.Vector4[8] corners;
+}
+
+[Size(0xB0)]
+struct Decal : DrawObject {
+    [0x90] Render.Decal* render_decal;
+    [0x98] System.Resource.Handle.TextureResourceHandle* texture_resource_handle;
+    [0xA0] System.Resource.Handle.TextureResourceHandle* unk_texture_resource_handle;
+    [0xA8] System.Resource.Handle.TextureResourceHandle* unk_texture_resource_handle2;
+}
+
+[Size(0xAD0)]
+struct Demihuman : CharacterBase {
+    [0xA70] System.Resource.Handle.TextureResourceHandle* head_decal;
+    [0xA78] System.Resource.Handle.TextureResourceHandle* top_decal;
+    [0xA80] System.Resource.Handle.TextureResourceHandle* arms_decal;
+    [0xA88] System.Resource.Handle.TextureResourceHandle* legs_decal;
+    [0xA90] System.Resource.Handle.TextureResourceHandle* feet_decal;
+    [0xAA0] Kernel.Texture* free_company_crest;
+    [0xAA8] u32 slot_free_company_crest_bitfield;
+    [Sig("E8 ?? ?? ?? ?? 48 8B F8 48 85 C0 0F 84 ?? ?? ?? ?? 48 8D 54 24", FirstMatch, Offset(1), Rel32)] Demihuman* ctor();
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 41 0F 10 0F", FirstMatch, Offset(1), Rel32)] bool setupFromData(u8* data);
+}
+
+[Size(0x90)]
+struct DrawObject : Object {
+    [0x88] u8 flags { [Bit(4)] bool is_covered_from_rain; }
+    [0x89] u8 outline_flags { [Bit(0)] u8 load_state : 4; [Bit(4)] Game.Object.ObjectHighlightColor outline_color : 4; }
+    [Virtual(6)] void updateCulling();
+    [Virtual(7)] void updateTransforms(bool a2_unk);
+    [Virtual(11)] void updateMaterials();
+    // Computes a sphere that fully encloses this draw object. WARNING: Calling this on a `BgObject` that
+    // is not yet loaded will result in an access violation. Make sure to check its
+    // `model_resource_handle`'s `load_state` to make sure it is loaded (state 7).
+    [Virtual(12)] Common.Math.SphereBounds* computeSphereBounds(Common.Math.SphereBounds* out_sphere_bounds);
+    [Virtual(13)] Common.Math.AxisAlignedBounds* computeAxisAlignedBounds(Common.Math.AxisAlignedBounds* out_aligned_bounds);
+    [Virtual(14)] Common.Math.OrientedBounds* computeOrientedBounds(Common.Math.OrientedBounds* out_oriented_bounds);
+    // Computes whether the given ray intersects the axix-aligned bounds of this draw object, and outputs
+    // the closest point (to the ray origin) where the intersection begins.
+    [Virtual(15)] bool hitTestBounds(Ray* ray, Common.Math.Vector3* out_intersection_point);
+    // Computes whether the given ray intersects the axis-aligned bounds of this draw object.
+    [Virtual(16)] bool hitTestBoundsNoOutput(Ray* ray);
+    [Virtual(17)] Common.Math.Matrix4x4* getAttachBoneWorldTransform(Common.Math.Matrix4x4* out_transform, i32 attach_bone_index);
+    [Virtual(18)] Common.Math.Vector3* getAttachBoneWorldLocation(i32 attach_bone_index);
+    [Virtual(19)] Common.Math.Vector3* getAttachBoneLocalLocation(Common.Math.Vector3* out_location, i32 attach_bone_index);
+    // Determines whether the bone with the given bone index is a valid attach bone.
+    [Virtual(21)] bool hasAttachBone(i32 attach_bone_index);
+    // Sets the dither transparency of this draw object. Has no effect on `character_base` objects or
+    // `light` objects.
+    [Virtual(26)] void setTransparency(f32 transparency);
+    // Gets the dither transparency of this draw object, or 0.0 if dither transparency is not supported by
+    // this type of draw object.
+    [Virtual(27)] f32 getTransparency();
+    [Virtual(28)] void setTargetStatus(i32 target_status);
+    [Virtual(29)] i32 getTargetStatus();
+}
+
+[Size(0x4E0)]
+struct EnvLocation : DrawObject {
+    [0x90] System.Resource.Handle.AmbientSetResourceHandle* ambient_set_resource;
+    [0x98] System.Resource.Handle.TextureResourceHandle* environment_cubemap_resource;
+    [0xA0] void* ambient_set;
+    [0xA8] Kernel.Texture* environment_cubemap;
+    [0xB0] f32 unk_b0;
+    [0xB8] u8 unk_b8;
+    [0xB9] u16 unk_b9;
+    [0xC0] System.File.FileAccessPath ambient_set_resource_path;
+    [0x2D0] System.File.FileAccessPath environment_cubemap_resource_path;
+    [Sig("40 53 48 83 EC 20 83 3D ?? ?? ?? ?? ?? 7D 4E", FirstMatch)] static EnvLocation* tryCreate();
+    [Sig("E9 ?? ?? ?? ?? 48 83 C4 20 5B C3 CC CC CC CC CC CC C2 00 00", FirstMatch, Offset(1), Rel32)] static void tryDestroy(EnvLocation** location_pointer);
+}
+
+[Size(0x8F0)]
+struct EnvScene {
+    [0x30] u8[32] weather_ids;
+    [0xF0] EnvSpace[8] env_spaces;
+    [0x880] EnvLocation** locations;
+    [0x888] u32 location_count;
+    [0x8D0] Kernel.Texture* cubemap_array;
+    [0x8D8] Kernel.ConstantBuffer* constant_buffer;
+    [Sig("4C 8B D1 48 85 D2 74 3F", FirstMatch)] bool addLocation(EnvLocation* location);
+    [Sig("4C 8B D1 48 85 D2 74 25 44 8B 81", FirstMatch)] bool removeLocation(EnvLocation* location);
+}
+
+[Size(0xF0)]
+struct EnvSpace : DrawObject {
+    [0x90] System.Resource.Handle.EnvSetResourceHandle* env_set_resource_handle;
+    [0x98] System.Resource.Handle.SoundSetResourceHandle* sound_set_resource_handle;
+    [0xB0] EnvLocation* env_location;
+}
+
+[Size(0xCD0)]
+struct Human : CharacterBase {
+    [0xA20] Game.Character.CustomizeData customize;
+    [0xA3C] u32 slot_needs_update_bitfield;
+    [0xA40] Game.Character.EquipmentModelId[10] equipment_models;
+    [0xA90] Game.Character.EquipmentModelId[2] glasses_models;
+    [0xAA0] u16 race_sex_id;
+    [0xAA2] u16 hair_id;
+    [0xAA4] u16 face_id;
+    [0xAA6] u16 tail_ear_id;
+    [0xAA8] u16 fur_id;
+    // | Type | Index | | ------- | ----- | | Head | 0 | | Top | 1 | | Arms | 2 | | Legs | 3 | | Feet | 4 |
+    // | Ear | 5 | | Neck | 6 | | Wrist | 7 | | RFinger | 8 | | LFinger | 9 |
+    [0xAF8] System.Resource.Handle.TextureResourceHandle*[10] slot_decals;
+    // | Type | Index | | ---- | ----- | | Head | 0 | | Top | 1 | | Arms | 2 | | Legs | 3 | | Feet | 4 |
+    [0xB48] System.Resource.Handle.MaterialResourceHandle*[5] slot_skin_materials;
+    [0xBF0] Kernel.ConstantBuffer* customize_parameter_c_buffer;
+    [0xBF8] Kernel.ConstantBuffer* decal_color_c_buffer;
+    [0xC00] System.Resource.Handle.TextureResourceHandle* decal;
+    [0xC08] System.Resource.Handle.TextureResourceHandle* legacy_body_decal;
+    [0xC10] Kernel.Texture* free_company_crest;
+    [0xC18] u32 slot_free_company_crest_bitfield;
+    [0xC50] u8* changed_equip_data;
+    [Sig("E8 ?? ?? ?? ?? 48 8B F8 48 85 C0 74 ?? 48 8D 55 ?? 48 8B C8 E8 ?? ?? ?? ?? 48 8B 0D", FirstMatch, Offset(1), Rel32)] Human* ctor();
+    [Sig("E8 ?? ?? ?? ?? 48 8B 8B ?? ?? ?? ?? 0F 57 FF", FirstMatch, Offset(1), Rel32)] u8 setupVisor(u16 model_id, bool visor_state);
+    [Sig("E8 ?? ?? ?? ?? 83 BF ?? ?? ?? ?? ?? 75 34", FirstMatch, Offset(1), Rel32)] bool updateDrawData(Human.DrawData* data, bool skip_equipment_arrays);
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 48 8B F9 48 8B EA 48 81 C1", FirstMatch)] bool setupFromCharacterData(Human.DrawData* data);
+}
+
+[Size(0xB0)]
+struct Light : DrawObject {
+    [0x90] Render.Light* render_light;
+    // The texture that should be used as a projected multiplicative mask for the light. For point lights
+    // this must be a cube texture, for flat and spot lights this must be a 2D texture, and for world
+    // lights projected textures are not supported. Before setting this, make sure to clear and `DecRef`
+    // the previous ProjectedTexture as well as the `render_light`'s `projected_texture`. Then after
+    // setting this, make sure to OR a `2` into `outline_flags` for a non-null texture resource, or a `4`
+    // otherwise.
+    [0x98] System.Resource.Handle.TextureResourceHandle* projected_texture;
+    [Sig("48 89 5C 24 ?? 57 48 83 EC 20 49 8B D8 8B F9", FirstMatch)] static Light* create(Render.LightShape shape, cstring pool_name, Light* existing_allocation);
+}
+
+[Size(0xA50)]
+struct Monster : CharacterBase {
+    [0xA20] u16 model_set_id;
+    [0xA22] u16 secondary_id;
+    [0xA24] u16 variant;
+    [0xA30] System.Resource.Handle.TextureResourceHandle* decal;
+    [Sig("E8 ?? ?? ?? ?? 48 8B E8 48 89 AE", FirstMatch, Offset(1), Rel32)] Monster* ctor();
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 0F 57 C0 48 8D 4C 24 ?? 0F 11 44 24", FirstMatch, Offset(1), Rel32)] bool setupFromData(u8* data);
+}
+
+[Size(0x80)]
+struct Object {
+    [0x0] void* virtual_table;
+    [0x18] Object* parent_object;
+    [0x20] Object* previous_sibling_object;
+    [0x28] Object* next_sibling_object;
+    [0x30] Object* child_object;
+    [0x38] u64 object_flags { [Bit(1)] bool is_transform_changed; }
+    [0x50] Common.Math.Vector3 position;
+    [0x60] Common.Math.Quaternion rotation;
+    [0x70] Common.Math.Vector3 scale;
+    [Virtual(0)] Object* dtor(u8 free_flags);
+    [Virtual(1)] void cleanupRender();
+    [Virtual(2)] ObjectType getObjectType();
+    [Virtual(4)] void updateRender();
+    [Sig("E8 ?? ?? ?? ?? F6 43 38 01", FirstMatch, Offset(1), Rel32)] void addChild(Object* child);
+    [Sig("F6 41 38 01 74 2F", FirstMatch)] void onAddedToWorld();
+}
+
+enum ObjectType : i32 {
+    object = 0,
+    terrain = 1,
+    bg_object = 2,
+    character_base = 3,
+    vfx_object = 4,
+    light = 5,
+    unk_type6 = 6,
+    env_space = 7,
+    env_location = 8,
+    decal = 9,
+    culling_box = 10,
+}
+
+[Size(0x110)]
+struct OffscreenCamera : Camera {
+}
+
+[Size(0x28)]
+struct ResidentResourceManager {
+    [0x14] u32 resource_count;
+    [0x18] System.Resource.Handle.ResourceHandle** resource_list;
+    [Sig("0F 44 FE 48 8B 0D ?? ?? ?? ?? 48 85 C9 74 05", FirstMatch, Offset(6), Rel32)] static ResidentResourceManager* instance;
+}
+
+[Size(0x1F0)]
+struct Terrain : DrawObject {
+    [0x90] System.Resource.Handle.TerrainResourceHandle* terrain_resource_handle;
+    [0x98] System.Resource.Handle.ModelResourceHandle** tile_model_resource_handles_ptr;
+    [0xA0] u32 tile_count;
+    [0xA4] u32 terrain_plate_count;
+    [0xA8] u32 water_plate_count;
+    [0xAC] u32 vertical_fog_plate_count;
+    [0xB0] Render.TerrainPlate** terrain_plates_ptr;
+    [0xB8] Render.WaterPlate** water_plates_ptr;
+    [0xC0] Render.VerticalFogPlate** vertical_fog_plates_ptr;
+    [0xC8] void** terrain_plate_culling_handles_ptr;
+    [0xD0] void** water_plate_culling_handles_ptr;
+    [0xD8] void** vertical_fog_plate_culling_handles_ptr;
+    [0xE0] u8 model_load_phase;
+    [0xE1] utf8[256] terrain_game_folder;
+    [0x1E1] u8 unk1_e1;
+    [0x1E2] u8 enable_grass;
+    // Loads `terrain_resource_handle` by category and path.
+    [Sig("E8 ?? ?? ?? ?? B3 01 EB 02 32 DB 48 8B 55 E8", FirstMatch, Offset(1), Rel32)] void load(System.Resource.ResourceCategory* terrain_resource_category, cstring terrain_resource_path, bool unk1_e1, bool enable_grass);
+    // Populates `TileModelResourceHandles` by loading one model resource for every tile in
+    // `terrain_resource_handle` using the path `####.mdl` with the tile's index.
+    [Sig("40 53 41 56 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 45 33 F6", FirstMatch)] void loadTileModels();
+    // Loads grass data from `grass_zone_data.gzd` into the grass renderer.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 33 D2 C7 40", FirstMatch, Offset(1), Rel32)] void loadGrass();
+    // Populates `TerrainPlates` by creating one plate per model resource in `TileModelResourceHandles`
+    // that has a terrain mesh.
+    [Sig("E8 ?? ?? ?? ?? 4C 8B 74 24 ?? 48 8B 6C 24 ?? 84 C0 0F 84 ?? ?? ?? ?? 48 8B CB", FirstMatch, Offset(1), Rel32)] bool createTerrainPlates();
+    // Populates `WaterPlates` by creating one plate per model resource in `TileModelResourceHandles` that
+    // has a water mesh.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 0F 84 ?? ?? ?? ?? 48 8B CB E8 ?? ?? ?? ?? 84 C0 74 7D", FirstMatch, Offset(1), Rel32)] bool createWaterPlates();
+    // Populates `VerticalFogPlates` by creating one plate per model resource in `TileModelResourceHandles`
+    // that has a vertical fog mesh.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 7D 80 BB", FirstMatch, Offset(1), Rel32)] bool createVerticalFogPlates();
+}
+
+[Size(0x390)]
+struct VfxObject : DrawObject {
+    [0x128] i32 actor_caster;
+    [0x130] i32 actor_target;
+    [0x1B8] i32 static_caster;
+    [0x1C0] i32 static_target;
+    [0x248] u8 some_flags;
+    [0x250] f32 speed;
+    [0x258] f32 fade_out_frames;
+    [0x260] Common.Math.Vector4 color;
+    [0x280] f32 fade_near_end;
+    [0x284] f32 fade_near_start;
+    [0x288] f32 fade_far_start;
+    [0x28C] f32 unk28_c;
+    [0x290] f32 fade_far_end;
+    [0x294] f32 z_correct;
+    [0x298] f32 soft_particle_fade_range;
+    [0x2A0] Vfx.VfxResourceInstance* vfx_resource_instance;
+    [Sig("E8 ?? ?? ?? ?? F3 0F 10 35 ?? ?? ?? ?? 48 89 43 08", FirstMatch, Offset(1), Rel32)] static VfxObject* create(cstring vfx_game_path, cstring pool_name);
+    [Sig("E8 ?? ?? ?? ?? ?? ?? ?? 8B 4A ?? 85 C9", FirstMatch, Offset(1), Rel32)] void update(f32 delta_seconds, i32 flags);
+}
+
+[Size(0xA60)]
+struct Weapon : CharacterBase {
+    [0xA20] u16 model_set_id;
+    [0xA22] u16 secondary_id;
+    [0xA24] u16 variant;
+    [0xA26] u8 stain0;
+    [0xA27] u8 stain1;
+    [0xA2A] u8 material_id;
+    [0xA2B] u8 decal_id;
+    [0xA2E] u8 vfx_id;
+    [0xA38] System.Resource.Handle.TextureResourceHandle* decal;
+    [0xA40] Kernel.Texture* free_company_crest;
+    [0xA48] u32 slot_free_company_crest_bitfield;
+    [0xA50] Weapon.ChangedWeaponData* changed_data;
+    [0xA58] CharacterBase* attach_target;
+    // Method inherited from parent class `CharacterBase`.
+    [Sig("E8 ?? ?? ?? ?? 48 89 07 4C 8B E0", FirstMatch, Offset(1), Rel32)] static Weapon* create2(WeaponCreateInfo* weapon_data);
+    [Sig("E8 ?? ?? ?? ?? 4C 8B F0 48 8D 54 24", FirstMatch, Offset(1), Rel32)] Weapon* ctor();
+    [Sig("E8 ?? ?? ?? ?? 49 8B 16 48 8B 0D ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] bool initialize(WeaponCreateInfo* weapon_data);
+}
+
+[Size(0x9)]
+struct WeaponCreateInfo {
+    [0x0] Game.Character.WeaponModelId weapon_model_id;
+    [0x8] u8 animation_variant;
+}
+
+[Size(0x160)]
+struct World : Object {
+    [Sig("48 8B 05 ?? ?? ?? ?? 48 8B 50 40", FirstMatch, Offset(3), Rel32)] static World* instance;
+}
+
+namespace Attach {
+    [Size(0x58)]
+    struct Attachment {
+        [0x2] Render.Skeleton.BoneIndexMask bone_index_mask;
+        [0x10] Havok.Common.Base.Math.QsTransform.hkQsTransformf child_transform;
+    }
+
+    union OwnerUnion {
+        Render.Skeleton* owner_skeleton;
+        CharacterBase* owner_character;
+    }
+}
+
+namespace CharacterBase {
+    enum ModelType : u8 {
+        human = 1,
+        demi_human = 2,
+        monster = 3,
+        weapon = 4,
+    }
+
+    [Size(0x100)]
+    struct SkeletonAnimationContainer {
+        [0x0] System.Resource.Handle.SkeletonResourceHandle* partial_skeleton;
+        [0x8] STD.StdVector<System.Resource.Handle.ResourceHandle*> pap_vector1;
+        [0x20] STD.StdVector<System.Resource.Handle.ResourceHandle*> pap_vector2;
+        [0x38] STD.StdVector<System.Resource.Handle.ResourceHandle*> pap_vector3;
+        [0xF8] System.Resource.Handle.ResourceHandle* animation_exchange_table;
+    }
+
+    [Size(0xE0)]
+    struct SlotStagingArea {
+        [0x8] System.Resource.Handle.ModelResourceHandle* model_resource_handle;
+        [0x18] System.Resource.Handle.MaterialResourceHandle*[10] material_resource_handles;
+        [0x68] System.Resource.Handle.MaterialResourceHandle* skin_material_resource_handle;
+        [0xD0] StagingAreaFlags flags;
+    }
+
+    bitfield StagingAreaFlags : u32 {
+        [Bit(1)] bool has_model;
+        [Bit(3)] bool has_materials;
+    }
+
+    bitfield StateFlag : u64 {
+        [Bit(4)] bool stealth;
+        [Bit(6)] bool visor_toggled;
+        [Bit(7)] bool visor_changing;
+        [Bit(12)] bool shadows_disabled;
+        [Bit(16)] bool has_umbrella;
+        [Bit(24)] bool reaper_eyes;
+        [Bit(31)] bool viera_ears_hidden;
+        [Bit(32)] bool viera_ears_changing;
+    }
+}
+
+namespace Human {
+    [Size(0x80)]
+    struct DrawData {
+        [0x0] Game.Character.CustomizeData customize_data;
+        [0x1A] u8 animation_variant;
+        [0x1E] u16 unk1_e;
+        [0x20] Game.Character.EquipmentModelId[10] equipments;
+        [0x70] Game.Character.EquipmentModelId[2] glasses;
+        [Sig("66 0F 6F 0D ?? ?? ?? ?? 0F 57 C0", FirstMatch)] DrawData* ctor();
+    }
+}
+
+namespace Monster {
+    [Size(0x8)]
+    struct DrawData {
+        [0x0] u16 model_set_id;
+        [0x2] u16 secondary_id;
+        [0x4] u16 variant;
+        [0x6] u8 bit_fields { [Bit(0)] bool load_mount_animations; [Bit(2)] bool load_ornament_animations; }
+        [0x7] u8 animation_variant;
+        [Sig("E8 ?? ?? ?? ?? 8B CB E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 0F 84 ?? ?? ?? ?? 0F B6 48 10", FirstMatch, Offset(1), Rel32)] DrawData* ctor();
+        // Enables or disables the `LoadMountAnimations` flag.
+        [Sig("E8 ?? ?? ?? ?? 41 83 FE ?? 48 8D 4C 24 ?? 0F 94 C2 E8 ?? ?? ?? ?? 48 8D 54 24", FirstMatch, Offset(1), Rel32)] void setLoadMountAnimations(bool load_mount_animations);
+        // Enables or disables the `LoadOrnamentAnimations` flag.
+        [Sig("E8 ?? ?? ?? ?? 48 8D 54 24 ?? 48 8B CF E8 ?? ?? ?? ?? E9", FirstMatch, Offset(1), Rel32)] void setLoadOrnamentAnimations(bool load_ornament_animations);
+    }
+}
+
+namespace Object {
+    [Size(0x10)]
+    struct SiblingEnumerator {
+        [0x0] Object* first;
+        [0x8] Object* current;
+    }
+}
+
+namespace Weapon {
+    [Size(0x20)]
+    struct ChangedWeaponData {
+        [0x0] u16 secondary_id;
+        [0x2] u8 variant;
+        [0x3] u8 stain0;
+        [0x4] u8 stain1;
+    }
+}

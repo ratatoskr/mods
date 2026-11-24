@@ -1,0 +1,8 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Common.Base.Types.Geometry.LocalFrame;
+
+[Size(0x10)]
+struct hkLocalFrame : Object.hkReferencedObject {
+}

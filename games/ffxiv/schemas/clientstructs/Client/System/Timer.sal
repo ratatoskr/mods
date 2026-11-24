@@ -1,0 +1,12 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.System.Timer;
+
+[Size(0x40)]
+struct ClientTime {
+    [0x8] i64 eorzea_time;
+    [0x10] f32 eorzea_time_milliseconds;
+    [0x30] i64 eorzea_time_override;
+    [0x38] bool is_eorzea_time_overridden;
+}

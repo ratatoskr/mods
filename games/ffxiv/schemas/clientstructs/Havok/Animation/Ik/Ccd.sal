@@ -1,0 +1,19 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Animation.Ik.Ccd;
+
+[Size(0x18)]
+struct hkaCcdIkSolver {
+    [0x10] i32 m_iterations;
+    [0x14] f32 m_gain;
+}
+
+namespace hkaCcdIkSolver {
+    [Size(0x14)]
+    struct IkConstraint {
+        [0x0] i16 m_start_bone;
+        [0x2] i16 m_end_bone;
+        [0x4] Common.Base.Math.Vector.hkVector4f m_target_ms;
+    }
+}

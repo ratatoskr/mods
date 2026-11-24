@@ -1,0 +1,20 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Common.Base.Container.Array;
+
+struct hkArray<T> {
+    T* data;
+    i32 length;
+    i32 capacity_and_flags;
+}
+
+namespace hkArray {
+    enum hkArrayFlags : u32 {
+        capacity_mask = 1073741823,
+        flag_mask = 3221225472,
+        dont_deallocate = 2147483648,
+        allocated_from_spu = 1073741824,
+        force_signed = 4294967295,
+    }
+}

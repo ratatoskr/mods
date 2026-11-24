@@ -1,0 +1,100 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Game.Emj;
+
+[Size(0xCF8)]
+struct Board {
+    [0x0] MeldList[4] meld_lists;
+    [0x560] Board.DiscardPile[4] discard_piles;
+    [0x990] RoundState round_state;
+}
+
+[Size(0x1420)]
+struct ClientTable : Table {
+    [0x1418] u32 local_seat;
+}
+
+[Size(0x10)]
+struct EmjEngine {
+    [0x8] EmjEngineCore* core;
+}
+
+[Size(0x4E0)]
+struct EmjEngineCore {
+    [0x468] ClientTable* table;
+}
+
+[Size(0x54)]
+struct Meld {
+    [0x4] MeldType type;
+    [0x14] u32[4] tiles;
+}
+
+[Size(0x158)]
+struct MeldList {
+    [0x4] i32 count;
+    [0x8] Meld[4] melds;
+}
+
+bitfield MeldType : u32 {
+    [Bit(8)] bool claimed;
+    [Bit(16)] bool wait_kanchan;
+    [Bit(17)] bool wait_penchan;
+    [Bit(18)] bool wait_ryanmen;
+    [Bit(22)] bool open;
+    [Bit(24)] bool unknown;
+    [Bit(25)] bool sequence;
+    [Bit(26)] bool pair;
+    [Bit(27)] bool triplet;
+    [Bit(28)] bool quad;
+    [Bit(29)] bool added_quad;
+    [Bit(30)] bool concealed_quad;
+    // none is none of them
+}
+
+[Size(0x388)]
+struct Player {
+    [0x4] u32 seat;
+    [0x8] i32 hand_tile_count;
+    [0x11C] u32[14] hand_tiles;
+    [0x190] bool can_riichi;
+}
+
+[Size(0x368)]
+struct RoundState {
+    [0x28] i32[4] points;
+    [0x3C] i32 round_wind;
+    [0x40] i32 dealer;
+    [0x44] i32 honba;
+    [0x4C] i32 riichi_sticks;
+    [0xB4] i32[4] is_riichi;
+    [0xE8] i32 wall_tiles_remaining;
+    [0xF0] i32 dora_indicator_count;
+    [0xF4] u32[5] dora_indicators;
+    [0x314] i32 start_seat_offset;
+}
+
+[Size(0x1418)]
+struct Table {
+    [0x8] Player[4] players;
+    [0x12C0] Board* board;
+    [0x1350] TileInfo drawn_tile;
+    [0x136C] TileInfo last_discard;
+}
+
+[Size(0x1C)]
+struct TileInfo {
+    [0x0] u32 seat;
+    [0x8] u32 tile;
+    [0xC] u32 flags;
+}
+
+namespace Board {
+    [Size(0xFC)]
+    struct DiscardPile {
+        [0x0] i32 count;
+        [0x4] u32[31] tiles;
+        [0x80] u32[31] flags;
+    }
+}

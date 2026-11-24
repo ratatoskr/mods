@@ -1,0 +1,13 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.System.Crypt;
+
+[Size(0x10)]
+struct Crc32 {
+    [0x0] void* virtual_table;
+    [0x8] u32 crc_digest;
+    [Virtual(0)] Crc32* dtor(u8 free_flags);
+    [Sig("E8 ?? ?? ?? ?? 8B 7B EE", FirstMatch, Offset(1), Rel32)] Crc32* fromBuffer(void* buf, u64 buf_size);
+    [Sig("E8 ?? ?? ?? ?? 39 43 0C", FirstMatch, Offset(1), Rel32)] u32 getDigest();
+}

@@ -1,0 +1,10 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.System.Scheduler.Object;
+
+[Size(0x98)]
+struct ObjectManager {
+    [0x40] u8[40] critical_section1;
+    [0x68] u8[40] critical_section2;
+}

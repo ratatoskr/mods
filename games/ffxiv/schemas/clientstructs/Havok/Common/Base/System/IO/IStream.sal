@@ -1,0 +1,15 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Common.Base.System.IO.IStream;
+
+[Size(0x18)]
+struct hkIstream : Object.hkReferencedObject {
+    [0x10] Reader.hkStreamReader* stream_reader;
+    [Sig("E8 ?? ?? ?? ?? 33 FF 41 39 7C 24", FirstMatch, Offset(1), Rel32)] hkIstream* ctor1(Reader.hkStreamReader* sr);
+    [Sig("E8 ?? ?? ?? ?? 4C 8B C3 48 8B D7 48 8B 48 10", FirstMatch, Offset(1), Rel32)] hkIstream* ctor2(cstring filename);
+    [Sig("E8 ?? ?? ?? ?? 4C 8D 44 24 ?? 48 8B D5 48 8B 48 10", FirstMatch, Offset(1), Rel32)] hkIstream* ctor3(void* mem, i32 mem_size);
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8D 55 60", FirstMatch, Offset(1), Rel32)] void dtor();
+    [Sig("E8 ?? ?? ?? ?? 80 38 00 74 19", FirstMatch, Offset(1), Rel32)] u8 isOk();
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 41 54 41 56 41 57 48 83 EC 20 48 8B E9 45 0F B6 F9", FirstMatch)] i32 getline(cstring str, i32 maxsize, u8 delim);
+}

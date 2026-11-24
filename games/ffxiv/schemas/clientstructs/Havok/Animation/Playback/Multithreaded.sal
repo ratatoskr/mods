@@ -1,0 +1,10 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Animation.Playback.Multithreaded;
+
+[Size(0x10)]
+struct hkaJobDoneNotifier {
+    [0x0] void* hk_semaphore;
+    [0x8] u32* flag;
+}

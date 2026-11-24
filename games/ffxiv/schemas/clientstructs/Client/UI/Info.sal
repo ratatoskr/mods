@@ -1,0 +1,818 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.UI.Info;
+
+[Size(0x348)]
+struct CrossRealmGroup {
+    [0x0] u8 group_member_count;
+    [0x8] CrossRealmMember[8] group_members;
+}
+
+[Size(0x68)]
+struct CrossRealmMember {
+    [0x10] u64 content_id;
+    [0x20] u32 entity_id;
+    [0x28] u8 level;
+    [0x2A] i16 home_world;
+    [0x2C] i16 current_world;
+    [0x2E] u8 class_job_id;
+    [0x33] utf8[32] name;
+    [0x58] cstring name_override;
+    [0x60] u8 member_index;
+    [0x61] u8 group_index;
+    [0x63] bool is_party_leader;
+}
+
+[Size(0x1C78)]
+struct InfoModule {
+    [0x1978] InfoProxyInterface*[35] info_proxies;
+    [0x1A90] u64 local_content_id;
+    [0x1A98] System.String.Utf8String local_char_name;
+    [0x1B00] System.String.Utf8String unk_string1;
+    [0x1B68] System.String.Utf8String unk_string2;
+    [0x1BD0] System.String.Utf8String unk_string3;
+    [0x1C38] u64 online_status_flags;
+    [Sig("E8 ?? ?? ?? ?? 45 85 E4 7E 5C", FirstMatch, Offset(1), Rel32)] InfoProxyInterface* getInfoProxyById(InfoProxyId id);
+    [Sig("E8 ?? ?? ?? ?? 49 C7 C1 ?? ?? ?? ?? 48 8D 8C 24 ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] cstring getLocalCharacterName();
+    [Sig("E8 ?? ?? ?? ?? 49 39 87", FirstMatch, Offset(1), Rel32)] u64 getLocalContentId();
+    // Checks if the local player has a specific online status set.
+    [Sig("48 8B 81 ?? ?? ?? ?? 0F B6 CA 48 D3 E8", FirstMatch)] bool isOnlineStatusSet(u8 id);
+    // Sets the local player's online status to the specified flag bitmask. Sent by the server; devs should
+    // not call this manually. May be called multiple times.
+    [Sig("48 8B C4 48 89 68 20 57 48 81 EC ?? ?? ?? ?? 48 8B B9", FirstMatch)] void setOnlineStatusFlags(u64 flags);
+    // Checks if the local player is in a cross world duty.
+    [Sig("E8 ?? ?? ?? ?? 44 8B 8C 24 ?? ?? ?? ?? 84 C0", FirstMatch, Offset(1), Rel32)] bool isInCrossWorldDuty();
+}
+
+[Size(0xD58)]
+struct InfoProxy24 : InfoProxyCommonList {
+}
+
+[Size(0x188)]
+struct InfoProxy25 : InfoProxyInterface {
+    [0x38] System.String.Utf8String unk_string0;
+    [0xA0] System.String.Utf8String unk_string1;
+    [0x108] System.String.Utf8String unk_string2;
+}
+
+[Size(0x448)]
+struct InfoProxy26 : InfoProxyInterface {
+    [0x38] System.String.Utf8String unk_string0;
+    [0xA0] System.String.Utf8String unk_string1;
+    [0x108] Component.GUI.AtkEventListener unk108;
+    [0x3B0] Component.GUI.AtkEventTarget unk3_b0;
+}
+
+[Size(0x28)]
+struct InfoProxy27 : InfoProxyInterface {
+}
+
+[Size(0x28)]
+struct InfoProxy28 : InfoProxyInterface {
+}
+
+[Size(0x110)]
+struct InfoProxy29 : InfoProxyInterface {
+    [0x38] System.String.Utf8String unk_string0;
+    [0xA0] System.String.Utf8String unk_string1;
+}
+
+[Size(0x1A18)]
+struct InfoProxyBlacklist : InfoProxyPageInterface {
+    [0x20] System.String.Utf8String last_blocked_name_contacts;
+    [0x88] System.String.Utf8String last_blocked_name_chat;
+    [0xF0] InfoProxyBlacklist.BlockedCharacter[200] blocked_characters;
+    [0x19F0] i32 blocked_characters_count;
+    [0x19F8] STD.StdMap<u64, i32> account_id_map;
+    [0x1A08] STD.StdMap<u64, i32> content_id_map;
+    [Sig("E8 ?? ?? ?? ?? 83 7C 24 ?? ?? 75 ?? E8", FirstMatch, Offset(1), Rel32)] void getBlockResult(InfoProxyBlacklist.BlockResult* out_block_result, u64 account_id, u64 content_id);
+    [Sig("48 83 EC 48 F6 81 ?? ?? ?? ?? ?? 75 ?? 33 C0 48 83 C4 48", FirstMatch)] InfoProxyBlacklist.BlockResultType getBlockResultType(u64 account_id, u64 content_id);
+}
+
+[Size(0x3C8)]
+struct InfoProxyCatalogSearch : InfoProxyPageInterface {
+    [0x28] System.String.Utf8String query;
+    [0x90] InfoProxyCatalogSearch.Entry[20] entries;
+}
+
+[Size(0x58)]
+struct InfoProxyChat : InfoProxyInterface {
+    [Sig("E8 ?? ?? ?? ?? 4C 8B C8 44 8D 43", FirstMatch, Offset(1), Rel32)] cstring getLinkShellName(u32 index);
+}
+
+[Size(0x6BB8)]
+struct InfoProxyCircle : InfoProxyInterface {
+}
+
+[Size(0x1C8)]
+struct InfoProxyCircleFinder : InfoProxyInterface {
+    [0x180] Component.GUI.AtkEventTarget atk_event_target0;
+    [0x190] Component.GUI.AtkEventTarget atk_event_target1;
+}
+
+[Size(0x1E0)]
+struct InfoProxyCircleList : InfoProxyInterface {
+}
+
+[Size(0xD0), VirtualTable("48 8D 05 ?? ?? ?? ?? 48 89 69 30", FirstMatch, Offset(3), Rel32)]
+struct InfoProxyCommonList : InfoProxyPageInterface {
+    // Inherited parent class accessor for `CharacterManagerInterface`
+    [0x20] Game.Character.CharacterManagerInterface character_manager_interface;
+    [0x38] System.String.Utf8String unk_string;
+    [0xA0] u8 number_array_index;
+    [0xA1] u8 string_array_index;
+    [0xA2] u16 data_size;
+    [0xA4] u16 dict_size;
+    [0xA6] u16 number_array_entry_count_index;
+    [0xA8] u16 number_array_entry_count_index2;
+    [0xAA] u16 string_array_groups_count_index;
+    [0xB0] InfoProxyCommonList.CharacterData* char_data;
+    [0xB8] InfoProxyCommonList.CharacterIndex* index_data;
+    [0xC0] InfoProxyCommonList.DisplayGroup filter_group;
+    [0xC4] u8 move_selector;
+    [0xCA] InfoProxyCommonList.Sorting sort_group;
+    [Sig("3B 51 10 73 12 8B C2 48 6B D0 70", FirstMatch)] u64 getContentIdForEntry(u32 idx);
+    [Sig("8B 41 10 48 3B D0 73 0C", FirstMatch)] InfoProxyCommonList.CharacterData* getEntry(u32 idx);
+    [Sig("E8 ?? ?? ?? ?? 48 85 C0 74 12 8B 40 20", FirstMatch, Offset(1), Rel32)] InfoProxyCommonList.CharacterData* getEntryByContentId(u64 content_id, u32 name_crc32, u8 a4);
+    [Sig("E8 ?? ?? ?? ?? EB ?? 41 8D 47", FirstMatch, Offset(1), Rel32)] InfoProxyCommonList.CharacterData* getEntryByName(cstring character_name, u16 world_id);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 13 45 33 C9", FirstMatch, Offset(1), Rel32)] void applyFilters();
+    // Sets the value of `entry_count` to 0 for this proxy. Does not actually delete any data from any
+    // arrays.
+    [Virtual(20)] void clearData();
+}
+
+[Size(0xD58)]
+struct InfoProxyContentMember : InfoProxyCommonList {
+    [0xD0] InfoProxyContentMember.ContentMemberData[200] member_data;
+    [0xD50] u8 display_flags;
+    [0xD54] i32 sort_mode;
+}
+
+[Size(0x1A58)]
+struct InfoProxyCrossRealm : InfoProxyInterface {
+    [0x485] u8 local_player_group_index;
+    [0x486] u8 group_count;
+    [0x488] bool is_cross_realm;
+    [0x489] bool is_in_alliance_raid;
+    [0x48A] bool is_party_leader;
+    [0x48B] bool is_in_cross_realm_party;
+    [0x498] CrossRealmGroup[6] cross_realm_groups;
+    [Sig("E8 ?? ?? ?? ?? F6 D8 1A C0", FirstMatch, Offset(1), Rel32)] static bool isCrossRealmParty();
+    [Sig("E8 ?? ?? ?? ?? 0F B6 5C 24 ?? 84 C0", FirstMatch, Offset(1), Rel32)] static bool isAllianceRaid();
+    [Sig("E8 ?? ?? ?? ?? 40 3A F8 0F 85", FirstMatch, Offset(1), Rel32)] static u8 getGroupIndex(u8 group);
+    [Sig("E8 ?? ?? ?? ?? 3C ?? 77 ?? C7 43", FirstMatch, Offset(1), Rel32)] static u8 getPartyMemberCount();
+    [Sig("E8 ?? ?? ?? ?? 0F B6 C0 EB 08", FirstMatch, Offset(1), Rel32)] static u8 getGroupMemberCount(i32 group_index);
+    [Sig("E8 ?? ?? ?? ?? 8B CB 89 5D", FirstMatch, Offset(1), Rel32)] static CrossRealmMember* getGroupMember(u32 member_index, i32 group_index);
+    [Sig("E8 ?? ?? ?? ?? 48 85 C0 74 0C 0F B6 40 2E", FirstMatch, Offset(1), Rel32)] static CrossRealmMember* getMemberByContentId(u64 content_id);
+    [Sig("48 89 5C 24 ?? 48 89 7C 24 ?? 4C 8B 15", FirstMatch)] static CrossRealmMember* getMemberByEntityId(u32 entity_id);
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? ?? ?? ?? 48 8B CB FF 50 ?? 41 0F B7 4E", FirstMatch, Offset(1), Rel32)] static bool isContentIdInParty(u64 content_id);
+    [Sig("E8 ?? ?? ?? ?? 88 9F ?? ?? ?? ?? 0F B6 F0", FirstMatch, Offset(1), Rel32)] static bool isLocalPlayerInParty();
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 3F 33 D2", FirstMatch, Offset(1), Rel32)] static bool isLocalPlayerPartyLeader();
+    [Sig("40 53 41 57 48 83 EC 28 48 8B D9 4C 8B FA 48 8B 0D", FirstMatch)] void receiveListing(Game.Network.ServerIpcSegment<Game.Network.CrossRealmListingSegmentPacket>* packet);
+}
+
+[Size(0x2368)]
+struct InfoProxyCrossWorldLinkshell : InfoProxyInvitedInterface {
+    [0x28] u32 num_invites;
+    [0x30] u8 unk30;
+    [0x38] System.String.Utf8String invited_name;
+    [0xA0] System.String.Utf8String unk_string0;
+    [0x108] InfoProxyCrossWorldLinkshell.CrossWorldLinkshellEntry[8] cross_world_linkshells;
+    [Sig("E8 ?? ?? ?? ?? 45 33 C0 8D 4E 70", FirstMatch, Offset(1), Rel32)] System.String.Utf8String* getCrossworldLinkshellName(u32 index);
+}
+
+[Size(0xE8)]
+struct InfoProxyCrossWorldLinkshellMember : InfoProxyCommonList {
+}
+
+[Size(0x240)]
+struct InfoProxyDetail : InfoProxyInterface {
+    [0x18] u64 requested_content_id;
+    [0x20] u64 unk_requested_content_id;
+    [0x28] InfoProxyDetail.DetailUpdateData update_data;
+    [0x100] System.String.Utf8String search_comment;
+    [0x168] System.String.Utf8String[2] unk_utf8_strings;
+    [0x238] bool has_update_data;
+    [0x239] bool unk239;
+    [0x23A] bool unk23_a;
+    [0x23B] bool unk23_b;
+    [0x23C] bool unk23_c;
+    [0x23D] bool unk23_d;
+    [Sig("38 51 38 74 0A", FirstMatch)] void setUpdateClassJobId(u8 class_job_id);
+    [Sig("48 39 51 30 74 0B", FirstMatch)] void setUpdateLookingForPartyClassJobIdMask(u64 class_job_id_mask);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 6C 24 ?? ?? ?? ?? 41 B1", FirstMatch, Offset(1), Rel32)] void setUpdateOnlineStatus(InfoProxyCommonList.CharacterData.OnlineStatus online_status, bool skip_away_check);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 5C 24 ?? 41 83 FE", FirstMatch, Offset(1), Rel32)] void setUpdateLanguageMask(InfoProxyCommonList.CharacterData.LanguageMask language_mask);
+    [Sig("E8 ?? ?? ?? ?? 33 D2 48 8B CF E8 ?? ?? ?? ?? C6 46 08 01", FirstMatch, Offset(1), Rel32)] void setUpdateSearchComment(cstring search_comment);
+    [Sig("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 48 8B D9 BF ?? ?? ?? ?? 8B C7", FirstMatch)] void sendOnlineStatusUpdate(u32 online_status_id);
+    [Sig("E8 ?? ?? ?? ?? C6 83 ?? ?? ?? ?? ?? 40 84 FF", FirstMatch, Offset(1), Rel32)] void sendUpdateData(InfoProxyDetail.DetailUpdateData* update_data);
+    [Sig("48 89 5C 24 ?? 57 48 83 EC 20 4C 8B 49 28 48 8B D9", FirstMatch)] void refreshOnlineStatus();
+}
+
+[Size(0x6E8)]
+struct InfoProxyFreeCompany : InfoProxyInterface {
+    [0x20] void* unk20;
+    [0x30] u64 id;
+    [0x46] u16 home_world_id;
+    [0x69] Agent.GrandCompany grand_company;
+    [0x6B] u8 rank;
+    [0x70] Agent.CrestData crest;
+    [0x78] u16 online_members;
+    [0x7A] u16 total_members;
+    [0x7C] utf8[22] name;
+    [0x93] utf8[60] master;
+    [0xD0] System.String.Utf8String unk_d0;
+    [0x138] u8 active_list_item_num;
+    [0x139] u8 member_tab_index;
+    [0x13E] u8 info_tab_index;
+    [0x178] InfoProxyFreeCompany.RankData[14] ranks;
+    [Sig("E8 ?? ?? ?? ?? EB ?? E8 ?? ?? ?? ?? 84 C0 74 ?? BA ?? ?? ?? ?? 48 8B CB", FirstMatch, Offset(1), Rel32)] void requestDataForCharacter(u32 entity_id);
+}
+
+[Size(0x1F8)]
+struct InfoProxyFreeCompanyCreate : InfoProxyInterface {
+    // Inherited parent class accessor for `InfoProxyInvitedInterface`
+    [0x18] InfoProxyInvitedInterface info_proxy_invited_interface;
+    [0x38] System.String.Utf8String unk_string0;
+    [0xA0] System.String.Utf8String unk_string1;
+}
+
+[Size(0x118)]
+struct InfoProxyFreeCompanyInvite : InfoProxyInvitedList {
+    // Inherited parent class accessor for `InfoProxyInvitedInterface`
+    [0x28] InfoProxyInvitedInterface info_proxy_invited_interface;
+    [0x48] System.String.Utf8String unk_string0;
+    [0xB0] System.String.Utf8String unk_string1;
+}
+
+[Size(0xE8)]
+struct InfoProxyFreeCompanyMember : InfoProxyCommonList {
+    [0xD0] u64 free_company_id;
+}
+
+[Size(0x3AE8)]
+struct InfoProxyFriendList : InfoProxyCommonList {
+    [0xF0] System.String.Utf8String str2;
+    [0x158] System.String.Utf8String str3;
+    [0x1C0] System.String.Utf8String str4;
+    [0x228] System.String.Utf8String str5;
+    [0x290] InfoProxyFriendList.NameBuffer[200] names;
+    // Indexed using the `sort` field.
+    [0x37B0] i32[200] time_stamps;
+}
+
+enum InfoProxyId : u32 {
+    party_member = 0,
+    party_member_mji = 1,
+    party_invite = 2,
+    linkshell = 3,
+    linkshell_member = 4,
+    blacklist = 5,
+    friend_list = 6,
+    friend_list_mji = 7,
+    letter = 8,
+    player_search = 9,
+    detail = 10,
+    item_search = 11,
+    catalog_search = 12,
+    free_company = 13,
+    free_company_invite = 14,
+    free_company_member = 15,
+    free_company_member_mji = 16,
+    free_company_create = 18,
+    chat = 19,
+    cross_realm_party = 20,
+    novice_network = 21,
+    novice_network_member = 22,
+    novice_network_mentor = 23,
+    content_member = 24,
+    cross_world_linkshell = 30,
+    cross_world_linkshell_member = 31,
+    circle_list = 32,
+    circle = 33,
+    circle_finder = 34,
+}
+
+[Size(0x18)]
+struct InfoProxyInterface {
+    [0x0] void* virtual_table;
+    [0x8] UIModule* ui_module;
+    [0x10] u32 entry_count;
+    // Loads received data into an info proxy specific array.
+    [Virtual(1)] isize addData(isize packet_ptr, u32 count);
+    // Generates an info proxy specific network request for data.
+    [Virtual(3)] bool requestData();
+    [Virtual(4)] u32 getEntryCount();
+    [Virtual(5)] void clearListData();
+    [Virtual(7)] void handleZoneInitPacket(Game.Network.ZoneInitPacket* packet);
+    // Gets called after all data is received from the server.
+    [Virtual(10)] void endRequest();
+}
+
+[Size(0x8)]
+struct InfoProxyInvitedInterface {
+}
+
+[Size(0x28)]
+struct InfoProxyInvitedList : InfoProxyInterface {
+    [Virtual(13)] bool respondToInvitation(cstring inviter_name, bool accept);
+}
+
+[Size(0x5B98), VirtualTable("48 8D 05 ?? ?? ?? ?? 48 8B F1 48 89 01 48 8D 99 ?? ?? ?? ?? BF ?? ?? ?? ?? 0F 1F 84 00 ?? ?? ?? ?? 48 83 EB 78 48 8B CB E8 ?? ?? ?? ?? 48 83 EF 01 75 EE 8D 5F 14", FirstMatch, Offset(3), Rel32)]
+struct InfoProxyItemSearch : InfoProxyPageInterface {
+    // The ItemID that has been searched.
+    [0x20] u32 search_item_id;
+    // All items currently available on the general marketboard for the last specified search term (found
+    // in `search_item_id`. Can be empty if no results were found.
+    [0x30] MarketBoardListing[100] listings;
+    [0x4810] u32 listing_count;
+    // All items currently available for sale from the last targeted retainer. Can be empty if no results
+    // were found.
+    [0x4818] MarketBoardListing[20] retainer_listings;
+    [0x5678] u32 retainer_listing_count;
+    [0x5680] LastPurchasedMarketboardItem last_purchased_marketboard_item;
+    // All retainers currently registered to the player. Needs to be loaded by accessing any retainer's
+    // marketboard listings and appears to be a cache of some sort.
+    [0x56A8] PlayerRetainerInfo[10] player_retainers;
+    [0x5B58] u32 player_retainer_count;
+    [0x5B68] u32[10] wishlist_items;
+    [0x5B90] u32 wishlist_size;
+    [0x5B95] bool waiting_for_wishlist_update;
+    [0x5B96] bool waiting_for_listings;
+    [Sig("40 57 41 56 48 83 EC 48 83 3A 00", FirstMatch)] void processItemHistory(isize packet);
+    [Sig("E8 ?? ?? ?? ?? ?? ?? ?? 74 ?? ?? ?? ?? 48 8B CF FF 90 ?? ?? ?? ?? ?? ?? 48 8B C8", FirstMatch, Offset(1), Rel32)] void processRequestResult(u8 result_count, i32 error_code);
+    // Load player retainer information from a packet into the
+    [Sig("41 83 F8 0A 0F 87 ?? ?? ?? ?? 55", FirstMatch)] isize processPlayerRetainerInfo(isize packet_data, u32 retainer_count);
+    // Copies the specified market board listing into the `last_purchased_marketboard_item` fields of the
+    // InfoProxy.
+    [Sig("40 56 48 8B C2", FirstMatch)] bool setLastPurchasedItem(MarketBoardListing* listing);
+    [Sig("40 53 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 48 8B D9 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 4C 8B D0 48 85 C0 0F 84 ?? ?? ?? ?? 8B 8B", FirstMatch)] bool sendPurchaseRequestPacket();
+    [Sig("E8 ?? ?? ?? ?? 8B 4E 04 85 C9", FirstMatch, Offset(1), Rel32)] void processPurchaseResponse(u32 item_id, u32 error_message_id);
+}
+
+[Size(0x76E0)]
+struct InfoProxyLetter : InfoProxyPageInterface {
+    [0x20] u32 num_of_denied_letters;
+    [0x24] u16 num_attachments;
+    [0x26] u8 num_new_letters;
+    [0x27] u8 num_letters_from_friends;
+    [0x28] u8 num_letters_from_purchases;
+    [0x29] u8 num_letters_from_game_masters;
+    [0x2A] bool has_letters_from_game_masters;
+    [0x2B] bool has_letters_from_support_desk;
+    [0x30] InfoProxyLetter.Letter[130] letters;
+    [0x7608] System.String.Utf8String unk_string0;
+    [0x7670] System.String.Utf8String unk_string1;
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 41 8B 57 30 45 33 C0", FirstMatch, Offset(1), Rel32)] bool takeAttachments(u32 letter_index, i32 attatchment_slot);
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 27 49 8B 07", FirstMatch, Offset(1), Rel32)] bool deleteLetter(u32 letter_index);
+    [Sig("E8 ?? ?? ?? ?? EB 0F 45 33 FF", FirstMatch, Offset(1), Rel32)] bool requestRewardDelivery();
+}
+
+[Size(0x1E8)]
+struct InfoProxyLinkshell : InfoProxyInterface {
+    [0x38] System.String.Utf8String unk_string0;
+    [0xA0] System.String.Utf8String unk_string1;
+    [0x108] InfoProxyLinkshell.Entry[8] link_shells;
+    [0x1C8] u32 active_link_shell_index;
+    [0x1D0] InfoProxyLinkshell.Entry active_link_shell;
+    [Sig("3B 51 10 73 0F 8B C2 48 83 C0 0B", FirstMatch)] InfoProxyLinkshell.Entry* getLinkshellInfo(u32 index);
+    [Sig("E8 ?? ?? ?? ?? 4C 8B C8 44 8D 47 01", FirstMatch, Offset(1), Rel32)] cstring getLinkshellName(u64 id);
+}
+
+[Size(0xE8)]
+struct InfoProxyLinkshellMember : InfoProxyCommonList {
+}
+
+[Size(0x28)]
+struct InfoProxyNoviceNetwork : InfoProxyInterface {
+    [0x18] u8 flags { [Bit(0)] bool is_in_novice_network; }
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 41 56 48 83 EC 50 48 8B 9C 24", FirstMatch)] bool inviteToNoviceNetwork(u64 account_id, u64 content_id, u16 world_id, cstring name);
+    [Sig("E9 ?? ?? ?? ?? 33 D2 48 83 C4 28", FirstMatch, Offset(1), Rel32)] void sendJoinRequest();
+    [Sig("E8 ?? ?? ?? ?? 89 7B ?? C6 43", FirstMatch, Offset(1), Rel32)] static void leave();
+}
+
+[Size(0xE0)]
+struct InfoProxyNoviceNetworkList : InfoProxyCommonList {
+}
+
+[Size(0xE0)]
+struct InfoProxyNoviceNetworkMember : InfoProxyNoviceNetworkList {
+}
+
+[Size(0xE0)]
+struct InfoProxyNoviceNetworkMentor : InfoProxyNoviceNetworkList {
+}
+
+[Size(0x20)]
+struct InfoProxyPageInterface : InfoProxyInterface {
+    [0x18] u8 next_request_id;
+    [0x19] u8 current_request_id;
+    // Handles the InfoProxyAddPage packet and calls `addData` to load into the InfoProxy. Will also handle
+    // dispatching packets to the server for pagination/fetch purposes. Calls `endRequest` when all data is
+    // loaded.
+    [Virtual(11)] void addPage(isize packet_ptr);
+}
+
+[Size(0x148), VirtualTable("48 8D 05 ?? ?? ?? ?? ?? ?? ?? 48 8D 05 ?? ?? ?? ?? 48 89 43 ?? 66 89 AB", FirstMatch, Offset(3), Rel32)]
+struct InfoProxyPartyInvite : InfoProxyInvitedList {
+    // Inherited parent class accessor for `InfoProxyInvitedInterface`
+    [0x28] InfoProxyInvitedInterface info_proxy_invited_interface;
+    [0x3C] u32 invite_time;
+    [0x42] u16 inviter_world_id;
+    [0x48] System.String.Utf8String inviter_name;
+    [0xB0] System.String.Utf8String inviter_name_with_homeworld;
+    [Sig("E8 ?? ?? ?? ?? 44 8B FF 48 8D 4D", FirstMatch, Offset(1), Rel32)] bool inviteToParty(u64 content_id, cstring name, u16 world_id);
+    [Sig("48 83 EC 38 41 B1 09", FirstMatch)] bool inviteToPartyContentId(u64 content_id, u16 world_id);
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8B 83 ?? ?? ?? ?? 48 85 C0 74", FirstMatch, Offset(1), Rel32)] bool inviteToPartyInInstanceByContentId(u64 content_id);
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8B 93 ?? ?? ?? ?? 48 8B CE E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8B 83", FirstMatch, Offset(1), Rel32)] bool inviteToPartyInInstanceByEntityId(u32 entity_id);
+}
+
+[Size(0x340)]
+struct InfoProxyPartyMember : InfoProxyCommonList {
+    // Changes the order of the party members in the party list.
+    [Sig("E8 ?? ?? ?? ?? B3 01 88 5C 24 60", FirstMatch, Offset(1), Rel32)] void changeOrder(i32 selected_index, i32 target_index, bool do_update);
+    [Sig("E8 ?? ?? ?? ?? 40 88 B7 ?? ?? ?? ?? EB 0B C6 87 ?? ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] bool disbandParty();
+    [Sig("E8 ?? ?? ?? ?? 33 C0 48 83 C4 20 5B C3 B8 ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] bool leaveParty();
+}
+
+[Size(0x190)]
+struct InfoProxySearch : InfoProxyCommonList {
+    [0xD0] u8 location_count;
+    [0xD8] u64 job_mask;
+    [0xE0] u16 level_min;
+    [0xE2] u16 level_max;
+    [0xE8] u8 grand_company_mask;
+    [0xF0] u8 language_mask;
+    [0xF8] u64 online_status_mask;
+    [0x100] u16[50] location_i_ds;
+    [0x164] utf8[32] name;
+    [0x184] u32 unk184;
+    [0x188] u32 unk188;
+}
+
+[Size(0x24)]
+struct LastPurchasedMarketboardItem {
+    [0x0] u64 retainer_id;
+    [0x8] u64 listing_id;
+    [0x10] u32 item_id;
+    [0x14] u32 quantity;
+    [0x18] u32 unit_price;
+    [0x1C] u32 total_tax;
+    [0x20] u16 container_index;
+    [0x22] bool is_hq_item;
+    [0x23] u8 town_id;
+}
+
+[Size(0xB8)]
+struct MarketBoardListing {
+    // Only populated when item is being sold as a set (see Addon#6994).
+    [0x0] System.String.Utf8String character_name;
+    [0x68] u64 listing_id;
+    [0x70] u64 retainer_id;
+    [0x78] u64 content_id;
+    [0x80] u64 artisan_id;
+    [0x88] u32 unit_price;
+    [0x8C] u32 total_tax;
+    [0x90] u32 quantity;
+    [0x94] u32 item_id;
+    // The index of the retainer's inventory slot in the RetainerMarket inventory.
+    [0x98] u16 container_index;
+    [0x9A] u16 durability;
+    [0x9C] u16 spiritbond;
+    // List of materias associated with this item. Only valid up to the count specified in MateriaCount.
+    [0x9E] u16[5] materia;
+    [0xA8] bool is_hq_item;
+    [0xA9] u8 materia_count;
+    [0xAA] bool is_mannequin;
+    [0xAC] u32 flags { [Bit(0)] bool is_selling_as_set; }
+    // The Town (from EXD) that this marketboard entry is from.
+    [0xB0] u8 town_id;
+    [0xB1] u8 stain0_id;
+    [0xB2] u8 stain1_id;
+}
+
+[Size(0x78)]
+struct PlayerRetainerInfo {
+    [0x0] u64 retainer_id;
+    [0x8] u8 town_id;
+    [0x9] bool selling_items;
+    [0x10] System.String.Utf8String name;
+}
+
+namespace InfoProxyBlacklist {
+    [Size(0x14)]
+    struct BlockResult {
+        [0x0] BlockResultType type;
+        [0x8] BlockedCharacter* blocked_character_ptr;
+        [0x10] i32 blocked_character_index;
+    }
+
+    enum BlockResultType : i32 {
+        not_blocked = 1,
+        blocked_by_account_id = 2,
+        blocked_by_content_id = 3,
+    }
+
+    [Size(0x20)]
+    struct BlockedCharacter {
+        [0x0] cstring name;
+        [0x10] u64 id;
+        [0x18] u8 flag;
+    }
+}
+
+namespace InfoProxyCatalogSearch {
+    [Size(0x8)]
+    struct Entry {
+        [0x0] u32 item_id;
+        [0x4] u32 count;
+    }
+}
+
+namespace InfoProxyCommonList {
+    [Size(0x70)]
+    struct CharacterData {
+        [0x0] u64 content_id;
+        [0x8] CharacterData.OnlineStatus state;
+        [0x18] u64 account_id;
+        // Extra flags for status: 0x10 = ? always set when accepted friend request 0x20 =
+        // WaitingForFriendListApproval 0x10000->0x70000 = DisplayGroup.Star -> DisplayGroup.Club 0x1000000 =
+        // OtherServer (FCTag not available)
+        [0x20] u32 extra_flags { [Bit(6)] bool waiting_for_friend_list_approval; [Bit(16)] u8 group : 8; [Bit(24)] bool is_other_server; }
+        [0x24] u8 sort;
+        [0x26] u16 current_world;
+        [0x28] u16 home_world;
+        [0x2A] u16 location;
+        [0x2C] Agent.GrandCompany grand_company;
+        [0x2D] CharacterData.Language client_language;
+        [0x2E] CharacterData.LanguageMask languages;
+        [0x30] u8 sex;
+        [0x31] u8 job;
+        [0x32] utf8[32] name;
+        [0x52] utf8[6] fc_tag;
+        [0x60] CharacterIndex* index;
+    }
+
+    [Size(0x20)]
+    struct CharacterIndex {
+        [0x0] u64 content_id;
+        [0xA] u16 home_world;
+    }
+
+    enum DisplayGroup : i8 {
+        all = -1,
+        none = 0,
+        star = 1,
+        circle = 2,
+        triangle = 3,
+        diamond = 4,
+        heart = 5,
+        spade = 6,
+        club = 7,
+    }
+
+    enum Sorting : u8 {
+        friend_number = 0,
+        oldest = 1,
+        newest = 2,
+        alphabetical = 3,
+        home_world = 4,
+    }
+}
+
+namespace InfoProxyCommonList.CharacterData {
+    enum Language : u8 {
+        jp = 0,
+        en = 1,
+        de = 2,
+        fr = 3,
+        none = 255,
+    }
+
+    bitfield LanguageMask : u8 {
+        [Bit(0)] bool jp;
+        [Bit(1)] bool en;
+        [Bit(2)] bool de;
+        [Bit(3)] bool fr;
+        // none is none of them
+    }
+
+    bitfield OnlineStatus : u64 {
+        [Bit(1)] bool game_qa;
+        [Bit(2)] bool game_master;
+        [Bit(3)] bool game_master_blue;
+        [Bit(4)] bool event_participant;
+        [Bit(5)] bool disconnected;
+        [Bit(6)] bool waiting_for_friend_list_approval;
+        [Bit(7)] bool waiting_for_linkshell_approval;
+        [Bit(8)] bool waiting_for_free_company_approval;
+        [Bit(9)] bool not_found;
+        [Bit(10)] bool offline_exd;
+        [Bit(11)] bool battle_mentor;
+        [Bit(12)] bool busy;
+        [Bit(13)] bool pv_p;
+        [Bit(14)] bool playing_triple_triad;
+        [Bit(15)] bool viewing_cutscene;
+        [Bit(16)] bool using_a_chocobo_porter;
+        [Bit(17)] bool away_from_keyboard;
+        [Bit(18)] bool camera_mode;
+        [Bit(19)] bool looking_for_repairs;
+        [Bit(20)] bool looking_to_repair;
+        [Bit(21)] bool looking_to_meld_materia;
+        [Bit(22)] bool role_playing;
+        [Bit(23)] bool looking_for_party;
+        [Bit(24)] bool sword_for_hire;
+        [Bit(25)] bool waiting_for_duty_finder;
+        [Bit(26)] bool recruiting_party_members;
+        [Bit(27)] bool mentor;
+        [Bit(28)] bool pv_e_mentor;
+        [Bit(29)] bool trade_mentor;
+        [Bit(30)] bool pv_p_mentor;
+        [Bit(31)] bool returner;
+        [Bit(32)] bool new_adventurer;
+        [Bit(33)] bool alliance_leader;
+        [Bit(34)] bool alliance_party_leader;
+        [Bit(35)] bool alliance_party_member;
+        [Bit(36)] bool party_leader;
+        [Bit(37)] bool party_member;
+        [Bit(38)] bool party_leader_cross_world;
+        [Bit(39)] bool party_member_cross_world;
+        [Bit(40)] bool another_world;
+        [Bit(41)] bool sharing_duty;
+        [Bit(42)] bool similar_duty;
+        [Bit(43)] bool in_duty;
+        [Bit(44)] bool trial_adventurer;
+        [Bit(45)] bool free_company;
+        [Bit(46)] bool grand_company;
+        [Bit(47)] bool online;
+        // offline is none of them
+    }
+}
+
+namespace InfoProxyContentMember {
+    [Size(0x10)]
+    struct ContentMemberData {
+        [0x0] u32 entity_id;
+        [0x4] u32 time_elapsed_seconds;
+        [0x8] u16 location;
+        [0xA] u8 ui_priority;
+        [0xB] u8 flags;
+        [0xC] u8 mkd_support_job;
+        [0xD] u8 mkd_support_job_level;
+    }
+}
+
+namespace InfoProxyCrossWorldLinkshell {
+    [Size(0x88)]
+    struct CrossWorldLinkshellEntry {
+        [0x0] System.String.Utf8String name;
+        [0x78] u32 foundation_time;
+        [0x84] u16 membership_type;
+    }
+}
+
+namespace InfoProxyDetail {
+    // Packet for InfoProxyDetail.AddData
+    [Size(0x1AC)]
+    struct AddDataPacket {
+        [0x0] u64 content_id;
+        [0x10] u64 looking_for_party_class_job_id_mask;
+        [0x18] Agent.CrestData crest;
+        [0x22] u16 world_id;
+        [0x24] utf8[193] search_comment;
+        [0xE5] utf8[22] fc_name;
+        // Index is Town RowId
+        [0xFB] u8[4] gc_ranks;
+        [0x100] AddDataPacket.ClassJobEntry[43] class_job_entries;
+    }
+
+    [Size(0xD8)]
+    struct DetailUpdateData {
+        [0x0] InfoProxyCommonList.CharacterData.OnlineStatus online_status_mask;
+        [0x8] u64 looking_for_party_class_job_id_mask;
+        [0x10] u8 class_job_id;
+        [0x11] InfoProxyCommonList.CharacterData.LanguageMask language_mask;
+        [0x12] utf8[193] search_comment;
+    }
+}
+
+namespace InfoProxyDetail.AddDataPacket {
+    [Size(0x4)]
+    struct ClassJobEntry {
+        [0x0] u8 class_job_id;
+        [0x2] u16 level;
+    }
+}
+
+namespace InfoProxyFreeCompany {
+    [Size(0x58)]
+    struct RankData {
+        [0x0] u8[10] permissions;
+        [0x20] u16 member_count;
+        [0x22] u8 rank_number;
+        [0x23] utf8[16] name;
+    }
+}
+
+namespace InfoProxyFreeCompany.RankData {
+    enum BasicSettings : u16 {
+        none = 0,
+        company_profile = 1,
+        rank_settings = 4,
+        crest_details = 8,
+        unk4 = 16,
+        invitations = 32,
+        applications = 64,
+        member_dismissal = 128,
+        promotion_demotion = 256,
+        company_board = 512,
+        unk10 = 1024,
+        short_message = 2048,
+        company_credists = 4096,
+        executing_actions = 8192,
+        discarding_actions = 16384,
+    }
+
+    // Deposit Only is stored at a diferent location The definition of using bit 4 is virtual and done for
+    // ease of use
+    enum ChestAccess : u8 {
+        no_access = 1,
+        view_only = 2,
+        full_access = 4,
+        deposit_only = 8,
+    }
+
+    enum HousingAccess : u32 {
+        estate_hall_access = 1,
+        estate_renameing = 2,
+        greeting_customization = 4,
+        purchase_relinquish_l_and = 8,
+        hall_consruction_removal = 16,
+        hall_remodeling = 32,
+        no_furnishing_priv = 64,
+        furnishing_placement = 128,
+        furnishing_placement_r_emoval = 256,
+        paint_fixtures_furnishings = 512,
+        guest_access = 1024,
+        message_book = 2048,
+        planting = 4096,
+        harvesting = 8192,
+        crop_disposal = 16384,
+        chocobo_stabling = 32768,
+        training_chocobo = 65536,
+        orchestrion_operation = 131072,
+    }
+
+    enum WorkshopAccess : u16 {
+        cosntruction_removal = 1,
+        proj_commence_disc = 2,
+        proj_mat_delivery = 4,
+        project_progression = 8,
+        project_item_collection = 16,
+        prototype_creation = 32,
+        registration_dismantling = 64,
+        outfitting = 128,
+        color_customization = 256,
+        unk = 512,
+        renaming = 1024,
+        voyage_deployment_recall = 2048,
+        voyage_finalization = 4096,
+    }
+}
+
+namespace InfoProxyFriendList {
+    [Size(0x40)]
+    struct NameBuffer {
+        [0x0] utf8[64] value;
+    }
+}
+
+namespace InfoProxyLetter {
+    [Size(0xE8)]
+    struct Letter {
+        [0x0] i64 sender_content_id;
+        [0x8] i32 timestamp;
+        [0xC] Letter.ItemAttachment[5] attachments;
+        [0x74] u32 gil;
+        [0x78] bool read;
+        [0x87] utf8[32] sender;
+        [0xA7] utf8[64] message_preview;
+    }
+}
+
+namespace InfoProxyLetter.Letter {
+    [Size(0x8)]
+    struct ItemAttachment {
+        [0x0] u32 item_id;
+        [0x4] u32 count;
+    }
+}
+
+namespace InfoProxyLinkshell {
+    [Size(0x18)]
+    struct Entry {
+        [0x0] u64 id;
+        [0x8] u64 chat_id;
+        [0x10] u32 flags;
+    }
+}

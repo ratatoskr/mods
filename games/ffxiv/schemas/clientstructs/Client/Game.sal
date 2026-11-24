@@ -1,0 +1,2669 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Game;
+
+[Size(0x800)]
+struct ActionManager {
+    [0x8] f32 animation_lock;
+    [0xC] f32 companion_action_cooldown;
+    [0x10] f32 buddy_action_cooldown;
+    [0x14] f32 pet_action_cooldown;
+    [0x18] u8 num_pet_actions_on_cooldown;
+    [0x24] u32 cast_spell_id;
+    [0x28] ActionType cast_action_type;
+    [0x2C] u32 cast_action_id;
+    [0x30] f32 cast_time_elapsed;
+    [0x34] f32 cast_time_total;
+    [0x38] Object.GameObjectId cast_target_id;
+    [0x40] Vec3 cast_target_position;
+    [0x50] f32 cast_rotation;
+    [0x60] ComboDetail combo;
+    [0x68] bool action_queued;
+    [0x6C] ActionType queued_action_type;
+    [0x70] u32 queued_action_id;
+    [0x78] Object.GameObjectId queued_target_id;
+    [0x80] u32 queued_extra_param;
+    [0x84] ActionManager.UseActionMode queue_type;
+    [0x88] u32 queued_combo_route_id;
+    [0x90] u32 area_targeting_action_id;
+    [0x94] ActionType area_targeting_action_type;
+    [0x98] u32 area_targeting_spell_id;
+    [0xA0] Object.GameObjectId area_targeting_execute_at_object;
+    [0xB0] Graphics.Vfx.VfxData* area_targeting_vfx1;
+    [0xB8] Graphics.Vfx.VfxData* area_targeting_vfx2;
+    [0xC0] bool area_targeting_execute_at_cursor;
+    // This value is not cleared when exiting area-target mode until new area-targeting starts
+    [0xF0] bool ballista_active;
+    [0xF1] u8 ballista_row_id;
+    [0x100] Vec3 ballista_origin;
+    [0x110] f32 ballista_ref_angle;
+    [0x114] f32 ballista_radius;
+    [0x118] u32 ballista_entity_id;
+    [0x120] u16 last_used_action_sequence;
+    [0x122] u16 last_handled_action_sequence;
+    [0x124] u32[24] blue_mage_actions;
+    [0x184] u8[3] beastmaster_pets;
+    [0x188] RecastDetail[80] cooldowns;
+    [0x7C8] f32[5] proc_timers;
+    [0x7EC] f32 distance_to_target_hitbox;
+    [Sig("48 8D 0D ?? ?? ?? ?? F3 0F 10 13", FirstMatch, Offset(3), Rel32)] static ActionManager instance;
+    // Initiate action execution. If called shortly before action is available (due to cooldown or
+    // animation lock), action is queued. If action is area-targeted, starts area targeting mode rather
+    // than executing it immediately.
+    [Sig("E8 ?? ?? ?? ?? B0 01 EB B6", FirstMatch, Offset(1), Rel32)] bool useAction(ActionType action_type, u32 action_id, u64 target_id, u32 extra_param, ActionManager.UseActionMode mode, u32 combo_route_id, bool* out_opt_area_targeted);
+    // Actually execute the action right now, if possible. This skips queueing, area targeting mode, etc.
+    // The function name is a bit misleading - this function is called internally for all actions, not
+    // necessarily location-targeted ones. This function verifies that action can actually be cast (checks
+    // LoS, various states that could prevent successful cast, etc). This expects input action to be
+    // already adjusted - i.e. don't pass General actions here, it won't work properly. See code for
+    // UseAction for details.
+    [Sig("E8 ?? ?? ?? ?? 48 8B BC 24 ?? ?? ?? ?? 44 0F B6 F8 B0", FirstMatch, Offset(1), Rel32)] bool useActionLocation(ActionType action_type, u32 action_id, u64 target_id, Vec3* location, u32 extra_param, u8 a7);
+    [Sig("E8 ?? ?? ?? ?? 4C 8B 6C 24 ?? 85 C0 74", FirstMatch, Offset(1), Rel32)] u32 getActionStatus(ActionType action_type, u32 action_id, u64 target_id, bool check_recast_active, bool check_casting_active, u32* out_opt_extra_info);
+    [Sig("E8 ?? ?? ?? ?? 89 03 8B 03", FirstMatch, Offset(1), Rel32)] u32 getAdjustedActionId(u32 action_id);
+    [Sig("40 53 48 83 EC ?? FF C9", FirstMatch)] static u32 getSpellIdForAction(ActionType action_type, u32 action_id);
+    [Sig("E8 ?? ?? ?? ?? 83 7F 58 01", FirstMatch, Offset(1), Rel32)] f32 getRecastTime(ActionType action_type, u32 action_id);
+    // Gets the recast time (see `total` for a specific recast group. Compared to reading the struct
+    // directly, this method will correct cases where multi-charge actions are still locked to a single
+    // charge at the player's current level.
+    [Sig("E8 ?? ?? ?? ?? 0F 28 F8 F3 0F 5C FE", FirstMatch, Offset(1), Rel32)] f32 getRecastTimeForGroup(i32 recast_group_id);
+    [Sig("E8 ?? ?? ?? ?? F3 0F 5C F0 33 F6", FirstMatch, Offset(1), Rel32)] f32 getRecastTimeElapsed(ActionType action_type, u32 action_id);
+    [Sig("E8 ?? ?? ?? ?? 3C 01 74 1E FF C3", FirstMatch, Offset(1), Rel32)] bool isRecastTimerActive(ActionType action_type, u32 action_id);
+    [Sig("E8 ?? ?? ?? ?? 8B D0 48 8B CD 8B F0", FirstMatch, Offset(1), Rel32)] i32 getRecastGroup(i32 type, u32 action_id);
+    // Gets the additional recast group for a specific action. Appears to be used for actions that both
+    // have their own cooldown in addition to adhering to GCD.
+    [Sig("E8 ?? ?? ?? ?? 8B 4F 48 33 D2", FirstMatch, Offset(1), Rel32)] i32 getAdditionalRecastGroup(ActionType action_type, u32 action_id);
+    [Sig("40 53 48 83 EC 20 48 63 DA 85 D2", FirstMatch)] RecastDetail* getRecastGroupDetail(i32 recast_group);
+    [Sig("E8 ?? ?? ?? ?? 85 C0 75 15 4C 8B C6", FirstMatch, Offset(1), Rel32)] u32 checkActionResources(ActionType action_type, u32 action_id, void* action_data);
+    [Sig("48 89 6C 24 ?? 56 57 41 54 48 83 EC 30 44 8B E2", FirstMatch)] void startCooldown(ActionType action_type, u32 action_id);
+    // Method used by game server to update cooldowns on the client. Only operates on *primary* recast
+    // group for the specified action.
+    [Sig("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 8B F2 0F 29 74 24 ?? 0F B6 D2", FirstMatch)] void setCooldown(ActionType action_type, u32 action_id, f32 new_elapsed, f32 new_total);
+    // Check if a specific action is "off cooldown" and can be used again. This method will account for the
+    // slidecast window.
+    [Sig("E8 ?? ?? ?? ?? 3C ?? 75 ?? 88 45", FirstMatch, Offset(1), Rel32)] bool isActionOffCooldown(ActionType action_type, u32 action_id);
+    // Check if the specified action's target is within range, if any. Will not check line of sight
+    // (performance reasons?).
+    [Sig("E8 ?? ?? ?? ?? 88 47 ?? 48 8B D7 0F B6 8B", FirstMatch, Offset(1), Rel32)] bool isActionTargetInRange(ActionType action_type, u32 action_id);
+    // Gets a "Hotbar Cooldown Info" struct containing information used in RaptureHotbarModule rendering.
+    [Sig("48 89 5C 24 ?? 55 56 57 41 55 41 57 48 83 EC 30 45 8B E8", FirstMatch)] void getHotbarCooldownInfo(HotbarCooldownInfo* out_cooldown_info, ActionType action_type, u32 action_id);
+    [Sig("E8 ?? ?? ?? ?? F3 41 0F 11 06 80 3B", FirstMatch, Offset(1), Rel32)] static f32 getActionRange(u32 action_id);
+    [Sig("E8 ?? ?? ?? ?? 85 C0 75 02 33 C0", FirstMatch, Offset(1), Rel32)] static u32 getActionInRangeOrLoS(u32 action_id, Object.GameObject* source_object, Object.GameObject* target_object);
+    [Sig("E8 ?? ?? ?? ?? 40 0F B6 CE E9", FirstMatch, Offset(1), Rel32)] static i32 getActionCost(ActionType action_type, u32 action_id, u8 a3, u8 a4, u8 a5, u8 a6);
+    // Calculate cooldown for an action, in milliseconds, optionally adjusted by various class mechanics.
+    [Sig("E8 ?? ?? ?? ?? 85 C0 7E 1C", FirstMatch, Offset(1), Rel32)] static i32 getAdjustedRecastTime(ActionType action_type, u32 action_id, bool apply_class_mechanics);
+    // Calculate cast time for an action, in milliseconds, adjusted by player stats (haste, sks/sps, etc.)
+    // and optionally various class mechanics.
+    [Sig("E8 ?? ?? ?? ?? 8B D0 48 8B CF E8 ?? ?? ?? ?? 0F B7 55", FirstMatch, Offset(1), Rel32)] static i32 getAdjustedCastTime(ActionType action_type, u32 action_id, bool apply_procs, ActionManager.CastTimeProc* out_opt_proc);
+    [Sig("E9 ?? ?? ?? ?? 41 B0 ?? 8B D3", FirstMatch, Offset(1), Rel32)] static u16 getMaxCharges(u32 action_id, u32 level);
+    // Gets the number of charges currently accessible to the player for the specified action. For actions
+    // that do not use charges, this method will cap at 1.
+    [Sig("48 89 6C 24 ?? 48 89 74 24 ?? 41 56 48 83 EC ?? 8B EA 48 89 5C 24", FirstMatch)] u32 getCurrentCharges(u32 action_id);
+    [Sig("E8 ?? ?? ?? ?? B0 01 EB D6", FirstMatch, Offset(1), Rel32)] void assignBlueMageActionToSlot(i32 slot, u32 action_id);
+    [Sig("E8 ?? ?? ?? ?? 8B F0 8B EF", FirstMatch, Offset(1), Rel32)] u32 getActiveBlueMageActionInSlot(i32 slot);
+    [Sig("48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC 50 48 63 F2", FirstMatch)] void swapBlueMageActionSlots(i32 slot_a, i32 slot_b);
+    [Sig("E8 ?? ?? ?? ?? 84 C0 0F 84 ?? ?? ?? ?? 49 8B 4E ?? ?? ?? ?? FF 90 ?? ?? ?? ?? 48 8B C8 41 8B D4", FirstMatch, Offset(1), Rel32)] bool setBlueMageActions(u32* action_array);
+    // Check whether this action should be highlighted (showing "ants") in the UI or not.
+    [Sig("E8 ?? ?? ?? ?? 88 47 ?? 80 BB", FirstMatch, Offset(1), Rel32)] bool isActionHighlighted(ActionType action_type, u32 action_id);
+    [Sig("48 89 5C 24 ?? 57 48 83 EC 20 48 8B DA 8B F9 E8 ?? ?? ?? ?? 4C 8B C3", FirstMatch)] static bool canUseActionOnTarget(u32 action_id, Object.GameObject* target);
+    // Calculate target position for area-targeted spell corresponding to current cursor position.
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 44 8B 84 24 80 00 00 00 33 C0", FirstMatch, Offset(1), Rel32)] bool getGroundPositionForCursor(Vec3* out_position);
+    // If 'auto face target on action execution' config option is enabled, rotate character to face target.
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 48 8B 3D ?? ?? ?? ?? 49 8B E8", FirstMatch)] void autoFaceTargetPosition(Vec3* position, u64 follow_target_id);
+    // Called every frame, responsible for ticking down timers (cooldowns, animation lock, etc) and
+    // executing queued action as soon as possible.
+    [Sig("48 8B C4 48 89 58 ?? 56 48 81 EC ?? ?? ?? ?? 48 8B 35", FirstMatch)] void update();
+    // Called whenever a cast is canceled, generally in response to player move or interruption. Resets
+    // cooldowns and clears temporary state.
+    [Sig("48 8B C4 48 83 EC 48 48 89 58", FirstMatch)] void onCastCancelled();
+    // Determine character's category for action targeting purposes; this is used by the game to determine
+    // whether a spell can be used on that target.
+    [Sig("40 53 48 83 EC 20 48 8B 01 48 8B D9 FF 50 08 8B 15", FirstMatch)] static ActionManager.TargetCategory classifyTarget(Character.Character* target);
+    // Determine the extraParam argument to be used for UseActionLocation for various summon actions
+    // (carbuncle, eos, etc.)
+    [Sig("E8 ?? ?? ?? ?? 0F B6 C0 BA ?? ?? ?? ?? E9", FirstMatch, Offset(1), Rel32)] static u8 getExtraParamForSummonAction(u32 action_id);
+    [Sig("E8 ?? ?? ?? ?? 41 83 FC ?? 0F 84 ?? ?? ?? ?? 41 81 FC", FirstMatch, Offset(1), Rel32)] void openCastBar(Character.BattleChara* character, ActionType action_type, u32 action_id, u32 spell_id, u32 extra_param, f32 cast_time_elapsed, f32 cast_time_total);
+}
+
+enum ActionType : u32 {
+    none = 0,
+    action = 1,
+    item = 2,
+    event_item = 3,
+    event_action = 4,
+    general_action = 5,
+    buddy_action = 6,
+    main_command = 7,
+    companion = 8,
+    craft_action = 9,
+    unk10 = 10,
+    pet_action = 11,
+    unk12 = 12,
+    mount = 13,
+    pv_p_action = 14,
+    field_marker = 15,
+    chocobo_race_ability = 16,
+    chocobo_race_item = 17,
+    unk18 = 18,
+    bgc_army_action = 19,
+    ornament = 20,
+}
+
+[Size(0x380)]
+struct AimingCamera : CameraBase {
+    [0x120] Graphics.Scene.Camera scene_camera0;
+    [0x220] Graphics.Scene.Camera scene_camera1;
+}
+
+bitfield ApartmentBuildingState : u8 {
+    [Bit(0)] bool is_full;
+    [Bit(1)] bool is_own;
+    // none is none of them
+}
+
+[Size(0x100)]
+struct BGMSystem {
+    [0x8] u32 num_scenes;
+    [0xC0] STD.StdVector<BGMSystem.Scene> scenes;
+    [0xD8] BGMSystem.SituationKind current_situation_kind;
+    [0xDC] bool play_battle_bgm;
+    [0xE0] f32 unk_battle_bgm_duration0;
+    [0xE4] f32 unk_battle_bgm_duration1;
+    [0xF2] bool bgm_play_zone_in_only;
+    [0xF8] bool lasting_bgm;
+    [0xF9] bool continue_bgm_until_warp;
+    [Sig("4C 8B 15 ?? ?? ?? ?? 4D 85 D2 74 77 41 83 7A", FirstMatch, Offset(3), Rel32)] static BGMSystem* instance;
+    [Sig("4C 8B 1D ?? ?? ?? ?? 4D 85 DB 0F 84 ?? ?? ?? ?? 41 3B 53", FirstMatch)] static void setBgm(u16 bgm_id, u32 scene_id, u8 a3, bool enable_custom_fade, u32 fade_out_ms, u32 fade_in_ms, u32 fade_in_start_ms, u8 a8, u8 a9, f32 initial_volume);
+    [Sig("4C 8B 05 ?? ?? ?? ?? 4D 85 C0 74 3D", FirstMatch)] void resetBgm(u32 scene_id);
+}
+
+[Size(0x80)]
+struct Balloon {
+    [0x0] u16 default_balloon_id;
+    [0x2] u16 now_playing_balloon_id;
+    [0x4] f32 play_timer;
+    [0x8] BalloonType type;
+    [0xC] BalloonState state;
+    [0x10] System.String.Utf8String text;
+    [0x78] u8 unk_bool;
+}
+
+enum BalloonState : u32 {
+    waiting = 0,
+    active = 1,
+    closing = 2,
+    inactive = 3,
+}
+
+enum BalloonType : u32 {
+    timer = 0,
+    unknown = 1,
+}
+
+[Size(0x1)]
+struct BattleLog {
+    // Add a battle log message with three formatter parameters.
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 83 B8", FirstMatch, Offset(1), Rel32)] static void addLogMessage3Params(u32 log_message_id, Character.BattleChara* source, i32 value1, i32 value2, i32 value3, f32 max_distance);
+    // Add a battle log message with four formatter parameters.
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? F3 0F 11 44 24", FirstMatch, Offset(1), Rel32)] static void addLogMessage(u32 log_message_id, Character.BattleChara* source, i32 value1, i32 value2, i32 value3, i32 value4, f32 max_distance);
+    // Add an action-related battle log message.
+    [Sig("E8 ?? ?? ?? ?? 41 8B CC 83 E9", FirstMatch, Offset(1), Rel32)] static void addActionLogMessage(u32 log_message_id, Object.GameObject* source, Object.GameObject* target, ActionType action_kind, u32 action_id, i32 value1, i32 value2, i32 value3, i32 value4, f32 max_distance);
+    // Add a flytext with the given LogMessageId.
+    [Sig("E8 ?? ?? ?? ?? EB ?? 85 F6 0F 84", FirstMatch, Offset(1), Rel32)] static void addToScreenLogWithLogMessageId(Character.BattleChara* target, Character.BattleChara* source, i32 log_message_id, u8 action_kind, u32 action_id, i32 value1, i32 value2, i32 value3);
+    // Add a flytext with the given ScreenLogKind.
+    [Sig("E8 ?? ?? ?? ?? BF ?? ?? ?? ?? EB 39", FirstMatch, Offset(1), Rel32)] static void addToScreenLogWithScreenLogKind(Character.BattleChara* target, Character.BattleChara* source, i32 screen_log_kind, u8 option, u8 action_kind, u32 action_id, i32 value1, i32 value2, i32 value3);
+}
+
+[Size(0x10)]
+struct CSBonusEventInfo {
+    [0x0] u16 season;
+    [0x4] u32 base_time;
+    [0x8] u32 season_target;
+    [0xC] bool is_open_shop;
+    [0xD] bool is_open_mission;
+}
+
+[Size(0x178)]
+struct CSBonusManager : ServerRequestCallbackInterface {
+    [0x8] CSBonusEventInfo event_info;
+    [0x18] CSBonusMissionInfo mission_info;
+    [Sig("48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 63 D0", FirstMatch, Offset(3), Rel32)] static CSBonusManager* instance;
+}
+
+[Size(0xB0)]
+struct CSBonusMissionInfo {
+    [0x0] u32 seed_base;
+    [0x4] u8[20] unk_achieve_flag;
+    [0x18] u8[20] wb_achieve_flag;
+    [0x2C] u8[20] pm_achieve_flag;
+    [0x40] u8[20] mm_achieve_flag;
+    [0x54] u8[20] unk_receive_flag;
+    [0x68] u8[20] wb_receive_flag;
+    [0x7C] u8[20] pm_receive_flag;
+    [0x90] u8[20] mm_receive_flag;
+    [0xA4] u8[2] unk_count;
+    [0xA6] u8[2] wb_count;
+    [0xA8] u8[2] pm_count;
+    [0xAA] u8[2] mm_count;
+}
+
+[Size(0x2C0)]
+struct Camera : CameraBase {
+    [0x124] f32 distance;
+    [0x128] f32 min_distance;
+    [0x12C] f32 max_distance;
+    [0x130] f32 fo_v;
+    [0x134] f32 min_fo_v;
+    [0x138] f32 max_fo_v;
+    [0x140] f32 dir_h;
+    [0x144] f32 dir_v;
+    [0x148] f32 input_delta_h_adjusted;
+    [0x14C] f32 input_delta_v_adjusted;
+    [0x150] f32 input_delta_h;
+    [0x154] f32 input_delta_v;
+    [0x158] f32 dir_v_min;
+    [0x15C] f32 dir_v_max;
+    [0x180] CameraZoomMode zoom_mode;
+    [0x184] CameraControlMode control_mode;
+    [0x18C] f32 interp_distance;
+    [0x198] f32 saved_distance;
+    [0x1C0] Common.Math.Vector3 last_position;
+    [0x1D0] Common.Math.Vector3 last_look_at_vector;
+    [0x1E0] bool should_reset_angles;
+    [0x1E4] f32 tilt_offset;
+    [0x1E8] bool is_event_camera_auto_control;
+    [0x23C] u32 saved_model_skeleton_id;
+    [0x290] u32 config_option_third_person_default_y_angle;
+    [0x294] u32 config_option_third_person_default_zoom;
+    [0x298] u32 config_option_third_person_default_distance;
+    [0x29C] u32 config_option_first_person_default_y_angle;
+    [0x2A0] u32 config_option_first_person_default_zoom;
+    [0x2A4] u32 config_option_first_person_default_distance;
+    [0x2A8] u32 config_option_lockon_default_y_angle;
+    [0x2AC] u32 config_option_lockon_default_zoom;
+    [0x2B0] u32 config_option_lockon_default_distance;
+    [Virtual(14)] bool updateTiltOffset();
+    [Virtual(17)] CameraControlMode determineControlMode();
+    [Virtual(18)] Object.GameObject* getCameraTargetObject();
+    [Virtual(19)] f32 getTiltOffset();
+    [Virtual(21)] Object.GameObject* getTargetObject();
+    [Virtual(22)] void load(CameraControlMode control_mode);
+    [Virtual(24)] void saveConfigOptions();
+    [Virtual(25)] void loadConfigOptions();
+    [Virtual(26)] void resetConfigOptions();
+    [Virtual(27)] void setTiltOffset(f32 tilt_offset);
+    [Virtual(28)] f32 getZoomSpeed();
+    [Virtual(29)] f32 getZoomModeToggleSpeedMultiplier();
+    [Virtual(30)] f32 getInputDeltaHMultiplier();
+    [Virtual(31)] f32 getInputDeltaVMultiplier();
+    [Sig("48 83 EC ?? 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 74 ?? B8", FirstMatch)] static CameraInputSource getCameraInputSource();
+}
+
+[Size(0x120)]
+struct CameraBase {
+    [0x0] void* virtual_table;
+    [0x10] Graphics.Scene.Camera scene_camera;
+    [0x110] u32 unk110;
+    [0x114] u32 unk114;
+    [0x118] f32 unk118;
+    [0x11C] u8 unk11_c;
+    [Virtual(2)] void updateState();
+    [Virtual(3)] void update();
+    [Virtual(6)] void resetAngles();
+    // Also called YAngle in ConfigOptions.
+    [Virtual(7)] f32 calculateSceneCameraPitch();
+    [Virtual(8)] f32 calculateSceneCameraYaw();
+    [Virtual(9)] void resetAngles2();
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 18 48 8D 0D ?? ?? ?? ?? B3 01", FirstMatch, Offset(1), Rel32)] bool shouldDrawGameObject(Object.GameObject* game_object, Common.Math.Vector3* scene_camera_pos, Common.Math.Vector3* look_at_vector);
+}
+
+enum CameraControlMode : i32 {
+    first_person = 0,
+    // Legacy ("the camera will automatically turn based on the direction your character is moving or
+    // facing")
+    third_person_legacy = 1,
+    // Standard and Legacy with "Disable camera pivot" enabled
+    third_person_fixed = 2,
+    lockon_first_person = 3,
+    first_person_unk = 4,
+    lockon_third_person = 5,
+    lockon_unk6 = 6,
+}
+
+enum CameraInputSource : i32 {
+    none = 0,
+    keyboard = 1,
+    analog = 2,
+    mouse_drag = 3,
+}
+
+enum CameraZoomMode : i32 {
+    first_person = 0,
+    third_person = 1,
+}
+
+[Size(0x9EB8)]
+struct CharamakeAvatarSaveDataContainer {
+    [0x0] CharamakeAvatarSaveDataContainer.FixedContainer release;
+    [0x3218] CharamakeAvatarSaveDataContainer.FixedContainer beta;
+    [0x6430] CharamakeAvatarSaveDataContainer.FixedContainer benchmark;
+    [0x9648] CharamakeAvatarSaveDataContainer.FreeTrialContainer free_trial;
+    [0x9E18] CharamakeAvatarSaveDataContainer.VariableContainer variable;
+}
+
+[Size(0x40)]
+struct ChocoboTaxiManager {
+    [0x0] u32 id;
+    [0x4] u32 client_path_id;
+    [0x20] Common.Math.Vector3 dismount_position;
+    [0x30] ChocoboTaxiState state;
+    [0x34] bool registered_for_duty_error_shown;
+    [Sig("48 8D 0D ?? ?? ?? ?? 44 89 77 04", FirstMatch, Offset(3), Rel32)] static ChocoboTaxiManager instance;
+}
+
+enum ChocoboTaxiState : i32 {
+    none = 0,
+    mounting = 1,
+    traveling = 2,
+    landing = 3,
+}
+
+[Size(0x8C)]
+struct ColliderProvider {
+    [0x0] bool has_colliders;
+    [0x4] u32 unk_collider_layer8_instance_key;
+    [0x8] Common.Component.BGCollision.SceneWrapper.ColliderList collider_list;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F 57 FF 3C", FirstMatch, Offset(3), Rel32)] static ColliderProvider instance;
+}
+
+[Size(0x8)]
+struct ComboDetail {
+    [0x0] f32 timer;
+    [0x4] u32 action;
+}
+
+[Size(0x74)]
+struct Conditions {
+    [0x0] bool none;
+    [0x1] bool normal;
+    [0x2] bool dead;
+    [0x3] bool emoting;
+    [0x4] bool mounted;
+    [0x5] bool crafting;
+    [0x6] bool gathering;
+    [0x7] bool melding_materia;
+    [0x8] bool anim_lock;
+    [0x9] bool carrying;
+    [0xA] bool riding_pillion;
+    [0xB] bool in_that_position;
+    [0xC] bool chocobo_racing;
+    [0xD] bool playing_mini_game;
+    [0xE] bool playing_lord_of_verminion;
+    [0xF] bool participating_in_custom_match;
+    [0x10] bool performing;
+    [0x11] bool unknown17;
+    [0x12] bool unknown18;
+    [0x13] bool unknown19;
+    [0x14] bool unknown20;
+    [0x15] bool unknown21;
+    [0x16] bool unknown22;
+    [0x17] bool unknown23;
+    [0x18] bool unknown24;
+    [0x19] bool occupied;
+    [0x1A] bool in_combat;
+    [0x1B] bool casting;
+    [0x1C] bool suffering_status_affliction;
+    [0x1D] bool suffering_status_affliction2;
+    [0x1E] bool occupied30;
+    [0x1F] bool occupied_in_event;
+    [0x20] bool occupied_in_quest_event;
+    [0x21] bool occupied33;
+    [0x22] bool bound_by_duty;
+    [0x23] bool occupied_in_cut_scene_event;
+    [0x24] bool in_dueling_area;
+    [0x25] bool trade_open;
+    [0x26] bool occupied38;
+    // Observed during Materialize (Desynthesis, Materia Extraction, Aetherial Reduction) and Repair.
+    [0x27] bool occupied39;
+    [0x28] bool executing_crafting_action;
+    [0x29] bool preparing_to_craft;
+    [0x2A] bool executing_gathering_action;
+    [0x2B] bool fishing;
+    [0x2C] bool unknown44;
+    [0x2D] bool between_areas;
+    [0x2E] bool stealthed;
+    [0x2F] bool unknown47;
+    [0x30] bool jumping;
+    [0x31] bool using_chocobo_taxi;
+    [0x32] bool occupied_summoning_bell;
+    [0x33] bool between_areas51;
+    [0x34] bool system_error;
+    [0x35] bool logging_out;
+    [0x36] bool condition_location;
+    [0x37] bool waiting_for_duty;
+    [0x38] bool bound_by_duty56;
+    [0x39] bool mount_or_ornament_transition;
+    [0x3A] bool watching_cutscene;
+    [0x3B] bool waiting_for_duty_finder;
+    [0x3C] bool creating_character;
+    [0x3D] bool jumping61;
+    [0x3E] bool pv_p_display_active;
+    [0x3F] bool suffering_status_affliction63;
+    [0x40] bool mounting;
+    [0x41] bool carrying_item;
+    [0x42] bool using_party_finder;
+    [0x43] bool using_housing_functions;
+    [0x44] bool transformed;
+    [0x45] bool on_free_trial;
+    [0x46] bool being_moved;
+    // Observed in Cosmic Exploration while using the actions Astrodrill (only briefly) and Solar
+    // Flarethrower.
+    [0x47] bool mounting71;
+    [0x48] bool suffering_status_affliction72;
+    [0x49] bool suffering_status_affliction73;
+    [0x4A] bool registering_for_race_or_match;
+    [0x4B] bool waiting_for_race_or_match;
+    [0x4C] bool waiting_for_triple_triad_match;
+    [0x4D] bool in_flight;
+    [0x4E] bool watching_cutscene78;
+    [0x4F] bool in_deep_dungeon;
+    [0x50] bool swimming;
+    [0x51] bool diving;
+    [0x52] bool registering_for_triple_triad_match;
+    [0x53] bool waiting_for_triple_triad_match83;
+    [0x54] bool participating_in_cross_world_party_or_alliance;
+    // Observed in Cosmic Exploration while gathering during a stellar mission.
+    [0x55] bool unknown85;
+    [0x56] bool duty_recorder_playback;
+    [0x57] bool casting87;
+    [0x58] bool mount_immobile;
+    [0x59] bool in_this_state89;
+    [0x5A] bool role_playing;
+    [0x5B] bool in_duty_queue;
+    [0x5C] bool readying_visit_other_world;
+    [0x5D] bool waiting_to_visit_other_world;
+    [0x5E] bool using_fashion_accessory;
+    [0x5F] bool bound_by_duty95;
+    // Observed in Cosmic Exploration while participating in MechaEvent.
+    [0x60] bool unknown96;
+    [0x61] bool disguised;
+    [0x62] bool recruiting_world_only;
+    [0x63] bool unknown99;
+    [0x64] bool editing_portrait;
+    // Observed in Cosmic Exploration, in mech flying to FATE or during Cosmoliner use. Maybe ClientPath
+    // related?
+    [0x65] bool unknown101;
+    // Used in Cosmic Exploration.
+    [0x66] bool piloting_mech;
+    [0x67] bool unknown103;
+    [0x68] bool editing_strategy_board;
+    [0x69] bool unknown105;
+    [0x6A] bool unknown106;
+    [0x6B] bool unknown107;
+    [0x6C] bool unknown108;
+    [0x6D] bool unknown109;
+    [0x6E] bool unknown110;
+    [0x6F] bool unknown111;
+    // When this reaches `0`, `mount_or_ornament_transition` is set to `false`.
+    [0x70] f32 mount_or_ornament_transition_reset_timer;
+    [Sig("48 8D 0D ?? ?? ?? ?? 66 2B D8", FirstMatch, Offset(3), Rel32)] static Conditions instance;
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? 8B FB", FirstMatch, Offset(1), Rel32)] bool hasPermission(u32 permission_id, i32 excluded_condition1, i32 excluded_condition2);
+}
+
+[Size(0x28)]
+struct ContentInventoryContainer : InventoryContainer {
+    [0x20] InventoryType inventory_type;
+    [Virtual(6)] InventoryType getInventoryType();
+}
+
+[Size(0x48)]
+struct ContentInventoryItem : InventoryItem {
+}
+
+[Size(0xC0)]
+struct ContentInventoryManager {
+    [0x8] STD.StdMap<u32, ContentInventoryProvider*> inventory_providers;
+    [0x18] WKS.WKSContentInventoryProvider wks_inventory_provider;
+    [Sig("48 89 1D ?? ?? ?? ?? ?? ?? ?? 48 8B 5C 24", FirstMatch, Offset(3), Rel32)] static ContentInventoryManager* instance;
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? E8 ?? ?? ?? ?? 44 0F B7 C6", FirstMatch, Offset(1), Rel32)] bool hasInventoryContainer(InventoryType inventory_type);
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 48 89 5C 24 ?? 48 89 6C 24", FirstMatch, Offset(1), Rel32)] bool hasItemId(u32 item_id);
+    [Sig("E9 ?? ?? ?? ?? 8B D3 48 8B CE E8 ?? ?? ?? ?? 48 8B C8", FirstMatch, Offset(1), Rel32)] ContentInventoryItem* getInventorySlot(InventoryType inventory_type, i16 slot_index);
+    [Sig("E8 ?? ?? ?? ?? EB ?? 49 8B 95", FirstMatch, Offset(1), Rel32)] ContentInventoryContainer* getInventoryContainer(InventoryType inventory_type);
+    // Returns the `InventoryType` associated with the specified `item_id`.
+    [Sig("E8 ?? ?? ?? ?? 89 44 24 ?? E8 ?? ?? ?? ?? 48 8D 54 24 ?? ?? ?? ?? 4C 8B 41 ?? 48 8B C8 41 FF D0 48 83 C4", FirstMatch, Offset(1), Rel32)] InventoryType getInventoryTypeByItemId(u32 item_id);
+}
+
+[Size(0x28)]
+struct ContentInventoryProvider {
+    [0x0] void* virtual_table;
+    [0x10] STD.StdMap<u32, InventoryType> item_id_inventory_item_mapping;
+    [0x20] i16 slot_count;
+    [Virtual(0)] ContentInventoryProvider* dtor(u8 free_flags);
+    [Virtual(1)] bool hasInventoryContainer(InventoryType inventory_type);
+    [Virtual(2)] bool isValidTerritoryType(u16 territory_type_id);
+    [Virtual(3)] void setup();
+    [Virtual(5)] void update();
+    [Virtual(9)] ContentInventoryItem* getInventorySlot(InventoryType inventory_type, i16 slot_index);
+    [Virtual(10)] ContentInventoryContainer* getInventoryContainer(InventoryType inventory_type);
+    // Returns whether the specified `item_id` is a valid item that can be saved in containers provided by
+    // this `ContentInventoryProvider`.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? 48 8B 43 ?? 80 78 ?? ?? 74 ?? 48 8B 43 ?? 80 78 ?? ?? 75 ?? 0F 1F 40", FirstMatch, Offset(1), Rel32)] bool hasItemId(u32 item_id);
+    // Returns the `InventoryType` associated with the specified `item_id`.
+    [Sig("E8 ?? ?? ?? ?? 2D ?? ?? ?? ?? 74 ?? 83 F8 ?? 75", FirstMatch, Offset(1), Rel32)] InventoryType getInventoryTypeByItemId(u32 item_id);
+}
+
+[Size(0x748)]
+struct ContentsReplayManager {
+    [0x0] u32 game_build_revision;
+    [0x48] ContentsReplayManager.FFXIVREPLAYHeader header;
+    [0xB0] u16 num_chapters;
+    [0xB4] ContentsReplayManager.FFXIVREPLAYChapter[64] chapters;
+    [0x3B8] System.String.Utf8String content_title;
+    [0x450] u64 local_content_id;
+    [0x460] System.String.Utf8String character_recording_name;
+    [0x4C8] System.String.Utf8String replay_title;
+    [0x530] System.String.Utf8String unk530;
+    [0x5AC] u16 fate_id;
+    [0x5D0] Network.ZoneInitPacket zone_init_packet;
+    [0x724] f32 position_ms;
+    [0x72C] f32 playback_speed;
+    // The value last set as the replay volume of the `SoundManager`, 0 or 1.
+    [0x730] f32 sound_volume;
+    [0x740] u16 level;
+    [0x742] ContentsReplayStatus status;
+    [0x743] ContentsReplayPlaybackControl playback_controls;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 0F 84 ?? ?? ?? ?? 48 8B 4E ?? ?? ?? ?? FF 50", FirstMatch, Offset(3), Rel32)] static ContentsReplayManager instance;
+}
+
+bitfield ContentsReplayPlaybackControl : u8 {
+    [Bit(2)] bool in_playback;
+    [Bit(3)] bool paused;
+    // none is none of them
+}
+
+bitfield ContentsReplayStatus : u8 {
+    [Bit(1)] bool can_record;
+    [Bit(2)] bool recording_packets;
+    [Bit(6)] bool content_started;
+    // none is none of them
+}
+
+enum CooldownDisplayType : i32 {
+    non_gcd = 0,
+    gcd_multi_charge = 1,
+    gcd_single_charge = 2,
+    special_charge = 3,
+}
+
+[Size(0x30)]
+struct CurrencyManager {
+    // This bucket is known to contain the following items: `
+    // |-----------|--------|-------------------------| | SpecialId | ItemId | Item Name |
+    // |-----------|--------|-------------------------| | 1 | 25199 | White Crafters' Scrip | | 2 | 33913 |
+    // Purple Crafters' Scrip | | 3 | 25200 | White Gatherers' Scrip | | 4 | 33914 | Purple Gatherers'
+    // Scrip | | 5 | 10307 | Centurio Seal | | 6 | 41784 | Orange Crafters' Scrip | | 7 | 41785 | Orange
+    // Gatherers' Scrip | |-----------|--------|-------------------------| `
+    [0x0] STD.StdMap<u32, CurrencyManager.SpecialCurrencyItem> special_item_bucket;
+    // This bucket is known to contain the following items: ` |--------|-------------------------| | ItemId
+    // | Item Name | |--------|-------------------------| | 21072 | Venture | | 21073 | Ixali Oaknot | |
+    // 21074 | Vanu Whitebone | | 21075 | Sylphic Goldleaf | | 21076 | Steel Amalj'ok | | 21077 |
+    // Rainbowtide Psashp | | 21078 | Titan Cobaltpiece | | 21079 | Black Copper Gil | | 21080 | Carved
+    // Kupo Nut | | 21081 | Kojin Sango | | 21172 | Achievement Certificate | | 21173 | | | 21935 | Ananta
+    // Dreamstaff | | 22525 | Namazu Koban | | 26533 | Sack of Nuts | | 26807 | Bicolor Gemstone | | 28063
+    // | Skybuilders' Scrip | | 28186 | Fae Fancy | | 28187 | Qitari Compliment | | 28188 | Hammered
+    // Frogment | | 30341 | Faux Leaf | | 36656 | Trophy Crystal | | 36657 | Arkasodara Pana | | 37854 |
+    // Omicron Omnitoken | | 38534 | Sil'dihn Silver | | 38952 | Loporrit Carat | | 39885 | Shishu Coin | |
+    // 41079 | Aloalo Coin | | 41629 | MGF | | 44472 | Pelu Pelplume | | 46178 | Yok Huy Ward | | 48084 |
+    // Mamool Ja Nanook | | 49124 | | | 49125 | Corvosi Manuscript | | 52322 | MGC |
+    // |--------|-------------------------| `
+    [0x10] STD.StdMap<u32, CurrencyManager.CurrencyItem> item_bucket;
+    // This bucket is known to contain the following items: ` |--------|----------------------------| |
+    // ItemId | Item Name | |--------|----------------------------| | 31135 | Bozjan Cluster | | 33138 |
+    // (YoRHa Questline Progress) | | 37549 | Seafarer's Cowrie | | 37550 | Islander's Cowrie | | 37551 |
+    // Island Palm Leaf | | 37552 | Island Apple | | 37553 | Island Branch | | 37554 | Island Stone | |
+    // 37555 | Island Clam | | 37556 | Island Laver | | 37557 | Island Coral | | 37558 | Islewort | | 37559
+    // | Island Sand | | 37560 | Island Log | | 37561 | Island Palm Log | | 37562 | Island Vine | | 37563 |
+    // Island Sap | | 37564 | Island Copper Ore | | 37565 | Island Limestone | | 37566 | Island Rock Salt |
+    // | 37567 | Island Sugarcane | | 37568 | Island Cotton Boll | | 37569 | Island Hemp | | 37570 | Island
+    // Clay | | 37571 | Island Tinsand | | 37572 | Island Iron Ore | | 37573 | Island Quartz | | 37574 |
+    // Island Leucogranite | | 37575 | Islefish | | 37576 | Island Squid | | 37577 | Island Jellyfish | |
+    // 37578 | Island Alyssum | | 37579 | Raw Island Garnet | | 37580 | Island Spruce Log | | 37581 |
+    // Island Hammerhead | | 37582 | Island Silver Ore | | 37583 | Island Popoto Set | | 37584 | Island
+    // Cabbage Seeds | | 37585 | Isleberry Seeds | | 37586 | Island Pumpkin Seeds | | 37587 | Island Onion
+    // Set | | 37588 | Island Tomato Seeds | | 37589 | Island Wheat Seeds | | 37590 | Island Corn Seeds | |
+    // 37591 | Island Parsnip Seeds | | 37592 | Island Radish Seeds | | 37593 | Island Popoto | | 37594 |
+    // Island Cabbage | | 37595 | Isleberry | | 37596 | Island Pumpkin | | 37597 | Island Onion | | 37598 |
+    // Island Tomato | | 37599 | Island Wheat | | 37600 | Island Corn | | 37601 | Island Parsnip | | 37602
+    // | Island Radish | | 37603 | Sanctuary Fleece | | 37604 | Sanctuary Claw | | 37605 | Sanctuary Fur |
+    // | 37606 | Sanctuary Feather | | 37607 | Sanctuary Egg | | 37608 | Sanctuary Carapace | | 37609 |
+    // Sanctuary Fang | | 37610 | Sanctuary Horn | | 37611 | Sanctuary Milk | | 37612 | Island Sweetfeed |
+    // | 37613 | Island Greenfeed | | 37614 | Premium Island Greenfeed | | 37615 | Makeshift Net | | 37616
+    // | Makeshift Restraint | | 37617 | Makeshift Soporific | | 39224 | Island Resin | | 39225 | Island
+    // Coconut | | 39226 | Island Beehive Chip | | 39227 | Island Wood Opal | | 39228 | Multicolored
+    // Isleblooms | | 39229 | Island Paprika Seeds | | 39230 | Island Leek Set | | 39231 | Island Paprika |
+    // | 39232 | Island Leek | | 39887 | Island Coal | | 39888 | Island Shale | | 39889 | Island Glimshroom
+    // | | 39890 | Island Marble | | 39891 | Island Mythril Ore | | 39892 | Island Effervescent Water | |
+    // 39893 | Island Spectrine | | 39894 | Island Cave Shrimp | | 39895 | Island Runner Bean Seeds | |
+    // 39896 | Island Beet Seeds | | 39897 | Island Eggplant Seeds | | 39898 | Island Zucchini Seeds | |
+    // 39899 | Island Runner Beans | | 39900 | Island Beet | | 39901 | Island Eggplant | | 39902 | Island
+    // Zucchini | | 41630 | Island Durium Sand | | 41631 | Island Yellow Copper Ore | | 41632 | Island Gold
+    // Ore | | 41633 | Island Hawk's Eye Sand | | 41634 | Island Crystal Formation | | 41635 | Island
+    // Watermelon | | 41636 | Island Sweet Popoto | | 41637 | Island Broccoli | | 41638 | Island Buffalo
+    // Beans | | 41639 | Island Watermelon Seeds | | 41640 | Island Sweet Popoto Set | | 41641 | Island
+    // Broccoli Seeds | | 41642 | Island Buffalo Bean Seeds | | 41643 | Flawless Net | | 41644 | Flawless
+    // Restraint | | 41645 | Flawless Soporific | | 41668 | Felicitous Token |
+    // |--------|----------------------------| `
+    [0x20] STD.StdMap<u32, CurrencyManager.ContentCurrencyItem> content_item_bucket;
+    [Sig("48 8B 1D ?? ?? ?? ?? 48 85 DB 74 27 48 8D 4B 20 E8 ?? ?? ?? ?? 48 8D 4B 10 E8 ?? ?? ?? ?? 48 8B CB E8 ?? ?? ?? ?? BA ?? ?? ?? ?? 48 8B CB E8 ?? ?? ?? ?? 33 D2", FirstMatch, Offset(3), Rel32)] static CurrencyManager* instance;
+    // Used for items in `special_item_bucket` only.
+    [Sig("E8 ?? ?? ?? ?? 41 89 47 0C", FirstMatch, Offset(1), Rel32)] u32 getItemIdBySpecialId(u8 special_id);
+    [Sig("E8 ?? ?? ?? ?? 3B C3 76 0A", FirstMatch, Offset(1), Rel32)] u32 getItemCount(u32 item_id);
+    [Sig("E8 ?? ?? ?? ?? 3B D8 0F 86", FirstMatch, Offset(1), Rel32)] u32 getItemMaxCount(u32 item_id);
+    // For limited items only.
+    [Sig("44 8B C2 4C 8B D1 48 8B 11", FirstMatch)] u32 getItemCountRemaining(u32 item_id);
+    // Checks if the item is in any bucket.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 89 B7", FirstMatch, Offset(1), Rel32)] bool hasItem(u32 item_id);
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 32 8B D7", FirstMatch, Offset(1), Rel32)] bool isItemLimited(u32 item_id);
+    // Fills data for a currency item. Only used in ProcessActorControlPacket.
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 8B 44 24 70 83 F8 01", FirstMatch, Offset(1), Rel32)] void setItemData(i8 special_id, u32 item_id, u32 max_count, u32 count, bool is_unlimited);
+}
+
+[Size(0xA8)]
+struct DomanEnclaveManager {
+    [0x8] bool is_loaded;
+    [0x10] Common.Component.Excel.ExcelSheetWaiter* doma_story_progress_sheet_waiter;
+    [0x18] Common.Component.Excel.ExcelSheet* doma_story_progress_sheet;
+    // RowIds of DomaStoryProgress sheet.
+    [0x20] u8[128] milestones;
+    [0xA0] DomanEnclaveManager.DomanEnclaveState state;
+    [Sig("48 8B 15 ?? ?? ?? ?? 48 8B C8 48 83 C4 28", FirstMatch, Offset(3), Rel32)] static DomanEnclaveManager* instance;
+}
+
+[Size(0xA0)]
+struct DutyActionManager {
+    [0x0] u8 pending_content_ex_action_row_id;
+    [0x1] u8 current_content_ex_action_row_id;
+    [0x8] Common.Component.Excel.ExcelSheet* content_ex_action_sheet;
+    [0x10] isize row_reader;
+    [0x18] u8 num_valid_slots;
+    [0x19] bool actions_present;
+    [0x1A] bool[5] action_active;
+    [0x20] u32[5] action_id;
+    [0x34] RecastDetail[5] recast;
+    [0x98] u8[2] max_charges;
+    [0x9A] u8[2] cur_charges;
+    [Sig("E8 ?? ?? ?? ?? 48 85 C0 74 ?? 8B D3 48 8B C8 E8 ?? ?? ?? ?? 3C 01", FirstMatch, Offset(1), Rel32)] static DutyActionManager* getInstanceIfReady();
+    // Returns the ID of the action present at the specified Duty Action slot.
+    [Sig("E8 ?? ?? ?? ?? 8B F0 EB 41", FirstMatch, Offset(1), Rel32)] static u32 getDutyActionId(u16 duty_action_slot);
+}
+
+enum EstateType : i32 {
+    free_company_estate = 0,
+    personal_chambers = 1,
+    personal_estate = 2,
+    unknown3 = 3,
+    shared_estate = 4,
+    apartment_building = 5,
+    apartment_room = 6,
+}
+
+[Size(0x8)]
+struct EventItemManager {
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 75 E4", FirstMatch, Offset(3), Rel32)] static EventItemManager instance;
+    [Sig("E8 ?? ?? ?? ?? 44 0F B7 C0 45 33 C9 0F B7 D3", FirstMatch, Offset(1), Rel32)] u16 getTreasureSpotSubKey();
+    [Sig("E8 ?? ?? ?? ?? 0F B6 D0 45 0F B6 CE", FirstMatch, Offset(1), Rel32)] u32 getTreasureHuntRank();
+}
+
+enum FFXIVREPLAYChapterType : u8 {
+    none = 0,
+    // Start of boss fight
+    countdown = 1,
+    start_restart = 2,
+    event_cutscene = 4,
+    content_start = 5,
+}
+
+[Size(0xA8)]
+struct FashionCheckManager {
+    [0x0] FashionCheckManager.PlayerInfoData player_info;
+    [0x8] FashionCheckManager.ThemeData theme;
+    [0x20] FashionCheckManager.EquipEvaluationData equip_evaluations;
+    [0x30] FashionCheckManager.HighScoreData high_score;
+    [0x80] FashionCheckManager.PreviewData preview;
+    [0xA0] bool is_command_sent;
+    [0xA1] bool is_info_requested;
+    [0xA2] bool is_custom_talk_active;
+    [Sig("E8 ?? ?? ?? ?? 48 8B D3 48 8B C8 E8 ?? ?? ?? ?? 48 8B D7", FirstMatch, Offset(1), Rel32)] static FashionCheckManager* instance();
+}
+
+[Size(0x4170)]
+struct GameMain {
+    [0x0] GameMain.Festival[8] active_festivals;
+    [0x80] GameMain.Festival[8] queued_festivals;
+    [0x260] ZoneSharedGroupManager zone_shared_group_manager;
+    [0xB08] PvPDuelManager pv_p_duel_manager;
+    [0xB28] JobGaugeManager job_gauge_manager;
+    [0xBA0] ContentsReplayManager contents_replay_manager;
+    [0x4038] Control.EmoteManager emote_manager;
+    [0x40F0] void* current_content_finder_condition_row;
+    [0x40F8] f32 territory_transition_delay;
+    [0x40FC] u8 territory_transition_state;
+    [0x40FE] bool connected_to_zone;
+    [0x4100] u32 territory_load_state;
+    [0x4104] u32 next_territory_type_id;
+    [0x4108] u32 current_territory_type_id;
+    [0x410C] Enums.TerritoryIntendedUse current_territory_intended_use_id;
+    [0x4110] u32 current_territory_filter_key;
+    [0x4114] u16 current_content_finder_condition_id;
+    [0x4118] u32 transition_territory_type_id;
+    [0x411C] u32 transition_territory_filter_key;
+    [0x4120] u32 current_map_id;
+    [0x4130] f32 milisecond_counter;
+    [0x4134] u32 runtime_seconds;
+    [0x4138] bool runtime_seconds_changed;
+    [0x413C] f32 runtime;
+    [0x4140] isize current_territory_type_row;
+    [0x4148] isize current_territory_intended_use_row;
+    [0x4150] isize next_territory_type_row;
+    [0x4158] isize next_territory_intended_use_row;
+    [Sig("48 8D 0D ?? ?? ?? ?? 0F 28 F2 48 89 44 24 ??", FirstMatch, Offset(3), Rel32)] static GameMain instance;
+    [Sig("E8 ?? ?? ?? ?? 44 8B B3 ?? ?? ?? ?? 33 FF", FirstMatch, Offset(1), Rel32)] bool isInInstanceArea();
+    [Sig("E8 ?? ?? ?? ?? 88 45 F1", FirstMatch, Offset(1), Rel32)] static bool isInPvPArea();
+    [Sig("40 53 48 83 EC 20 48 8B 1D ?? ?? ?? ?? 48 85 DB 74 1E 48 8D 0D", FirstMatch)] static bool isInPvPInstance();
+    [Sig("E8 ?? ?? ?? ?? 41 83 7E ?? 00 4C 8D 3D", FirstMatch, Offset(1), Rel32)] static bool isInGPose();
+    [Sig("E8 ?? ?? ?? ?? 32 DB 0F B6 C3 E9", FirstMatch, Offset(1), Rel32)] static bool isInIdleCam();
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 8B 44 24 70 48 8D 8D ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] void queueActiveFestivals(GameMain.Festival festival1, GameMain.Festival festival2, GameMain.Festival festival3, GameMain.Festival festival4, GameMain.Festival festival5, GameMain.Festival festival6, GameMain.Festival festival7, GameMain.Festival festival8);
+    [Sig("E8 ?? ?? ?? ?? 80 A3 ?? ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? E8", FirstMatch, Offset(1), Rel32)] void setActiveFestivals(GameMain.Festival festival1, GameMain.Festival festival2, GameMain.Festival festival3, GameMain.Festival festival4, GameMain.Festival festival5, GameMain.Festival festival6, GameMain.Festival festival7, GameMain.Festival festival8);
+    [Sig("E8 ?? ?? ?? ?? 66 41 89 B7", FirstMatch, Offset(1), Rel32)] static bool executeCommand(i32 command, i32 param1, i32 param2, i32 param3, i32 param4);
+    [Sig("E8 ?? ?? ?? ?? 49 8D 54 24 ?? B9", FirstMatch, Offset(1), Rel32)] static bool executeLocationCommand(i32 command, Vec3* position, i32 param1, i32 param2, i32 param3, i32 param4);
+}
+
+[Size(0xF30)]
+struct GcArmyData {
+    [0x0] GcArmyMember[8] members;
+    // RowId of GcArmyProgress
+    [0x2C0] u8 progress;
+    // RowId of GcArmyExpedition
+    [0x2C2] u16 current_expedition;
+    [0x2C8] u16 bonus_physical;
+    [0x2CA] u16 bonus_mental;
+    [0x2CC] u16 bonus_tactical;
+    [0x2FC] u32 mission_reward_experience;
+    [0x33C] u32 recruit_e_npc_resident_id;
+    [0x3B8] Character.CustomizeData recruit_customize_data;
+    [0x408] GcArmyMember recruit_member;
+    [0x4C0] u8 member_count;
+}
+
+[Size(0x10)]
+struct GcArmyManager {
+    // Data is loaded on-demand inside GC Barracks
+    [0x0] GcArmyData* data;
+    [0x8] i32 last_mission_complete_notification_timestamp;
+    [0xC] i32 last_training_complete_notification_timestamp;
+    [Sig("48 8B 05 ?? ?? ?? ?? 0F 29 B4 24 ?? ?? ?? ?? 0F 29 BC 24 ?? ?? ?? ?? 44 0F 29 84 24 ?? ?? ?? ?? 48 85 C0", FirstMatch, Offset(3), Rel32)] static GcArmyManager* instance;
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4E 28 8B FB", FirstMatch, Offset(1), Rel32)] u32 getMemberCount();
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4E ?? 44 8B C7", FirstMatch, Offset(1), Rel32)] GcArmyMember* getMember(u32 index);
+}
+
+[Size(0x58)]
+struct GcArmyMember {
+    [0x0] u32 face;
+    [0x4] u32 e_npc_resident_id;
+    [0x8] u8 race;
+    [0x9] u8 sex;
+    [0xA] u8 class_job;
+    // RowId of GcArmyMemberGrowExp
+    [0xB] u8 level;
+    [0xC] u32 experience;
+    [0x12] GcArmyMemberFlag flags;
+    // RowId of GcArmyCandidateCategory
+    [0x13] u8 candidate_category;
+    [0x14] i32 enlistment_timestamp;
+    // RowId of GcArmyCaptureTactics
+    [0x1C] u8 capture_tactics;
+    // Active Squadron Chemistry RowId of GcArmyExpeditionTrait
+    [0x1F] u8 active_trait;
+    // Active Squadron Chemistry Condition RowId of GcArmyExpeditionTraitCond
+    [0x20] u8 active_trait_cond;
+    // Inactive Squadron Chemistry RowId of GcArmyExpeditionTrait
+    [0x22] u8 inactive_trait;
+    // Inactive Squadron Chemistry Condition RowId of GcArmyExpeditionTraitCond
+    [0x23] u8 inactive_trait_cond;
+    [0x28] u32 glamour_main_hand;
+    [0x2C] u32 glamour_off_hand;
+    [0x30] u32 glamour_head;
+    [0x34] u32 glamour_body;
+    [0x38] u32 glamour_hands;
+    [0x3C] u32 glamour_legs;
+    [0x40] u32 glamour_feet;
+    [0x44] u8 stain0_main_hand;
+    [0x45] u8 stain0_off_hand;
+    [0x46] u8 stain0_head;
+    [0x47] u8 stain0_body;
+    [0x48] u8 stain0_hands;
+    [0x49] u8 stain0_legs;
+    [0x4A] u8 stain0_feet;
+    [0x4B] u8 stain1_main_hand;
+    [0x4C] u8 stain1_off_hand;
+    [0x4D] u8 stain1_head;
+    [0x4E] u8 stain1_body;
+    [0x4F] u8 stain1_hands;
+    [0x50] u8 stain1_legs;
+    [0x51] u8 stain1_feet;
+    [0x52] u8 mastery_independent;
+    [0x53] u8 mastery_offensive;
+    [0x54] u8 mastery_defensive;
+    [0x55] u8 mastery_balanced;
+}
+
+bitfield GcArmyMemberFlag : u8 {
+    [Bit(0)] bool on_squadron_mission;
+    [Bit(1)] bool in_training;
+    [Bit(2)] bool returned_from_mission;
+    // none is none of them
+}
+
+[Size(0x68)]
+struct HWDManager : ServerRequestCallbackInterface {
+    [0x11] u8 development_level;
+    [0x12] u16 territory_type_id;
+    [0x40] Event.HwdDevEventHandler* hwd_dev_event_handler;
+    [Sig("48 8B 05 ?? ?? ?? ?? 48 8B 4C 24 ?? 0F B6 50 11", FirstMatch, Offset(3), Rel32)] static HWDManager* instance;
+}
+
+[Size(0x1A)]
+struct HotbarCooldownInfo {
+    [0x0] f32 primary_elapsed_time;
+    [0x4] f32 primary_total_time;
+    [0x8] f32 additional_elapsed_time;
+    [0xC] f32 additional_total_time;
+    [0x10] CooldownDisplayType display_type;
+    [0x14] i32 current_max_charges;
+    [0x18] bool cooldown_active;
+    [0x19] bool is_gcd;
+}
+
+[Size(0x60)]
+struct HouseBuddy {
+    // Used for LogMessage#4466,4486.
+    [0x8] utf8[21] name;
+    // Used for LogMessage#4468. Add +10 for actual rank.
+    [0x24] u8 new_max_rank;
+    // Used for LogMessage#4467.
+    [0x28] u32 favorite_food_item_id;
+    [0x30] STD.StdVector<HouseBuddy.BuddyDataEntry> buddy_data;
+    [0x48] u32 buddy_object_setup_state;
+    [0x50] Character.BattleChara* buddy_object;
+    [0x58] i32 buddy_object_index;
+}
+
+[Size(0x8)]
+struct HouseId {
+    [0x0] HouseUnit unit;
+    [0x1] u8 unk1;
+    // Masked data: - `0b0000_0000_0011_1111` (`0x0003F`) = WardIndex - `0b1111_1111_1100_0000` (`0xFFC06`)
+    // = Room
+    [0x2] u16 data2 { [Bit(0)] u8 ward_index : 6; [Bit(6)] u16 room_number : 10; }
+    [0x4] u16 territory_type_id;
+    [0x6] u16 world_id;
+}
+
+[Size(0x1)]
+struct HouseUnit {
+    // Masked data: - `0b1000_0000` (`0x80`) = Apartment Flag - `0b0111_1111` (`0x7F`) = Apartment Division
+    // (only if Apartment Flag is `true`) - `0b0111_1111` (`0x7F`) = PlotIndex (only if Apartment Flag is
+    // `false`)
+    [0x0] u8 value { [Bit(0)] u8 apartment_division : 7; }
+}
+
+[Size(0x30)]
+struct HousingFurniture {
+    [0x0] u32 id;
+    [0x10] Common.Math.Vector3 position;
+    [0x20] f32 rotation;
+    [0x24] i32 index;
+    [0x28] u8 stain;
+}
+
+[Size(0x125B0)]
+struct HousingFurnitureManager {
+    [0x0] HousingFurniture[1462] furniture_memory;
+    [0x11220] STD.StdVector<HousingFurniture*> furniture_vector;
+    [0x11238] HousingObjectManager object_manager;
+    [0x12598] i64 last_update;
+}
+
+[Size(0x7B0)]
+struct HousingGuestBookData {
+    [0x0] isize unk_callback_ptr;
+    [0x8] HouseId house_id;
+    [0x10] utf8[192] greeting;
+    [0xD0] u8 unk_d0;
+    [0xD4] u32 unk_d4;
+    [0xD8] i32 likes;
+    [0xDC] u8 unk_dc;
+    [0xDD] u8 num_entries;
+    [0xE0] u8 current_page;
+    [0xE1] u8 num_entries_on_page;
+    [0xE8] HousingGuestBookData.HousingGuestBookEntry[6] entries;
+    [0x6E8] u8 unk6_e8;
+    [0x6E9] bool unk6_e9;
+    [0x6EA] u8 unk6_ea;
+    [0x7AC] u32 unk7_ac;
+}
+
+[Size(0xE8)]
+struct HousingManager {
+    [0x0] HousingTerritory* current_territory;
+    [0x8] OutdoorTerritory* outdoor_territory;
+    [0x10] IndoorTerritory* indoor_territory;
+    [0x18] WorkshopTerritory* workshop_territory;
+    [Sig("48 89 1D ?? ?? ?? ?? EB 07", FirstMatch, Offset(3), Rel32)] static HousingManager* instance;
+    [Sig("E8 ?? ?? ?? ?? 0F B6 C0 BB", FirstMatch, Offset(1), Rel32)] u8 getInvertedBrightness();
+    [Sig("E8 ?? ?? ?? ?? 84 C0 41 8B F5", FirstMatch, Offset(1), Rel32)] bool hasHousePermissions();
+    [Sig("E8 ?? ?? ?? ?? 48 8B CB 84 C0 74 ?? 8B 95", FirstMatch, Offset(1), Rel32)] bool isOutside();
+    [Sig("E8 ?? ?? ?? ?? 49 8B CE BA", FirstMatch, Offset(1), Rel32)] bool isInside();
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 0E 48 8B CB", FirstMatch, Offset(1), Rel32)] bool isInWorkshop();
+    [Sig("E8 ?? ?? ?? ?? 49 3B C6 75 ?? E8", FirstMatch, Offset(1), Rel32)] HouseId getCurrentHouseId();
+    [Sig("E8 ?? ?? ?? ?? 0F B6 C0 3B 46 3C", FirstMatch, Offset(1), Rel32)] i8 getCurrentWard();
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 0B 0F B6 C8 E8 ?? ?? ?? ?? 0F B6 D8", FirstMatch, Offset(1), Rel32)] u8 getCurrentDivision();
+    [Sig("40 53 48 83 EC 20 48 8B 59 10 48 85 DB 74 24", FirstMatch)] i16 getCurrentRoom();
+    [Sig("E8 ?? ?? ?? ?? 0F B6 D8 3C FF", FirstMatch, Offset(1), Rel32)] i8 getCurrentPlot();
+    [Sig("E8 ?? ?? ?? ?? BA ?? ?? ?? ?? 48 8B F8 8D 4A 02", FirstMatch, Offset(1), Rel32)] HouseId getCurrentIndoorHouseId();
+    // Only available when `outdoor_territory` or `indoor_territory` are loaded.
+    [Sig("E8 ?? ?? ?? ?? 0F B7 56 ?? 41 B0", FirstMatch, Offset(1), Rel32)] HousingFurnitureManager* getFurnitureManager();
+    // Moves the character to the entry (Front Door, Front Gate, or Chamber Door). Triggers server
+    // communication (possibly multiple requests).
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? 45 32 F6 E9", FirstMatch, Offset(1), Rel32)] bool moveToEntry();
+    // Gets the TerritoryTypeId of the house the player is currently standing at. For indoor territories
+    // that were renovated, this returns the original location.
+    [Sig("E8 ?? ?? ?? ?? 0F B7 C8 E8 ?? ?? ?? ?? 4C 89 74 24", FirstMatch, Offset(1), Rel32)] static u32 getOriginalHouseTerritoryTypeId();
+    // Gets the player owned house ids.
+    [Sig("83 F9 06 77 64", FirstMatch)] static HouseId getOwnedHouseId(EstateType type, i32 shared_estate_index);
+    // Gets the airship voyage distance and time in pointers Starting point is at 127 and then goes from
+    // 0-24 22 is not used as its the old Diadem
+    [Sig("E8 ?? ?? ?? ?? 8B 44 24 50 0F B7 D5", FirstMatch, Offset(1), Rel32)] static i32 getAirshipVoyageTimeAndDistance(u8 point_a, u8 point_b, i16 speed, u32* time, u32* distance);
+    // Gets the airship survey duration
+    [Sig("E8 ?? ?? ?? ?? 01 43 10 8B CE", FirstMatch, Offset(1), Rel32)] static u32 getAirshipSurveyDuration(u8 point, i16 speed);
+    // Gets the submarine voyage time Each map uses 0 index as their starting point respectably. Example:
+    // Deep-sea Site starts at 0 where Sea of Ash starts at 31 and so on. This is related to that Deep-sea
+    // Site has 30 points and 1 starting location.
+    [Sig("E8 ?? ?? ?? ?? 03 F8 48 8D 55", FirstMatch, Offset(1), Rel32)] static u32 getSubmarineVoyageTime(u8 point_a, u8 point_b, i16 speed);
+    // Gets the submarine voyage distance
+    [Sig("E8 ?? ?? ?? ?? 01 7B 10", FirstMatch, Offset(1), Rel32)] static u32 getSubmarineVoyageDistance(u8 point_a, u8 point_b);
+    // Gets the submarine survey duration
+    [Sig("E8 ?? ?? ?? ?? 8B 7D 0F", FirstMatch, Offset(1), Rel32)] static u32 getSubmarineSurveyDuration(u8 point, i16 speed);
+    // Gets if the point is unlocked
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 49 8B 56 ?? 8B 82", FirstMatch, Offset(1), Rel32)] static bool isSubmarineExplorationUnlocked(u8 point);
+    // Gets if the point is unlocked
+    [Sig("E8 ?? ?? ?? ?? 88 45 38", FirstMatch, Offset(1), Rel32)] static bool isSubmarineExplorationExplored(u8 point);
+    [Sig("48 83 EC ?? 45 0F B6 C0 45 33 C9 0F B7 D2", FirstMatch)] static void requestWardInfo(u16 territory_type, u8 ward_index);
+}
+
+[Size(0x12E8)]
+struct HousingObjectManager {
+    [0x0] STD.StdMap<u16, HousingObjectManager.HousingObjectData> data_map;
+    [0x10] HousingObjectManager.HousingObjectArray object_array;
+}
+
+[Size(0x40)]
+struct HousingTemporaryObject : LayoutEngine.Housing.HousingEventListener {
+    [0x8] HousingTemporaryObject.HousingTemporaryObjectData data;
+    [0x28] InventoryItem* inventory_item;
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? 8B 4B", FirstMatch, Offset(1), Rel32)] bool setData(u8 kind, u16 model_key, u8 housing_item_category, u8 stain_id, bool is_pad_mode_enabled);
+}
+
+[Size(0x8)]
+struct HousingTerritory {
+    [0x0] void* virtual_table;
+    [Virtual(0)] HousingTerritory* dtor(u8 free_flags);
+    [Virtual(1)] void update();
+    [Virtual(2)] bool isLoaded();
+    [Virtual(6)] HousingTerritoryType getTerritoryType();
+}
+
+enum HousingTerritoryType : i32 {
+    none = 0,
+    outdoor = 1,
+    indoor = 2,
+    workshop = 3,
+}
+
+[Size(0x28F8)]
+struct HousingWorkshopAirshipData {
+    [0x0] HousingWorkshopAirshipSubData[4] data;
+    [0x770] u8 active_airship_id;
+    [0x771] u8 airship_count;
+    [0x778] System.String.Utf8String[82] airship_logs;
+}
+
+[Size(0x38)]
+struct HousingWorkshopAirshipGathered {
+    [0x0] u32 exp_gained;
+    [0xC] u32 item_id_primary;
+    [0x10] u32 item_id_additional;
+    [0x14] u16 item_count_primary;
+    [0x16] u16 item_count_additional;
+    [0x18] u32 unk1_primary;
+    [0x1C] u32 unk1_additional;
+    [0x20] u32 unk2_primary;
+    [0x24] u32 unk2_additional;
+    [0x28] u32 unk3_primary;
+    [0x2C] u32 unk3_additional;
+    [0x32] bool airship_item_valid_primary;
+    [0x33] bool airship_item_valid_additional;
+}
+
+[Size(0x1C0)]
+struct HousingWorkshopAirshipSubData {
+    [0x4] u32 register_time;
+    [0xC] u8 rank_id;
+    [0x10] u32 return_time;
+    [0x14] u32 current_exp;
+    [0x18] u32 next_level_exp;
+    [0x20] u16 hull_id;
+    [0x22] u16 stern_id;
+    [0x24] u16 bow_id;
+    [0x26] u16 bridge_id;
+    [0x28] u16 surveillance;
+    [0x2A] u16 retrieval;
+    [0x2C] u16 speed;
+    [0x2E] u16 range;
+    [0x30] u16 favor;
+    [0x37] utf8[20] name;
+    [0x54] HousingWorkshopAirshipGathered[5] gathered_data;
+    // Points to `AirshipLogs` Max 82 in the array
+    [0x1A0] System.String.Utf8String* log;
+}
+
+[Size(0x38)]
+struct HousingWorkshopSubmarineGathered {
+    [0x0] u8 point;
+    [0x1] SubmarineRating point_rating;
+    [0x2] u8 unlocked_point;
+    [0x3] bool first_exploration;
+    [0x4] bool additional_submarine_unlocked;
+    [0x5] bool double_dip;
+    [0x6] u16 unknown_ushort;
+    [0x8] u32 favor_line;
+    [0xC] u32 exp_gained;
+    [0x10] u32 item_id_primary;
+    [0x14] u32 item_id_additional;
+    [0x18] u16 item_count_primary;
+    [0x1A] u16 item_count_additional;
+    [0x1C] bool item_hq_primary;
+    [0x1D] bool item_hq_additional;
+    [0x1E] u8 unknown_primary;
+    [0x1F] u8 unknown_additional;
+    [0x20] u32 survey_line_primary;
+    [0x24] u32 survey_line_additional;
+    [0x28] u32 yield_line_primary;
+    [0x2C] u32 yield_line_additional;
+    [0x30] u32 discovered_line_primary;
+    [0x34] u32 discovered_line_additional;
+}
+
+[Size(0x8F40)]
+struct HousingWorkshopSubmersibleData {
+    [0x0] HousingWorkshopSubmersibleSubData[4] data;
+    [0x8C80] HousingWorkshopSubmersibleSubData*[5] data_pointers;
+}
+
+[Size(0x2320)]
+struct HousingWorkshopSubmersibleSubData {
+    [0x0] HousingWorkshopSubmersibleData* parent;
+    [0xE] u8 rank_id;
+    [0x10] u32 register_time;
+    [0x14] u32 return_time;
+    [0x18] u32 current_exp;
+    [0x1C] u32 next_level_exp;
+    [0x22] utf8[20] name;
+    [0x3A] u16 hull_id;
+    [0x3C] u16 stern_id;
+    [0x3E] u16 bow_id;
+    [0x40] u16 bridge_id;
+    [0x42] u8[5] current_exploration_points;
+    [0x4A] u16 surveillance_base;
+    [0x4C] u16 retrieval_base;
+    [0x4E] u16 speed_base;
+    [0x50] u16 range_base;
+    [0x52] u16 favor_base;
+    [0x54] u16 surveillance_bonus;
+    [0x56] u16 retrieval_bonus;
+    [0x58] u16 speed_bonus;
+    [0x5A] u16 range_bonus;
+    [0x5C] u16 favor_bonus;
+    [0x60] SubmarineRating submarine_rating;
+    [0x62] u16 log_speed;
+    [0x64] HousingWorkshopSubmarineGathered[5] gathered_data;
+    [0x1B0] System.String.Utf8String[82] logs;
+}
+
+[Size(0x13150)]
+struct IndoorTerritory : HousingTerritory {
+    [0x10] HousingFurnitureManager furniture_manager;
+    [0x125C0] Common.Component.Excel.ExcelSheetWaiter* item_excel_sheet_waiter;
+    [0x125C8] Common.Component.Excel.ExcelSheet* item_excel_sheet;
+    [0x125D0] HouseId house_id;
+    [0x125D8] u32 unk96_a8;
+    [0x125E0] HousingTemporaryObject temporary_object;
+    [0x12620] Object.HousingObject* targeted_housing_object;
+    [0x12628] Object.HousingObject* hovered_housing_object;
+    [0x12630] Object.HousingObject* moving_housing_object;
+    [0x12638] u32 unk9708;
+    [0x1263C] u32 current_floor;
+    [0x12640] IndoorTerritory.IndoorTerritoryUIEventListener ui_event_listener1;
+    [0x12668] IndoorTerritory.IndoorTerritoryUIEventListener ui_event_listener2;
+    [0x12690] LayoutEngine.IndoorAreaLayoutData indoor_area_layout_data;
+    [0x12718] u32 unk97_e8;
+    [0x12720] i64 unk97_f0;
+    [0x12728] System.String.Utf8String unplacement_text;
+    [0x12790] System.String.Utf8String confirm_release_text;
+    [0x127F8] u8 housing_employment_npc_list_row_id;
+    [0x127F9] u8 housing_employment_npc_race;
+    [0x12828] IndoorTerritory.IndoorTerritoryAquariumData aquarium_data;
+    [0x12880] InventoryType storeroom_item_inventory_type;
+    [0x12884] i16 storeroom_item_inventory_slot;
+    [0x12886] bool storeroom_item_inventory_is_pad_mode_enabled;
+    [0x12890] Common.Math.Vector3 storeroom_item_place_position;
+    [0x128A0] f32 storeroom_item_place_rotation;
+    [0x128A8] InventoryItem* unk_inventory_item9978;
+    [0x128C0] InventoryItem* unk_inventory_item9990;
+    [0x128C8] InventoryItem* unk_inventory_item9998;
+    [0x128D0] u8 inverted_brightness;
+    [0x128D4] f32 brightness_current;
+    [0x128D8] f32 brightness_target;
+    [0x128DC] f32 brightness_transition_speed;
+    [0x128E0] bool is_brightness_transitioning;
+    [0x128E4] bool ssao_enable;
+    [0x128E5] u8 saved_inverted_brightness;
+    [0x128E6] bool saved_ssao_enable;
+    [0x128E7] bool furniture_placed_with_pad_mode_enabled;
+    [0x128E8] u8 unk99_b8;
+    [0x128E9] u8 unk99_b9;
+    [0x128EA] bool show_storeroom_tab;
+    [0x128F0] HousingGuestBookData guest_book;
+}
+
+[Size(0x20), VirtualTable("4C 8D 05 ?? ?? ?? ?? ?? ?? ?? 8B CD 48 8B C2", FirstMatch, Offset(3), Rel32)]
+struct InventoryContainer {
+    [0x0] void* virtual_table;
+    [0x8] InventoryItem* items;
+    [0x10] InventoryType type;
+    [0x14] i32 size;
+    [0x18] bool is_loaded;
+    [Virtual(0)] InventoryContainer* dtor(u8 free_flags);
+    [Virtual(1)] void setInventoryType(InventoryType inventory_type);
+    [Virtual(2)] void clear();
+    [Virtual(4)] i32 getSize();
+    [Virtual(5)] InventoryItem* getInventorySlot(i32 index);
+}
+
+[Size(0x48), VirtualTable("66 89 51 0C 48 8D 05", FirstMatch, Offset(7), Rel32)]
+struct InventoryItem {
+    [0x0] void* virtual_table;
+    [0x8] InventoryType container;
+    [0xC] i16 slot;
+    // Indicates whether this InventoryItem is symbolic, serving as a link to another InventoryItem
+    // identified by `linked_item_slot` and `linked_inventory_type`.
+    [0xE] bool is_symbolic;
+    // Only used if `is_symbolic` is `false`.
+    // linked_item_slot (u16) is at 0x10 inside it
+    // linked_inventory_type (u16) is at 0x12 inside it
+    [0x10] u32 item_id;
+    [0x14] i32 quantity;
+    [0x18] u16 spiritbond_or_collectability;
+    [0x1A] u16 condition;
+    [0x1C] InventoryItem.ItemFlags flags;
+    [0x20] u64 crafter_content_id;
+    [0x28] u16[5] materia;
+    [0x32] u8[5] materia_grades;
+    [0x37] u8[2] stains;
+    [0x3C] u32 glamour_id;
+    [0x40] Event.EventId event_id;
+    [Sig("E8 ?? ?? ?? ?? 33 C0 48 8D 4B 58", FirstMatch, Offset(1), Rel32)] InventoryItem* ctor();
+    [Virtual(0)] InventoryItem* dtor(u8 free_flags);
+    // Copies the values from the other InventoryItem and, if it's symbolic, resolves its linked item.
+    [Virtual(1)] void copy(InventoryItem* other);
+    [Virtual(2)] bool equalTo(InventoryItem* other);
+    [Virtual(3)] bool isEmpty();
+    [Virtual(4)] void clear();
+    [Virtual(5)] u32 getBaseItemId();
+    [Virtual(6)] u32 getItemId();
+    [Virtual(7)] void setItemId(u32 item_id, bool parse_flags);
+    [Virtual(8)] InventoryType getInventoryType();
+    [Virtual(9)] void setInventoryType(InventoryType inventory_type);
+    [Virtual(10)] u16 getSlot();
+    [Virtual(11)] void setSlot(u16 slot);
+    [Virtual(12)] u32 getQuantity();
+    [Virtual(13)] void setQuantity(u32 quantity);
+    [Virtual(14)] u16 getSpiritbondOrCollectability();
+    [Virtual(15)] void setSpiritbondOrCollectability(u16 value);
+    [Virtual(16)] InventoryItem.ItemFlags getFlags();
+    [Virtual(17)] void setFlags(InventoryItem.ItemFlags flags);
+    [Virtual(18)] bool isHighQuality();
+    [Virtual(19)] void setIsHighQuality(bool is_high_quality);
+    [Virtual(22)] bool isCollectable();
+    [Virtual(23)] u16 getCollectability();
+    [Virtual(24)] void setCollectability(u16 value);
+    // Calculated as: 100 * `condition` / 30000
+    [Sig("E8 ?? ?? ?? ?? 44 0F B6 C0 41 8D 57", FirstMatch, Offset(1), Rel32)] u8 getConditionPercentage();
+    [Sig("E8 ?? ?? ?? ?? ?? ?? ?? 48 8B CF 48 8B 58", FirstMatch, Offset(1), Rel32)] void setLinkedItem(InventoryType type, u16 slot);
+    // Resolves a symbolic InventoryItem, returning a pointer to the linked InventoryItem or to itself if
+    // not symbolic. If the resolved InventoryItem is also symbolic, it will NOT resolve this one too.
+    // Instead, this function must be called in a loop until the original InventoryItem is found
+    // (`is_symbolic` == `false`).
+    [Sig("E8 ?? ?? ?? ?? 48 85 C0 74 44 48 8B CB", FirstMatch, Offset(1), Rel32)] InventoryItem* getLinkedItem();
+    // Gets the condition from the original InventoryItem or itself if not symbolic.
+    [Sig("E9 ?? ?? ?? ?? 0F B7 43 1A", FirstMatch, Offset(1), Rel32)] u16 getCondition();
+    // Gets the crafter's content id from the original InventoryItem or itself if not symbolic.
+    [Sig("E8 ?? ?? ?? ?? EB 04 49 8B 47 20", FirstMatch, Offset(1), Rel32)] u64 getCrafterContentId();
+    // Gets the stain from the original InventoryItem or itself if not symbolic.
+    [Sig("E8 ?? ?? ?? ?? 38 45 F6", FirstMatch, Offset(1), Rel32)] u8 getStain(i32 index);
+    // Gets the glamour id from the original InventoryItem or itself if not symbolic.
+    [Sig("E8 ?? ?? ?? ?? 3B 47 FB", FirstMatch, Offset(1), Rel32)] u32 getGlamourId();
+    // Gets the materia id from the specified slot of the original InventoryItem or itself if not symbolic.
+    [Sig("E8 ?? ?? ?? ?? EB 10 32 C0", FirstMatch, Offset(1), Rel32)] u16 getMateriaId(u8 materia_slot);
+    // Gets the materia grade from the specified slot of the original InventoryItem or itself if not
+    // symbolic.
+    [Sig("E9 ?? ?? ?? ?? 0F B6 44 1F ??", FirstMatch, Offset(1), Rel32)] u8 getMateriaGrade(u8 materia_slot);
+    // Gets the materia count from the original InventoryItem or itself if not symbolic.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 E8 83 FD", FirstMatch, Offset(1), Rel32)] u8 getMateriaCount();
+    [Sig("E8 ?? ?? ?? ?? 80 7F 5E 01", FirstMatch, Offset(1), Rel32)] static u32 getParameterValue(u32 base_param_row_id, InventoryItem* inventory_item, bool include_materia, bool check_hq, bool check_pv_p_character_flag, bool check_pv_p_item_flag);
+    [Sig("E8 ?? ?? ?? ?? 66 89 46 12", FirstMatch, Offset(1), Rel32)] static u32 getParameterMaxValue(u32 base_param_row_id, void* item_row_data);
+}
+
+[Size(0x10)]
+struct InventoryItemRef {
+    [0x0] InventoryType container;
+    [0x4] i16 slot;
+    [0x8] u32 item_id;
+    [0xC] i32 quantity;
+}
+
+[Size(0x3730)]
+struct InventoryManager {
+    [0x0] InventoryManager.InventoryOperation[128] pending_operations;
+    [0x1E00] u32 next_context_id;
+    [0x1E08] InventoryContainer* inventories;
+    // Used to calculate the average item level or to get equipped items in various places, for example in
+    // the agents MiragePrismMiragePlate, Status or TryOn. Can be EquippedItems or RetainerEquippedItems.
+    [0x1E10] InventoryType equipped_items_inventory_type;
+    // 6th slot is Gil
+    [0x1E18] InventoryItem[6] trade_items_local;
+    // 6th slot is Gil
+    [0x1FC8] InventoryItem[6] trade_items_remote;
+    [0x2178] u32 trade_unk2178;
+    [0x217C] TradeState trade_local_state;
+    [0x2180] TradeState trade_remote_state;
+    [0x2184] utf8[32] trade_partner_name;
+    [0x21A4] u32 trade_partner_entity_id;
+    [0x21A8] bool trade_locked_in;
+    [0x21A9] bool trade_warn_if_moved_too_far;
+    [0x21AB] bool trade_is_sync_pending;
+    [0x21B8] u64[20] retainer_market_prices;
+    [0x2400] UI.BannerData gearset_portrait_data;
+    [0x2438] i32 gearset_replace_item_select_yes_no_addon_id;
+    [0x2440] u32 gearset_id;
+    [0x3620] InventoryItem unk_inventory_item0;
+    [0x3668] InventoryItem unk_inventory_item1;
+    [Sig("48 8D 0D ?? ?? ?? ?? 81 C2", FirstMatch, Offset(3), Rel32)] static InventoryManager instance;
+    [Sig("48 89 6C 24 ?? 56 57 41 56 48 83 EC 50 48 8B E9 44 8B F2", FirstMatch)] void sendTradeRequest(u32 entity_id);
+    [Sig("E8 ?? ?? ?? ?? 88 58 18", FirstMatch, Offset(1), Rel32)] InventoryContainer* getInventoryContainer(InventoryType inventory_type);
+    [Sig("E9 ?? ?? ?? ?? 33 C0 C3 0F B6 51 51", FirstMatch, Offset(1), Rel32)] InventoryItem* getInventorySlot(InventoryType inventory_type, i32 index);
+    [Sig("E8 ?? ?? ?? ?? 8B 53 F1", FirstMatch, Offset(1), Rel32)] i32 getInventoryItemCount(u32 item_id, bool is_hq, bool check_equipped, bool check_armory, i16 min_collectability);
+    [Sig("E8 ?? ?? ?? ?? 8B F0 8D 4F FE", FirstMatch, Offset(1), Rel32)] i32 getItemCountInContainer(u32 item_id, InventoryType inventory_type, bool is_hq, i16 min_collectability);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 03 66 FF C5", FirstMatch, Offset(1), Rel32)] i32 moveItemSlot(InventoryType src_container, u16 src_slot, InventoryType dst_container, u16 dst_slot, bool a6);
+    [Sig("40 55 53 56 57 41 55 41 57 48 8D 6C 24 ?? 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 45 ?? 8D B2", FirstMatch)] i32 splitItem(InventoryType container, u16 slot, i32 quantity);
+    [Sig("E8 ?? ?? ?? ?? 48 8D 8B ?? ?? ?? ?? 48 8B 11", FirstMatch, Offset(1), Rel32)] i32 discardItem(InventoryType container, u16 slot);
+    [Sig("E8 ?? ?? ?? ?? 85 C0 7F 66", FirstMatch, Offset(1), Rel32)] u32 getEquippedItemIdForSlot(i32 slot_id);
+    // Get the number of gearsets the player is permitted to have/use.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 C0 85 F6", FirstMatch, Offset(1), Rel32)] u8 getPermittedGearsetCount();
+    [Sig("E8 ?? ?? ?? ?? 85 C0 74 39 48 8B 06", FirstMatch, Offset(1), Rel32)] u32 getEmptySlotsInBag();
+    [Sig("E8 ?? ?? ?? ?? 3B 44 24 58", FirstMatch, Offset(1), Rel32)] u32 getGil();
+    [Sig("E8 ?? ?? ?? ?? 8B F8 39 43 78", FirstMatch, Offset(1), Rel32)] u32 getRetainerGil();
+    [Sig("E8 ?? ?? ?? ?? EB 49 84 C0", FirstMatch, Offset(1), Rel32)] i32 moveFromRetainerMarketToPlayerInventory(InventoryType src_inv, u16 src_slot, u32 quantity);
+    [Sig("E8 ?? ?? ?? ?? 45 85 F6 75 22", FirstMatch, Offset(1), Rel32)] i32 moveFromRetainerMarketToRetainerInventory(InventoryType src_inv, u16 src_slot, u32 quantity);
+    [Sig("E8 ?? ?? ?? ?? 8B 56 58 33 DB", FirstMatch, Offset(1), Rel32)] void moveToRetainerMarket(InventoryType src_inv, u16 src_slot, InventoryType dst_inv, u16 dst_slot, u32 quantity, u32 unit_price);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4B ?? 44 8B F8 ?? ?? ?? FF 52 ?? 80 BB", FirstMatch, Offset(1), Rel32)] u32 getFreeCompanyGil();
+    [Sig("E8 ?? ?? ?? ?? 3B C3 73 25", FirstMatch, Offset(1), Rel32)] u32 getGoldSaucerCoin();
+    [Sig("E9 ?? ?? ?? ?? 8B CB E8 ?? ?? ?? ?? 84 C0 74 16", FirstMatch, Offset(1), Rel32)] u32 getWolfMarks();
+    [Sig("E9 ?? ?? ?? ?? 83 FB 1D 75 16", FirstMatch, Offset(1), Rel32)] u32 getAlliedSeals();
+    [Sig("E8 ?? ?? ?? ?? 0F B7 4E 6C", FirstMatch, Offset(1), Rel32)] u32 getCompanySeals(u8 grandcompany_id);
+    [Sig("E8 ?? ?? ?? ?? 8B 4C 24 48 03 CF", FirstMatch, Offset(1), Rel32)] u32 getMaxCompanySeals(u8 grandcompany_id);
+    [Sig("E8 ?? ?? ?? ?? 8B CD 2B F0", FirstMatch, Offset(1), Rel32)] u32 getTomestoneCount(u32 tomestone_item_id);
+    [Sig("E8 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? 8B D8 E8 ?? ?? ?? ?? 42 8D 0C 23", FirstMatch, Offset(1), Rel32)] i32 getLimitedTomestoneCount(i32 a1);
+    [Sig("E8 ?? ?? ?? ?? 8D 4F DD", FirstMatch, Offset(1), Rel32)] static i32 getSpecialItemId(u8 switch_case);
+    // Gets the current maximum weekly number of limited tomestones tha player can earn.
+    [Sig("E8 ?? ?? ?? ?? 42 8D 0C 2B", FirstMatch, Offset(1), Rel32)] static i32 getLimitedTomestoneWeeklyLimit();
+    [Sig("E8 ?? ?? ?? ?? 49 89 84 3C", FirstMatch, Offset(1), Rel32)] u64 getRetainerMarketPrice(i16 slot);
+    [Sig("E8 ?? ?? ?? ?? 33 C0 89 87 ?? ?? ?? ?? 8B 47 20", FirstMatch, Offset(1), Rel32)] void setTradeGilAmount(u32 amount);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4E ?? 40 88 69", FirstMatch, Offset(1), Rel32)] void setRetainerMarketPrice(i16 slot, u32 price);
+    [Sig("E8 ?? ?? ?? ?? 4C 8B B4 35", FirstMatch, Offset(1), Rel32)] void setSlotBlocked(InventoryType type, i16 slot);
+    [Sig("E8 ?? ?? ?? ?? 39 6B 38", FirstMatch, Offset(1), Rel32)] void setSlotUnblocked(InventoryType type, i16 slot);
+    [Sig("E8 ?? ?? ?? ?? 80 BF ?? ?? ?? ?? ?? 74 57 44 0F B6 8F ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] void refuseTrade();
+    // Return value is a LogMessage Id. 0 if you can equip. Row pointer is optional
+    [Sig("E8 ?? ?? ?? ?? 85 C0 75 ?? 80 7E", FirstMatch, Offset(1), Rel32)] static i32 canEquip(u32 item_id, u8 race, u8 sex, u16 level, u8 class_job_id, u8 grand_company, u8 pvp_rank, void* item_row);
+}
+
+enum InventoryType : u32 {
+    inventory1 = 0,
+    inventory2 = 1,
+    inventory3 = 2,
+    inventory4 = 3,
+    equipped_items = 1000,
+    currency = 2000,
+    crystals = 2001,
+    mail_edit = 2002,
+    mail = 2003,
+    key_items = 2004,
+    hand_in = 2005,
+    unknown2006 = 2006,
+    blocked_items = 2007,
+    unknown2008 = 2008,
+    examine = 2009,
+    reclaim = 2010,
+    housing_exterior_appearance_edit = 2011,
+    housing_interior_appearance_edit = 2012,
+    reconstruction_buyback = 2013,
+    armory_off_hand = 3200,
+    armory_head = 3201,
+    armory_body = 3202,
+    armory_hands = 3203,
+    armory_waist = 3204,
+    armory_legs = 3205,
+    armory_feets = 3206,
+    armory_ear = 3207,
+    armory_neck = 3208,
+    armory_wrist = 3209,
+    armory_rings = 3300,
+    armory_soul_crystal = 3400,
+    armory_main_hand = 3500,
+    saddle_bag1 = 4000,
+    saddle_bag2 = 4001,
+    premium_saddle_bag1 = 4100,
+    premium_saddle_bag2 = 4101,
+    cosmopouch1 = 5000,
+    cosmopouch2 = 5001,
+    invalid = 9999,
+    retainer_page1 = 10000,
+    retainer_page2 = 10001,
+    retainer_page3 = 10002,
+    retainer_page4 = 10003,
+    retainer_page5 = 10004,
+    retainer_page6 = 10005,
+    retainer_page7 = 10006,
+    retainer_equipped_items = 11000,
+    retainer_gil = 12000,
+    retainer_crystals = 12001,
+    retainer_market = 12002,
+    free_company_page1 = 20000,
+    free_company_page2 = 20001,
+    free_company_page3 = 20002,
+    free_company_page4 = 20003,
+    free_company_page5 = 20004,
+    free_company_gil = 22000,
+    free_company_crystals = 22001,
+    housing_exterior_appearance = 25000,
+    housing_exterior_placed_items = 25001,
+    housing_interior_appearance = 25002,
+    housing_interior_placed_items1 = 25003,
+    housing_interior_placed_items2 = 25004,
+    housing_interior_placed_items3 = 25005,
+    housing_interior_placed_items4 = 25006,
+    housing_interior_placed_items5 = 25007,
+    housing_interior_placed_items6 = 25008,
+    housing_interior_placed_items7 = 25009,
+    housing_interior_placed_items8 = 25010,
+    housing_interior_placed_items9 = 25011,
+    housing_interior_placed_items10 = 25012,
+    housing_interior_placed_items11 = 25013,
+    housing_interior_placed_items12 = 25014,
+    housing_exterior_placed_items2 = 25200,
+    housing_exterior_storeroom = 27000,
+    housing_interior_storeroom1 = 27001,
+    housing_interior_storeroom2 = 27002,
+    housing_interior_storeroom3 = 27003,
+    housing_interior_storeroom4 = 27004,
+    housing_interior_storeroom5 = 27005,
+    housing_interior_storeroom6 = 27006,
+    housing_interior_storeroom7 = 27007,
+    housing_interior_storeroom8 = 27008,
+    housing_interior_storeroom9 = 27009,
+    housing_interior_storeroom10 = 27010,
+    housing_interior_storeroom11 = 27011,
+    housing_exterior_storeroom2 = 27200,
+}
+
+[Size(0x60)]
+struct JobGaugeManager {
+    [0x0] Gauge.JobGauge* current_gauge;
+    // One of empty_gauge, white_mage, scholar, astrologian, sage, bard, machinist, dancer, black_mage, summoner, red_mage, pictomancer, monk, dragoon, ninja, samurai, reaper, viper, beastmaster, dark_knight, paladin, warrior, gunbreaker
+    [0x8] JobGaugeManager.GaugeUnion Gauge;
+    [0x58] u8 class_job_id;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? B8 ?? ?? ?? ?? 66 3B F0", FirstMatch, Offset(3), Rel32)] static JobGaugeManager instance;
+}
+
+[Size(0x320)]
+struct LobbyCamera : Camera {
+    [0x308] Common.Component.Excel.ExcelSheet* lobby_excel_sheet;
+}
+
+[Size(0x360)]
+struct LowCutCamera : CameraBase {
+}
+
+[Size(0x1044)]
+struct MapDiscoveryManager {
+    // Maps with up to 16 discoverable regions Index is DiscoveryIndex, used when DiscoveryArrayByte is
+    // true (from Map sheet)
+    [0x0] MapDiscoveryManager.DiscoveryTable16[162] maps_with_up_to16_regions;
+    // Maps with up to 32 discoverable regions Index is DiscoveryIndex, used when DiscoveryArrayByte is
+    // false (from Map sheet)
+    [0xA20] MapDiscoveryManager.DiscoveryTable32[49] maps_with_up_to32_regions;
+    [0x1040] f32 report_cooldown;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B 47", FirstMatch, Offset(3), Rel32)] static MapDiscoveryManager instance;
+    [Sig("48 89 5C 24 ?? 57 48 83 EC ?? 48 8B 05 ?? ?? ?? ?? 8B FA", FirstMatch)] bool isDiscoveryEnabledForMap(u32 map_id);
+    // Checks if a map region was discovered. This runs an internal Map sheet lookup!
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 44 0B F7", FirstMatch, Offset(1), Rel32)] bool isMapRegionDiscovered(u32 map_id, u8 region_index);
+    // Checks if a map region was discovered, without Map sheet lookup.
+    [Sig("33 C0 4C 8B D1 66 3B C2 7F ?? 45 84 C9 74 ?? B8 ?? ?? ?? ?? 66 3B D0 73 ?? 48 0F BF C2", FirstMatch)] bool isRegionDiscovered(u16 discovery_index, u8 region_index, bool is_map_with_up_to16_regions);
+}
+
+// Data is cleared when switching zones
+[Size(0x1888)]
+struct MirageManager {
+    [0x0] bool is_applying_glamour_plate;
+    [0x4] u32[800] prism_box_item_ids;
+    [0xC84] u8[800] prism_box_stain0_ids;
+    [0xFA4] u8[800] prism_box_stain1_ids;
+    [0x12C4] bool prism_box_requested;
+    [0x12C5] bool prism_box_loaded;
+    [0x12C8] MirageManager.GlamourPlate[20] glamour_plates;
+    [0x1868] bool glamour_plates_requested;
+    [0x1869] bool glamour_plates_loaded;
+    [Sig("48 8B 0D ?? ?? ?? ?? 48 8D 44 24 ?? 0F 57 C0", FirstMatch, Offset(3), Rel32)] static MirageManager* instance;
+    // Restores an item from the Glamour Dresser and puts it back into the players inventory.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 0F 84 ?? ?? ?? ?? 41 B0 ?? 48 8B CE", FirstMatch, Offset(1), Rel32)] bool restorePrismBoxItem(u32 item_index);
+    // Restores item from an Outfit set and puts them back into the players inventory.
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 85 D2 0F 85 ?? ?? ?? ?? 48 8B 46", FirstMatch, Offset(1), Rel32)] bool restorePrismBoxSetItem(u32 item_index, u8* restore_bits);
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? 0B F3", FirstMatch, Offset(1), Rel32)] bool isSetSlotUnlocked(u32 item_index, i32 slot);
+    // Deposits gear into dresser as a new outfit set.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 08 48 8B 47 28", FirstMatch, Offset(1), Rel32)] bool storeNewOutfit(u32 set_item_id, InventoryType* containers, u16* slots);
+    // Deposits gear into dresser into an existing outfit set.
+    [Sig("E8 ?? ?? ?? ?? EB 1A E8 ?? ?? ?? ?? 8B 57 40", FirstMatch, Offset(1), Rel32)] bool storeExistingOutfit(u32 prism_box_index, InventoryType* containers, u16* slots);
+}
+
+[Size(0x460)]
+struct MonsterNoteManager {
+    [0x0] MonsterNoteRankInfo[12] rank_data;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 B8 ?? ?? ?? ?? 0F 45 F8", FirstMatch, Offset(3), Rel32)] static MonsterNoteManager instance;
+}
+
+[Size(0x40)]
+struct MonsterNoteRankInfo {
+    [0x0] RankData[10] rank_data;
+    [0x28] i64 flags;
+    [0x30] i32 rank;
+    [0x34] i32 unknown2;
+    [0x38] i32 index;
+    [0x3C] i32 unknown3;
+}
+
+[Size(0x73B4)]
+struct NameCache {
+    // Used for SeString macros PcName, IfPcGender and IfPcName. Data is cleared when switching zones.
+    [0x0] NameCache.EntityCacheEntry[200] entity_cache;
+    [0x3B60] i32 next_entity_cache_index;
+    // Used for crafter names in item tooltips.
+    [0x3B68] NameCache.ContentIdCacheEntry[200] content_id_cache;
+    [0x73A8] i32 next_content_id_cache_index;
+    [0x73AC] bool is_requesting_name;
+    [0x73B0] f32 request_timeout_timer;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 85 C0 75 0D 32 C0", FirstMatch, Offset(3), Rel32)] static NameCache instance;
+    // If not cached, will return null.
+    [Sig("40 53 48 83 EC 30 49 8B D8 4C 8D 44 24", FirstMatch)] cstring getNameByEntityId(u32 entity_id, u8* out_sex);
+    // If not cached, will look it up locally (PlayerState, GroupManager, CharacterManager).
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 0D 48 8D 05", FirstMatch, Offset(1), Rel32)] bool tryGetCharacterInfoByEntityId(u32 entity_id, NameCache.CharacterInfo* out_character_info);
+    [Sig("48 89 5C 24 ?? 57 48 83 EC 20 45 33 D2 48 8D 41 44", FirstMatch)] void saveCharacterInfoForEntityId(u32 entity_id, NameCache.CharacterInfo* character_info);
+    // If not cached, the name will be requested from the server!
+    [Sig("40 53 48 83 EC 30 4C 8B D2 48 8B D9", FirstMatch)] cstring getNameByContentId(u64 content_id);
+    [Sig("40 53 48 83 EC 20 48 8B D9 33 C9 45 33 C9", FirstMatch)] void setNameForContentId(u64 content_id, cstring name);
+}
+
+[Size(0x88)]
+struct NpcYellBalloon {
+    // The text that this balloon will display. Empty when balloon is `inactive`.
+    [0x0] System.String.Utf8String text;
+    // Pointer to the `Character` that contains this balloon.
+    [0x68] Character.Character* character;
+    // How much longer (in seconds) the balloon should remain open. Starting value set by OpenBalloon.
+    // Starts counting down once in `active` state. If this is set to zero before the balloon is activated,
+    // the balloon will remain open indefinitely, subject to the value of `close_type`.
+    [0x70] f32 play_timer;
+    // How much longer (in seconds) before the balloon should actually be opened with AgentScreenLog.
+    // Starting value is set by OpenBalloon. Resets to one second when balloon exits `waiting` state.
+    [0x74] f32 delay_time;
+    // The balloon's current state.
+    [0x78] NpcYellBalloonState state;
+    // Controls how the balloon determines when to close. If OpenBalloon's reducedCloseChecks parameter is
+    // true, this is `reduced_close_checks`, else if playTime is zero this is `hold_open`, else this is
+    // `normal`.
+    [0x7C] NpcYellBalloonCloseType close_type;
+    // The bone index to which the balloon is attached on the character.
+    [0x80] u8 parent_bone;
+    // Miscellaneous balloon behaviors.
+    [0x81] NpcYellBalloonFlags flags;
+    // Prepares the balloon to be opened during the next applicable Update.
+    [Sig("E8 ?? ?? ?? ?? 0F 28 B4 24 ?? ?? ?? ?? 48 8D 4D", FirstMatch, Offset(1), Rel32)] void openBalloon(cstring str, f32 play_time, bool soft_open, f32 open_delay, bool print_to_log, bool reduced_close_checks, bool ignore_range_check, u8 parent_bone);
+    // Closes and resets the balloon. Only required if balloon is set to hold open (or needs to be closed
+    // early).
+    [Sig("E8 ?? ?? ?? ?? 66 3B BB ?? ?? ?? ?? 75", FirstMatch, Offset(1), Rel32)] void closeBalloon();
+}
+
+enum NpcYellBalloonCloseType : i32 {
+    // Performs normal timer checks every active update cycle.
+    normal = 0,
+    // Ignore `play_timer` and hold open indefinitely until `closeBalloon` is called.
+    hold_open = 1,
+    // Similar to `normal`, but skips some non-`play_timer` checks.
+    reduced_close_checks = 2,
+}
+
+bitfield NpcYellBalloonFlags : u8 {
+    // All balloons will have this flag while in use. If this is not set, the balloon will not be opened
+    // (or will be immediately closed).
+    [Bit(0)] bool valid;
+    // The balloon fades in instead of opening with a "pop". Is passed as the bool third parameter to
+    // AgentScreenLog::OpenBalloon, and probably has the same effect as the Balloon EXD's boolean "Slowly"
+    // column.
+    [Bit(1)] bool soft_open;
+    // Call AgentScreenLog::OpenBalloon regardless of character range test result.
+    [Bit(2)] bool ignore_range_check;
+    // Also call RaptureLogModule::PrintMessage with balloon text when the balloon is opened.
+    [Bit(3)] bool print_to_log;
+    // none is none of them
+}
+
+enum NpcYellBalloonState : i32 {
+    // Balloon is inactive and in the default state.
+    inactive = 0,
+    // Balloon is waiting to open (until `delay_time` expires).
+    waiting = 1,
+    // Balloon is open.
+    active = 2,
+    // Balloon is attempting to open.
+    activating = 3,
+}
+
+[Size(0x38)]
+struct OrchestrionManager {
+    [0x0] u16 track_id;
+    [0x2] u8 unk2;
+    [0x3] bool is_executing_command;
+    [0x4] u16 unk_track_id;
+    [0x8] i16 unk8_flags;
+    [0xC] OrchestrionMode mode;
+    [0x10] Sound.SoundData* sound_data;
+    [0x18] OrchestrionMode unk_mode;
+    [0x1C] OrchestrionPlayMode play_mode;
+    [0x20] Common.Component.Excel.ExcelSheetWaiter* excel_sheet_waiter;
+    [0x28] u16[8] playlist;
+    [Sig("66 89 1D ?? ?? ?? ?? B9", FirstMatch, Offset(3), Rel32)] static OrchestrionManager instance;
+    // In Island Sanctuary, this will send a packet to the server containing the Orchestrion Roll Id. Make
+    // sure you have obtained it!
+    [Sig("40 53 48 83 EC ?? 0F B7 D9 B9 ?? ?? ?? ?? 8D 43", FirstMatch)] static void playTrack(u16 id);
+    // Positional and intended to stop when the UI window closes. Position and TrackId saved in
+    // `OrchestrionSampleState`. Sets `mode` to `sampling`.
+    [Sig("40 53 48 83 EC ?? 0F B7 D9 E8 ?? ?? ?? ?? 48 8B C8", FirstMatch)] static void playSample(u16 id);
+    [Sig("40 53 48 83 EC ?? 48 8B 05 ?? ?? ?? ?? 48 85 C0 74 ?? 80 78", FirstMatch)] static void stopCurrentTrack();
+    [Sig("83 3D ?? ?? ?? ?? ?? 0F 84 ?? ?? ?? ?? C3", FirstMatch)] static void stopSample();
+    // Used in Island Sanctuary
+    [Sig("48 83 EC ?? 66 83 3D ?? ?? ?? ?? 00 75", FirstMatch)] static bool isInRange();
+}
+
+enum OrchestrionMode : i32 {
+    off = 0,
+    playing = 1,
+    sampling = 2,
+    // Used in Island Sanctuary
+    looping = 3,
+}
+
+enum OrchestrionPlayMode : i32 {
+    play_all = 1,
+    shuffle = 2,
+    repeat = 3,
+}
+
+[Size(0x18)]
+struct OrchestrionSampleState {
+    [0x0] Common.Math.Vector3 position;
+    [0x10] u16 track_id;
+    [Sig("48 8D 15 ?? ?? ?? ?? 0F 1F 80 ?? ?? ?? ?? ?? ?? ?? 74 ?? 48 83 C0 ?? 48 3B C2", FirstMatch, Offset(3), Rel32)] static OrchestrionSampleState instance;
+}
+
+[Size(0x13DB0)]
+struct OutdoorTerritory : HousingTerritory {
+    [0x10] HousingFurnitureManager furniture_manager;
+    [0x125C0] Common.Component.Excel.ExcelSheetWaiter* item_excel_sheet_waiter;
+    [0x125C8] Common.Component.Excel.ExcelSheet* item_excel_sheet;
+    [0x125D0] HouseId house_id;
+    [0x125D8] HouseUnit house_unit;
+    [0x125DA] i8 editing_fixtures_of_plot;
+    [0x125E0] i8 editing_furnishings_of_plot;
+    [0x125E2] i8 editing_estate_hall_of_plot;
+    [0x125E8] PlotDetail[60] plots;
+    [0x129A8] ApartmentBuildingState[2] apartment_buildings;
+    [0x129B0] HousingTemporaryObject temporary_object;
+    [0x129F0] Object.HousingObject* targeted_housing_object;
+    [0x129F8] Object.HousingObject* hovered_housing_object;
+    [0x12A00] Object.HousingObject* moving_housing_object;
+    [0x12A08] u32[30] unk_entity_ids;
+    [0x12A80] u32 unk9_b50;
+    [0x12A88] HousingTerritory.HousingTerritoryUIEventListener ui_event_listener1;
+    [0x12AB0] HousingTerritory.HousingTerritoryUIEventListener ui_event_listener2;
+    [0x12AD8] LayoutEngine.OutdoorPlotExteriorData editing_plot_exterior_data_backup;
+    [0x12B1C] bool furniture_placed_with_pad_mode_enabled;
+    [0x12B20] HouseBuddy house_buddy;
+    [0x130D4] OutdoorTerritory.HousingMapMarkerInfo[62] housing_map_marker_infos;
+    [0x135C0] HousingGuestBookData guest_book;
+    // Get the Icon ID used for map icons in housing areas.
+    [Sig("48 89 6C 24 ?? 48 89 74 24 ?? 57 41 56 41 57 48 83 EC 30 0F B6 FA", FirstMatch)] i32 getPlotIcon(u8 plot);
+}
+
+[Size(0x10)]
+struct PlotDetail {
+    [0x0] PlotState state;
+    [0x1] PlotSize size;
+    [0x2] bool is_open;
+    [0x3] bool unk03;
+    [0x4] PlotOwnerType owner_type;
+}
+
+enum PlotOwnerType : u32 {
+    free_company = 0,
+    individual = 2,
+}
+
+enum PlotSize : u8 {
+    small = 0,
+    medium = 1,
+    large = 2,
+}
+
+enum PlotState : u8 {
+    none = 0,
+    unowned_land = 1,
+    owned_land = 2,
+    owned_estate = 3,
+}
+
+[Size(0x20)]
+struct PvPDuelManager : Component.GUI.AtkModuleInterface.AtkEventInterface {
+    [0x10] u32 enemy_entity_id;
+    [0x14] u32 addon_id;
+    [0x18] u8 flags;
+}
+
+[Size(0x68)]
+struct QuestCustomTodoManager : ServerRequestCallbackInterface {
+    [0x8] u8[10] data8;
+    [0x12] u16[10] data16;
+    [0x28] u8 flags;
+    [0x29] u8 quest_count;
+    [0x2A] u16[30] quest_ids;
+    [Sig("48 8B 1D ?? ?? ?? ?? 0F BA E9 ?? E8 ?? ?? ?? ?? 4C 8B C0", FirstMatch, Offset(3), Rel32)] static QuestCustomTodoManager* instance;
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? ?? ?? ?? 49 8B CE FF 50 ?? 48 8B C8 BA", FirstMatch, Offset(1), Rel32)] bool isComplete(u16 internal_quest_id);
+    [Sig("E8 ?? ?? ?? ?? 0F B7 44 24 ?? 66 3B 6C 24", FirstMatch, Offset(1), Rel32)] void getProgress(QuestCustomTodoProgress* out_progress, u16 internal_quest_id, u8 index);
+}
+
+[Size(0x5)]
+struct QuestCustomTodoProgress {
+    [0x0] u16 cur_value;
+    [0x2] u16 max_value;
+    [0x4] u8 data_type;
+}
+
+[Size(0x10)]
+struct QuestEffectBase {
+    [0x0] void* virtual_table;
+    [Virtual(0)] QuestEffectBase* dtor(u8 free_flags);
+    [Virtual(1)] i32 getResult(u32 param1, u32 param2, u16 quest_id);
+    [Virtual(5)] u32 getLogMessageId();
+    [Virtual(6)] bool suppressLogMessage();
+}
+
+[Size(0x1A8)]
+struct QuestEffectManager {
+    [0x0] QuestEffectBase*[47] effect_handlers;
+    [0x188] u16 unk_quest_id;
+    [0x18A] u16 unk_quest_effect_id;
+    [0x18C] u16 unk_collider_instance_id;
+    [0x190] u8 flags;
+    [Sig("4C 8B 35 ?? ?? ?? ?? 0F B7 C8", FirstMatch, Offset(3), Rel32)] static QuestEffectManager* instance;
+}
+
+[Size(0x1092)]
+struct QuestManager {
+    [0x0] u16 unk0;
+    [0x2] u16 unk2;
+    [0x4] u16 unk4;
+    [0x6] u16 unk6;
+    [0x8] u16 unk8;
+    [0x10] Application.Network.WorkDefinitions.QuestWork[30] normal_quests;
+    [0x2E0] u8[751] completed_quests;
+    [0x5CF] u8[64] unlocked_map_markers;
+    [0x60F] u8[2] quest_repeat_flags;
+    [0x618] Application.Network.WorkDefinitions.DailyQuestWork[12] daily_quests;
+    [0x6D8] u8 daily_quest_seed;
+    [0x6DC] u8[40] completed_legacy_quests;
+    [0x708] Application.Network.WorkDefinitions.TrackingWork[10] tracked_quests;
+    [0x7A8] u8 unk_journal_byte;
+    [0x7A9] u8 unk_journal_word;
+    [0x7AC] u8[158] unk_array2;
+    [0x84C] u8[94] unk_array3;
+    [0x8AC] u8[40] seen_gathering_notebook_division_level_ranges;
+    [0x8D4] u8[102] gathered_gathering_items;
+    // Used for Actions with SecondaryCostType 9 (Brunt Force and Deep Vigor).
+    [0x93A] u8 successful_gathering_chain_count;
+    [0x93C] u8[72] seen_crafting_notebook_division_level_ranges;
+    [0x98C] u8[801] completed_recipes;
+    [0xCB0] Event.EventId unk_warp_event_id;
+    [0xCB4] u32 unk_status_id;
+    [0xCB8] u32 unk_cb8;
+    [0xCE8] Application.Network.WorkDefinitions.BeastReputationWork[20] beast_reputation;
+    [0xE28] Application.Network.WorkDefinitions.LeveWork[16] leve_quests;
+    [0xFA8] u8 num_leve_allowances;
+    [0xFA9] u16 unk_fa9;
+    [0xFAB] u32 unk_fab;
+    [0xFB0] u8[226] completed_leve_quests;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? C6 84 24", FirstMatch, Offset(3), Rel32)] static QuestManager instance;
+    [Sig("E8 ?? ?? ?? ?? 41 88 84 2E", FirstMatch, Offset(1), Rel32)] static bool isQuestComplete(u16 quest_id);
+    // This is a helper method to handle trimming uints down to the game-requested ushort.
+    [Sig("E8 ?? ?? ?? ?? 3A 43 06", FirstMatch, Offset(1), Rel32)] static u8 getQuestSequence(u16 quest_id);
+    // This is a helper method to handle trimming uints down to the game-requested ushort.
+    [Sig("45 33 C0 48 8D 41 18 66 39 10", FirstMatch)] bool isQuestAccepted(u16 quest_id);
+    [Sig("0F B6 C2 4C 8B C9 44 8B C0", FirstMatch)] bool isQuestRepeatFlagSet(u8 quest_repeat_flag);
+    // Check if a recipe has been crafted (= completed) before.
+    [Sig("40 53 48 83 EC 20 8B D9 81 F9", FirstMatch)] static bool isRecipeComplete(u32 recipe_id);
+    // Check if a GatheringItem has been gathered before.
+    [Sig("E8 ?? ?? ?? ?? 88 85 ?? ?? ?? ?? 41 BC ?? ?? ?? ?? B8", FirstMatch, Offset(1), Rel32)] static bool isGatheringItemGathered(u16 gathering_item_id);
+    // Check if a specific levequest has been completed.
+    [Sig("44 0F B7 C2 4C 8B C9 49 C1 E8 03", FirstMatch)] bool isLevequestComplete(u16 levequest_id);
+    // Get the time when the player will receive new leve allowances. Has to be multiplied by 60 for a unix
+    // timestamp. Use `getNextLeveAllowancesUnixTimestamp` or `getNextLeveAllowancesDateTime` instead.
+    [Sig("E8 ?? ?? ?? ?? 8B D8 41 8D 44 24", FirstMatch, Offset(1), Rel32)] static i32 getNextLeveAllowancesTimestamp();
+    [Sig("33 C0 4C 8B C1 66 39 81 ?? ?? ?? ?? 0F 94 C0", FirstMatch)] u32 getBeastTribeAllowance();
+}
+
+[Size(0x14)]
+struct RaceChocoboAttributeValues {
+    [0x0] u32 maximum_speed;
+    [0x4] u32 acceleration;
+    [0x8] u32 endurance;
+    [0xC] u32 stamina;
+    [0x10] u32 cunning;
+}
+
+[Size(0x26)]
+struct RaceChocoboManager {
+    [0x0] Event.EventId event_id;
+    [0x4] RaceChocoboManager.RaceChocoboState state;
+    [0x8] u8 maximum_speed;
+    [0x9] u8 acceleration;
+    [0xA] u8 endurance;
+    [0xB] u8 stamina;
+    [0xC] u8 cunning;
+    [0xD] u8 parameters { [Bit(0)] bool is_maximum_speed_from_mother; [Bit(1)] bool is_acceleration_from_mother; [Bit(2)] bool is_endurance_from_mother; [Bit(3)] bool is_stamina_from_mother; [Bit(4)] bool is_cunning_from_mother; [Bit(5)] bool is_weather_foul; [Bit(6)] bool is_female; }
+    [0xE] u16 father_parameters { [Bit(0)] u8 father_maximum_speed : 2; [Bit(2)] u8 father_acceleration : 2; [Bit(4)] u8 father_endurance : 2; [Bit(6)] u8 father_stamina : 2; [Bit(8)] u8 father_cunning : 2; [Bit(12)] u8 father_pedigree : 4; }
+    [0x10] u16 mother_parameters { [Bit(0)] u8 mother_maximum_speed : 2; [Bit(2)] u8 mother_acceleration : 2; [Bit(4)] u8 mother_endurance : 2; [Bit(6)] u8 mother_stamina : 2; [Bit(8)] u8 mother_cunning : 2; [Bit(12)] u8 mother_pedigree : 4; }
+    [0x12] u8 ability_hereditary;
+    [0x13] u8 ability_learned;
+    [0x14] u8 unk14;
+    [0x16] i16 name_first;
+    [0x18] i16 name_last;
+    [0x1A] u8 rank;
+    [0x1C] i16 experience_current;
+    [0x1E] i16 experience_max;
+    [0x20] u8 color;
+    [0x21] u8 gear_head;
+    [0x22] u8 gear_body;
+    [0x23] u8 gear_legs;
+    [0x24] u8 sessions_available;
+    [0x25] u8 unk25;
+    [Sig("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 83 F8 02 75 08", FirstMatch, Offset(3), Rel32)] static RaceChocoboManager instance;
+    [Sig("48 83 EC 38 C7 41 04 01 00 00 00 45 33 C9 B9 6C 07 00 00", FirstMatch)] bool requestParameters();
+    [Sig("E8 ?? ?? ?? ?? 48 8B E8 48 85 C0 0F 84 ?? ?? ?? ?? 8B 57 78", FirstMatch, Offset(1), Rel32)] GoldSaucer.RaceChocoboDirector* getDirector();
+    [Sig("E8 ?? ?? ?? ?? 48 8D 55 ?? 48 8B CF E8 ?? ?? ?? ?? 48 8D 77", FirstMatch, Offset(1), Rel32)] void getAttributesCurrent(RaceChocoboAttributeValues* out_values);
+    [Sig("E8 ?? ?? ?? ?? 48 8D 77 ?? 41 BF", FirstMatch, Offset(1), Rel32)] void getAttributesMaximum(RaceChocoboAttributeValues* out_values);
+    // The amount of stars is the respective value + 1.
+    [Sig("48 83 EC ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 44 24 ?? 4C 8B D2 4C 8B C9", FirstMatch)] void getAttributesStars(RaceChocoboAttributeValues* out_values);
+    [Sig("E8 ?? ?? ?? ?? 8B CE 48 6B D1", FirstMatch, Offset(1), Rel32)] i32 getRating();
+    [Sig("80 79 ?? 00 77 ?? 33 C0", FirstMatch)] i32 getPedigreeLevel();
+}
+
+[Size(0x4)]
+struct RankData {
+    [0x0] u8[4] counts;
+}
+
+// A struct representing information about recast timers/cooldowns for a specific RecastGroup. A recast
+// group may be shared between one (or more) actions, depending on the group in question.
+[Size(0x14)]
+struct RecastDetail {
+    // A boolean representing if this recast group is currently "active." When this is a non-zero value
+    // (true), this recast group is actively in cooldown.
+    [0x0] bool is_active;
+    // The last Action ID that triggered an update for this recast group.
+    [0x4] u32 action_id;
+    // The current "elapsed" time of this action's recharge. For most actions, this value will be set to
+    // zero when the action is used. For actions with multiple charges, this value will give "credit" for
+    // unspent actions. For multi-charge actions, it helps to think of this field as representing the
+    // current value of a resource gauge. This value represents the "current level" of the resource gauge,
+    // with each second adding 1 unit to the gauge up until the maximum as defined in the `total` field.
+    // When a normal action is cast, this gauge is "depleted" to zero. When a multi-charge action is cast,
+    // however, the appropriate value (defined by the action, but generally the recharge time) is
+    // subtracted from this value.
+    [0x8] f32 elapsed;
+    // The total number of seconds this recast group takes to go from "fully exhausted" to "fully charged."
+    // For most actions, this will simply be the adjusted recast time from `getAdjustedRecastTime` (which
+    // displays in the tooltip UI as the "recast time"). Multi-charge actions such as Ninja's Mudra will
+    // show the total charge time (the Adjusted Recast Time multiplied by the number of charges this action
+    // has at max level). The total value shown here depends on the last action used. For example, if a
+    // specific action is bound to the GCD but is faster/slower than the normal GCD, this value will be set
+    // accordingly. Continuing the resource gauge analogy from `elapsed`, this field would represent the
+    // "cap" of the resource gauge. For normal actions, the resource gauge must be completely filled before
+    // the action can be used again. Multi-charge actions will instead allow the gauge to charge to the
+    // maximum number of actions allowed. It is recommended to use `getRecastTime` over this field, as it
+    // handles an edge case in charge management.
+    [0xC] f32 total;
+}
+
+[Size(0x78)]
+struct RepairManager {
+    [0x8] Common.Component.Excel.ExcelSheet* item_sheet;
+    [0x10] Common.Component.Excel.ExcelSheetWaiter* sheet_waiter;
+    [Sig("48 8D 0D ?? ?? ?? ?? BA ?? ?? ?? ?? 41 0F 94 C0 45 33 C9", FirstMatch, Offset(3), Rel32)] static RepairManager instance;
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 83 F8 03 75 46", FirstMatch, Offset(1), Rel32)] bool repairItem(InventoryType item_to_repair_inventory, u16 item_to_repair_slot, bool is_npc);
+    // Repairs all items of the selected mixed InventoryType.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 92", FirstMatch, Offset(1), Rel32)] bool repairAllItems(bool is_npc, i32 inventory_index, u8 arg0);
+    [Sig("E8 ?? ?? ?? ?? EB 2F 83 F8 07", FirstMatch, Offset(1), Rel32)] bool repairEquipped(i32 inventory_type_equipped, bool is_npc, u8 arg0);
+}
+
+[Size(0x310)]
+struct RetainerManager {
+    [0x0] RetainerManager.Retainer[10] retainers;
+    [0x2D0] u8[10] display_order;
+    [0x2DA] bool is_ready;
+    [0x2DB] u8 max_retainer_entitlement;
+    // Contains the Retainer.RetainerId of the last retainer to be selected.
+    [0x2E0] u64 last_selected_retainer_id;
+    [0x2E8] u32 retainer_object_id;
+    [Sig("48 8D 0D ?? ?? ?? ?? 48 8B 18", FirstMatch, Offset(3), Rel32)] static RetainerManager instance;
+    [Sig("E8 ?? ?? ?? ?? 48 85 C0 74 ?? 48 8B 4C F4", FirstMatch, Offset(1), Rel32)] RetainerManager.Retainer* getRetainerBySortedIndex(u32 sorted_index);
+    // Counts the number of Retainers that have an assigned ID.
+    [Sig("48 83 39 00 4C 8B C9", FirstMatch)] u8 getRetainerCount();
+    // Will return the Retainer referenced by LastSelectedRetainerId.
+    [Sig("E8 ?? ?? ?? ?? 45 33 DB 45 8D 73 01", FirstMatch, Offset(1), Rel32)] RetainerManager.Retainer* getActiveRetainer();
+    [Sig("E8 ?? ?? ?? ?? 32 C0 C6 47 34 01", FirstMatch, Offset(1), Rel32)] void requestVenturesTimers(isize target);
+}
+
+[Size(0x327)]
+struct SatisfactionSupplyManager {
+    [0x0] u8 supply_seed;
+    [0x1] u8 bonus_guarantee_row_id;
+    [0x2] u16[12] satisfaction;
+    [0x1A] u8[12] satisfaction_ranks;
+    [0x26] u8[12] used_allowances;
+    [0x32] i16 current_npc;
+    [0x34] i16 current_supply_row_id;
+    [0x36] i16[4] current_supply_sub_row_ids;
+    [0x3E] i16[4] current_supply_reward_row_ids;
+    [0x46] bool current_npc_init_in_progress;
+    [0x47] bool current_npc_init_done;
+    [0x70] u32 fixed_random;
+    [0x74] i32 time_adjustment_for_bonus_guarantee;
+    [Sig("8B D0 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 74 1E", FirstMatch, Offset(5), Rel32)] static SatisfactionSupplyManager instance;
+    [Sig("E8 ?? ?? ?? ?? 2B F0 E8 ?? ?? ?? ?? 8B CB", FirstMatch, Offset(1), Rel32)] i32 getUsedAllowances();
+    [Sig("E8 ?? ?? ?? ?? 44 8B CB 44 8B C0 BA ?? ?? ?? ?? 48 8B CD", FirstMatch, Offset(1), Rel32)] i32 getResetTimestamp();
+}
+
+[Size(0x9EB8)]
+struct SavedAppearanceManager {
+    [0x0] void* virtual_table;
+    [0x8] SavedAppearanceSlot[40] slot;
+    [Virtual(1)] bool isSlotCreated(u8 slot_index);
+    [Virtual(2)] SavedAppearanceSlot* getSlot(u8 slot_index);
+    [Virtual(6)] u32 getSlotCount();
+}
+
+[Size(0x140)]
+struct SavedAppearanceSlot {
+    [0x0] u32 magic;
+    [0x4] u32 version;
+    [0x10] Character.CustomizeData customize_data;
+    [0x30] utf8[64] label;
+    [0x134] bool is_created;
+    [0x13C] u8 slot_index;
+}
+
+enum SavedAppearanceSlotStatus : i32 {
+    empty = 0,
+    valid = 1,
+    invalid_version = 2,
+    invalid_customize_data = 3,
+}
+
+[Size(0x8)]
+struct ServerRequestCallbackInterface {
+    [0x0] void* virtual_table;
+    [Virtual(0)] ServerRequestCallbackInterface* dtor();
+    [Virtual(1)] void onReceivePacket(i32 command_id, void* payload, usize payload_size);
+}
+
+[Size(0x18)]
+struct ServerRequestCallbackManager {
+    [0x0] STD.StdVector<ServerRequestCallbackInterface*> callbacks;
+    [Sig("48 8B 1D ?? ?? ?? ?? 33 FF 48 85 DB", FirstMatch, Offset(3), Rel32)] static ServerRequestCallbackManager* instance;
+    [Sig("E8 ?? ?? ?? ?? EB ?? 48 8B CE E8 ?? ?? ?? ?? 83 F8", FirstMatch, Offset(1), Rel32)] bool requestSimple(ServerRequestCallbackInterface* callback, i32 command_id, i32 arg1, i32 arg2);
+    // Falls back to RequestSimple when `argCount <= 2`.
+    [Sig("E8 ?? ?? ?? ?? EB ?? E8 ?? ?? ?? ?? 48 8D 88 ?? ?? ?? ?? E8 ?? ?? ?? ?? ?? ?? ?? 49 8B CF", FirstMatch, Offset(1), Rel32)] bool request(ServerRequestCallbackInterface* callback, i32 command_id, i32* args, usize arg_count);
+    [Sig("48 8B 01 4D 8B D1 8B D2", FirstMatch)] void processPacket(i32 callback_index, i32 command_id, void* payload, usize payload_size);
+}
+
+[Size(0x310)]
+struct SpectatorCamera : Camera {
+}
+
+// Initializes and manages the spectator system
+[Size(0x4E0)]
+struct SpectatorManager {
+    [0x8] Common.Component.Excel.ExcelSheet* sheet;
+    [0x10] SpectatorManager.SpectatorManagerWaiter* waiter;
+    [0x8C] u32 spectator_row_id;
+    [0x90] u8 unk90;
+    [0x94] u32 unk94;
+    [0x98] u32 unk98;
+    [0xA1] u8 unknown40;
+    [0xA2] u8 sheet_status;
+    [0xDA] u8 unk_da;
+    [Sig("4C 89 2D ?? ?? ?? ?? 45 33 C0", FirstMatch, Offset(3), Rel32)] static SpectatorManager* instance;
+    // Initializes the SpectatorManager global.
+    [Sig("48 89 5C 24 ?? 55 41 54 41 55 41 56 41 57 48 83 EC ?? 44 8B E1", FirstMatch)] static void initialize(u32 spectator_row_id, u32 a3, u8 a4, u32 a5);
+    // Updates and manages the Excel waiters here.
+    [Sig("48 89 5C 24 ?? 56 48 83 EC ?? F3 0F 10 89", FirstMatch)] void update();
+    // Reads spectator data from Excel, puts most of it into Control.SpectatorSystem.
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? ?? ?? ?? 48 8B F1 48 8D 0D", FirstMatch)] void readSpectatorRow(void* spectator_row);
+    // Changes an internal flag to tell the spectator UI to show itself.
+    [Sig("40 53 48 83 EC ?? 80 A1 ?? ?? ?? ?? ?? 48 8B D9 E8 ?? ?? ?? ?? 80 8B", FirstMatch)] void showSpectatorUi(f32 a2);
+    // Used by AgentPvPSpectator to check if the regular PvP spectator UI should be visible.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 0F 84 ?? ?? ?? ?? 48 8B 83 ?? ?? ?? ?? 41 B0", FirstMatch, Offset(1), Rel32)] bool shouldShowSpectatorUi();
+}
+
+[Size(0x10)]
+struct Status {
+    [0x0] u16 status_id;
+    [0x2] u16 param;
+    [0x4] f32 remaining_time;
+    [0x8] Object.GameObjectId source_object;
+}
+
+[Size(0x3E0)]
+struct StatusManager {
+    [0x0] Character.Character* owner;
+    [0x8] Status[60] status;
+    [0x3C8] u8[7] flags;
+    [0x3D0] f32 special_status_timer_or_direction;
+    [0x3D8] u8 num_valid_statuses;
+    // 0x01: lose control (set if any active status has IsGaze flag set in sheet)
+    [0x3D9] u8 extra_flags;
+    [Sig("48 8B C4 48 89 58 ?? 48 89 68 ?? 48 89 70 ?? 57 41 54 41 56 48 83 EC ?? 4C 89 78", FirstMatch)] void processHotDot(Character.BattleChara* target, u32 status_id, i32 tick_mode, u32 value, u32 source_entity_id, i32 damage_type);
+    [Sig("E8 ?? ?? ?? ?? C6 43 2D 00", FirstMatch, Offset(1), Rel32)] bool hasStatus(u32 status_id, u32 source_id);
+    [Sig("E8 ?? ?? ?? ?? 85 C0 79 ?? 4C 8B 15", FirstMatch, Offset(1), Rel32)] i32 getStatusIndex(u32 status_id, u32 source_id);
+    [Sig("83 FA 3C 72 04 0F 57 C0", FirstMatch)] f32 getRemainingTime(i32 status_index);
+    [Sig("E8 ?? ?? ?? ?? 85 C0 75 ?? FE C3 EB", FirstMatch, Offset(1), Rel32)] u32 getStatusId(i32 status_index);
+    [Sig("E8 ?? ?? ?? ?? 3B 44 24 28", FirstMatch, Offset(1), Rel32)] u32 getSourceId(i32 status_index);
+    [Sig("66 85 D2 0F 84 ?? ?? ?? ?? 48 89 5C 24 ?? 48 89 6C 24 ??", FirstMatch)] void addStatus(u16 status_id, u16 param, void* u3);
+    [Sig("83 FA 3C 73 ?? 53 48 83 EC 30 48 8B D9", FirstMatch)] void removeStatus(i32 status_index, u8 u2);
+    [Sig("E8 ?? ?? ?? ?? 40 0A F0 48 8D 5B", FirstMatch, Offset(1), Rel32)] bool setStatus(i32 status_index, u16 status_id, f32 remaining, u16 param, Object.GameObjectId source_object, bool refresh_flags);
+    // Remove specified status, if it is possible to be removed by user interaction. Does all the sanity
+    // checks (that status is on player, is a buff that can be canceled, etc); on success status is removed
+    // from manager immediately.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? ?? ?? ?? 48 8B CB FF 50 ?? 48 8B 56", FirstMatch, Offset(1), Rel32)] static bool executeStatusOff(u32 status_id, u32 source_id);
+}
+
+enum SubmarineRating : u8 {
+    ss = 0,
+    s = 1,
+    a = 2,
+    b = 3,
+    c = 4,
+}
+
+[Size(0x8)]
+struct TitleController {
+    [Sig("48 83 EC 38 B8 ?? ?? ?? ?? 66 3B D0", FirstMatch)] void sendTitleIdUpdate(u16 title_id);
+}
+
+[Size(0x80)]
+struct TitleList {
+    [0x8] u8[112] unlocked_titles;
+    [0x7C] bool data_pending;
+    [0x7D] bool data_received;
+    [0x7E] bool data_requested;
+    [Sig("E8 ?? ?? ?? ?? 89 6E 58", FirstMatch, Offset(1), Rel32)] void requestTitleList();
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 8B 44 24 ?? B9", FirstMatch, Offset(1), Rel32)] void setTitleUnlocked(u16 title_id);
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 1A 8B CB", FirstMatch, Offset(1), Rel32)] bool isTitleUnlocked(u16 title_id);
+}
+
+enum TradeState : i32 {
+    not_trading = 1,
+    trade_request_pending = 2,
+    selecting_trade_goods = 3,
+    locked_in = 4,
+    waiting_for_confirmation = 5,
+    confirmed = 6,
+}
+
+// The weather changes every 8 hours.
+[Size(0x70)]
+struct WeatherManager {
+    [0x0] WeatherManager.ServerWeather*[3] weather_ptrs;
+    [0x18] WeatherManager.ServerWeather[3] weathers;
+    [0x60] u8 weather_index;
+    [0x64] u8 weather_id;
+    [0x65] u8 weather_override;
+    [0x66] u8 current_daytime_offset;
+    [0x67] u8 individual_weather_id;
+    [Sig("48 8D 0D ?? ?? ?? ?? 44 0F B7 45", FirstMatch, Offset(3), Rel32)] static WeatherManager instance;
+    [Sig("E8 ?? ?? ?? ?? 0F B6 C8 83 E9 07", FirstMatch, Offset(1), Rel32)] u8 getCurrentWeather();
+    // Checks if the specified TerritoryType has individual weather.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 E8 4C 8D 73 04", FirstMatch, Offset(1), Rel32)] bool hasIndividualWeather(u16 territory_type_id);
+    // Gets the IndividualWeather id for the specified TerritoryType, if it has one.
+    [Sig("E8 ?? ?? ?? ?? 44 0F B6 F0 33 F6", FirstMatch, Offset(1), Rel32)] u8 getIndividualWeather(u16 territory_type_id);
+    // Gets the Weather id for the specified TerritoryType and hour.
+    [Sig("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 0F B7 CA 41 8B F0", FirstMatch)] u8 getWeatherForHour(u16 territory_type_id, i32 hour_offset);
+    // Gets the Weather id for the specified TerritoryType and daytime. All this function does, is to call
+    // `getWeatherForHour` with daytimeIndex * 8 as offset.
+    [Sig("46 8D 04 C5 ?? ?? ?? ?? E9", FirstMatch)] u8 getWeatherForDaytime(u16 territory_type_id, i32 daytime_offset);
+}
+
+[Size(0xB8D0)]
+struct WorkshopTerritory : HousingTerritory {
+    [0x68] HousingWorkshopAirshipData airship;
+    [0x2960] HousingWorkshopSubmersibleData submersible;
+    [0xB8B0] HouseId house_id;
+}
+
+[Size(0x20)]
+struct XBMManager {
+    [0x0] u8[7] unlocked_pets;
+    [0x10] i32 num_unlocked_pets;
+    [0x14] XBMManager.DataState state;
+    [0x18] bool has_new_unlocked_pets;
+    [Sig("48 83 EC ?? 48 83 3D ?? ?? ?? ?? 00 75 ?? 33 D2 45 33 C0 8D 4A ?? E8 ?? ?? ?? ?? 48 85 C0 74 ?? 48 C7 40 ?? 00 00 00 00", FirstMatch, Offset(47), Rel32)] static XBMManager* instance;
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 48 8B 44 24 ?? ?? ?? ?? ?? ?? ?? 32 C0", FirstMatch, Offset(1), Rel32)] bool isPetUnlocked(u32 pet_id);
+    [Sig("E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? BA ?? ?? ?? ?? 48 8B C8 E8 ?? ?? ?? ?? 48 85 C0 74 ?? 48 8B C8", FirstMatch, Offset(1), Rel32)] void setPetUnlocked(u16 pet_id);
+    [Sig("48 89 5C 24 ?? 57 48 83 EC ?? ?? ?? ?? BF ?? ?? ?? ?? C7 41", FirstMatch)] void handlePetListPacket(isize packet);
+}
+
+[Size(0x738)]
+struct ZoneSharedGroupManager : Common.Component.Excel.ExcelSheetWaiter {
+    [Sig("33 C0 4C 8B C9 38 41 32", FirstMatch)] void refresh();
+}
+
+namespace ActionManager {
+    enum CastTimeProc : u8 {
+        none = 0,
+        firestarter = 1,
+        swiftcast = 3,
+        lightspeed = 4,
+        dualcast = 5,
+        abridged = 6,
+        triplecast = 7,
+        demi_bahamut = 8,
+        requiescat = 9,
+        demi_phoenix = 11,
+        enhanced_harpe = 12,
+        soulsow_out_of_combat = 13,
+        acceleration = 14,
+        divine_might = 15,
+        motif_out_of_combat = 18,
+        rainbow_bright = 19,
+    }
+
+    enum TargetCategory : i32 {
+        self = 0,
+        party = 1,
+        alliance = 2,
+        enemy = 3,
+        friendly = 4,
+        own_pet = 5,
+        party_pet = 6,
+        unk_pvp = 7,
+    }
+
+    enum UseActionMode : i32 {
+        none = 0,
+        queue = 1,
+        macro = 2,
+        combo = 3,
+    }
+}
+
+namespace BGMSystem {
+    enum PlayState : u32 {
+        paused = 0,
+        playing = 1,
+    }
+
+    [Size(0x60)]
+    struct Scene {
+        // The index of `scenes` and the RowId in the BGMScene sheet. 0 = Event 1 = Battle 2 = MiniGame
+        // (RhythmAction, TurnBreak) 3 = Content 4 = GFate 5 = Duel 6 = Mount 7 = Unknown, no xrefs 8 =
+        // Unknown, via packet (near PlayerState stuff) 9 = Wedding 10 = Town 11 = Territory
+        [0x0] u32 scene_id;
+        [0x8] SituationKind situation_kind;
+        [0xC] u16 bgm_id;
+        [0xE] u16 playing_bgm_id;
+        [0x10] u16 previous_bgm_id;
+        [0x12] u8 unk12;
+        [0x14] f32 unk14;
+        [0x18] STD.StdVector<SceneIntermission> intermissions;
+        [0x30] bool enable_custom_fade;
+        [0x38] u32 fade_out_time;
+        [0x3C] u32 fade_in_time;
+        [0x40] u32 fade_in_start_time;
+        [0x44] u32 resume_fade_in_time;
+        [0x50] PlayState play_state;
+        [0x55] u8 unk55;
+        [0x58] f32 initial_volume;
+    }
+
+    [Size(0x10)]
+    struct SceneIntermission {
+        [0x0] u16 bgm_id;
+        [0x2] bool is_timed_out;
+        [0x3] u8 unk3;
+        [0x4] f32 reset_wait_time;
+        [0x8] f32 elapsed_time;
+        [0xC] bool is_enabled;
+    }
+
+    enum SituationKind : u32 {
+        none = 0,
+        daytime = 1,
+        night = 2,
+        battle = 3,
+        daybreak = 4,
+        twilight = 5,
+    }
+}
+
+namespace CharamakeAvatarSaveDataContainer {
+    [Size(0x8)]
+    struct ContainerInterface {
+        [0x0] void* virtual_table;
+        [Virtual(1)] bool isSlotValid(u8 slot_index);
+        [Virtual(2)] SavedAppearanceSlot* getSlot(u8 slot_index);
+        [Virtual(4)] u32 getValidSlotCount();
+        [Virtual(5)] u32 updateValidSlotCount();
+        [Virtual(6)] u32 getMaxSlotCount();
+    }
+
+    [Size(0x3218)]
+    struct FixedContainer : ContainerInterface {
+        [0x8] SavedAppearanceSlot[40] slots2;
+    }
+
+    [Size(0x7D0)]
+    struct FreeTrialContainer : ContainerInterface {
+    }
+
+    [Size(0x140)]
+    struct SavedAppearanceSlot {
+        [0x0] u32 magic;
+        [0x4] u32 version;
+        [0x8] u32 customize_data_hash;
+        [0x10] Character.CustomizeData customize_data;
+        [0x2C] i32 timestamp;
+        [0x30] utf8[64] label;
+        [0x134] SavedAppearanceSlotStatus status;
+        [0x13C] u8 slot_index;
+    }
+
+    [Size(0x30)]
+    struct VariableContainer : ContainerInterface {
+    }
+}
+
+namespace ContentsReplayManager {
+    [Size(0xC)]
+    struct FFXIVREPLAYChapter {
+        [0x0] FFXIVREPLAYChapterType type;
+        [0x4] u32 offset;
+        // Relative to first chapter: `(Chapters[i].PositionMs - Chapters[0].PositionMs) * 0.001`
+        [0x8] u32 position_ms;
+    }
+
+    [Size(0x68)]
+    struct FFXIVREPLAYHeader {
+        [0x0] utf8[12] magic;
+        [0xC] u16 version;
+        [0xE] u16 operating_system_type;
+        [0x10] u32 game_build_revision;
+        [0x14] u32 timestamp;
+        [0x18] u32 total_ms;
+        [0x1C] u32 displayed_ms;
+        [0x20] u16 content_finder_condition_id;
+        [0x28] u8 flags;
+        [0x30] u64 local_content_id;
+        [0x38] u8[8] job_ids;
+        [0x40] u8 player_index;
+        [0x48] u32 replay_length;
+        [0x4E] u16[7] b_npc_names;
+    }
+}
+
+namespace CurrencyManager {
+    [Size(0x20)]
+    struct ContentCurrencyItem {
+        [0x0] u16 max_count;
+        [0x4] u16 count;
+        [0x8] bool is_unlimited;
+    }
+
+    [Size(0x20)]
+    struct CurrencyItem {
+        [0x0] u16 max_count;
+        [0x2] u16 count;
+        [0x4] bool is_unlimited;
+    }
+
+    [Size(0x20)]
+    struct SpecialCurrencyItem {
+        [0x0] u8 special_id;
+        [0x4] u32 max_count;
+        [0x8] u32 count;
+    }
+}
+
+namespace DomanEnclaveManager {
+    [Size(0x8)]
+    struct DomanEnclaveState {
+        [0x0] u16 donated;
+        // Index in the `Milestones` array.
+        [0x2] u8 current_milestone;
+        [0x3] bool is_accepting_donations;
+        // Add 100 to get the correct value.
+        [0x4] u8 factor;
+        [0x6] u16 allowance;
+    }
+}
+
+namespace FashionCheckManager {
+    [Size(0x10)]
+    struct EquipEvaluationData {
+        [0x0] u8 score;
+        [0x1] u8[11] item_evaluations;
+    }
+
+    [Size(0x50)]
+    struct HighScoreData {
+        [0x0] u8 score;
+        [0x4] u32[11] item_ids;
+        [0x30] u16[2] glasses_ids;
+        [0x34] u8[6] stain0_ids;
+        [0x3A] u8[6] stain1_ids;
+        [0x40] u8[11] item_evaluations;
+    }
+
+    [Size(0x8)]
+    struct PlayerInfoData {
+        [0x0] u8 high_score;
+        [0x1] u8 remaining;
+    }
+
+    [Size(0x20)]
+    struct PreviewData {
+        [0x0] u8 high_score;
+        [0x1] u8 remaining;
+        // FashionCheckWeeklyTheme RowId
+        [0x2] u16 weekly_theme;
+        // FashionCheckThemeCategory RowIds
+        [0x4] u16[11] item_themes;
+    }
+
+    [Size(0x18)]
+    struct ThemeData {
+        // FashionCheckWeeklyTheme RowId
+        [0x0] u16 weekly_theme;
+        // FashionCheckThemeCategory RowIds
+        [0x2] u16[11] item_themes;
+    }
+}
+
+namespace GameMain {
+    [Size(0x4)]
+    struct Festival {
+        [0x0] u16 id;
+        [0x2] u16 phase;
+    }
+}
+
+namespace HouseBuddy {
+    [Size(0x20)]
+    struct BuddyDataEntry {
+        [0x0] u32 entity_id;
+        [0x8] i64 last_update;
+        [0x10] u32[3] barding_ids;
+        [0x1C] u8 model_scale_id;
+        [0x1D] u8 stain_id;
+        [0x1E] u8 event_state;
+    }
+}
+
+namespace HousingGuestBookData {
+    [Size(0x100)]
+    struct HousingGuestBookEntry {
+        [0x0] i32 index;
+        [0x4] bool has_data;
+        [0x5] bool was_delete;
+        [0x6] bool is_in_same_free_company_as_owner;
+        [0x8] u64 content_id;
+        [0x10] u16 home_world;
+        [0x14] i32 timestamp;
+        [0x18] utf8[32] character_name;
+        [0x38] utf8[192] message;
+        [0xF8] u8 unk_f8;
+    }
+}
+
+namespace HousingObjectManager {
+    [Size(0x12D8)]
+    struct HousingObjectArray {
+        [0x0] Object.GameObject* object_memory;
+        [0x8] Object.GameObject*[600] objects;
+        [0x12C8] Object.GameObject* temp_object;
+        [0x12D0] u16 object_count;
+    }
+
+    [Size(0x30)]
+    struct HousingObjectData {
+        [0x0] HousingObjectData.HousingObjectDataValueSet[8] value_sets;
+    }
+}
+
+namespace HousingObjectManager.HousingObjectData {
+    [Size(0x6)]
+    struct HousingObjectDataValueSet {
+        [0x0] u16 value1;
+        [0x2] u8 value2;
+        [0x3] u8 value3;
+        [0x4] u8 value4;
+        [0x5] u8 value5;
+    }
+}
+
+namespace HousingTemporaryObject {
+    [Size(0x20)]
+    struct HousingTemporaryObjectData {
+        // 76 for HousingFurniture 77 for HousingYardObject
+        [0x0] u8 kind;
+        [0x1] u8 stain;
+        [0x2] i16 model_key;
+        [0x4] u8 housing_item_category;
+        [0x5] bool is_pad_mode_enabled;
+        [0x6] u8 unk6;
+        [0x7] u8 unk7;
+        [0x8] u8 unk8;
+        [0x10] HousingTemporaryObject* owner_temporary_object;
+    }
+}
+
+namespace HousingTerritory {
+    [Size(0x28)]
+    struct HousingTerritoryUIEventListener : Component.GUI.AtkModuleInterface.AtkEventInterface {
+        [0x10] HousingTerritory* housing_territory;
+        [0x18] InventoryItem* inventory_item;
+        [0x20] u32 addon_id;
+    }
+}
+
+namespace IndoorTerritory {
+    [Size(0x58)]
+    struct IndoorTerritoryAquariumData {
+        [0x8] STD.StdMap<u32, IndoorTerritoryAquariumData.AquariumFishEntry> aquarium_fish_lookup;
+        [0x18] HousingObjectManager.HousingObjectData housing_object_data;
+    }
+
+    [Size(0x28)]
+    struct IndoorTerritoryUIEventListener : Component.GUI.AtkModuleInterface.AtkEventInterface {
+        [0x10] IndoorTerritory* indoor_territory;
+        [0x18] InventoryItem* inventory_item;
+        [0x20] u32 addon_id;
+    }
+}
+
+namespace IndoorTerritory.IndoorTerritoryAquariumData {
+    [Size(0x8)]
+    struct AquariumFishEntry {
+        [0x0] u32 aquarium_fish_row_id;
+    }
+}
+
+namespace InventoryItem {
+    bitfield ItemFlags : u8 {
+        [Bit(0)] bool high_quality;
+        [Bit(1)] bool company_crest_applied;
+        [Bit(2)] bool relic;
+        [Bit(3)] bool collectable;
+        // none is none of them
+    }
+}
+
+namespace InventoryManager {
+    [Size(0x3C)]
+    struct InventoryOperation {
+        [0x0] bool is_empty;
+        [0x4] u32 context_id;
+        [0x8] i32 type;
+        [0x10] InventoryType source_inventory_type;
+        [0x14] i16 source_inventory_slot;
+        [0x18] i32 source_item_quantity;
+        [0x1C] u32 source_item_id;
+        [0x24] InventoryType destination_inventory_type;
+        [0x28] i16 destination_inventory_slot;
+        [0x2C] i32 destination_item_quantity;
+        [0x30] u32 destination_item_id;
+        [0x34] bool unk34;
+        [0x35] bool unk35;
+        [0x36] bool unk36;
+        [0x37] bool unk37;
+        [0x38] u32 unk38;
+    }
+}
+
+namespace JobGaugeManager {
+    union GaugeUnion {
+        Gauge.JobGauge empty_gauge;
+        Gauge.WhiteMageGauge white_mage;
+        Gauge.ScholarGauge scholar;
+        Gauge.AstrologianGauge astrologian;
+        Gauge.SageGauge sage;
+        Gauge.BardGauge bard;
+        Gauge.MachinistGauge machinist;
+        Gauge.DancerGauge dancer;
+        Gauge.BlackMageGauge black_mage;
+        Gauge.SummonerGauge summoner;
+        Gauge.RedMageGauge red_mage;
+        Gauge.PictomancerGauge pictomancer;
+        Gauge.MonkGauge monk;
+        Gauge.DragoonGauge dragoon;
+        Gauge.NinjaGauge ninja;
+        Gauge.SamuraiGauge samurai;
+        Gauge.ReaperGauge reaper;
+        Gauge.ViperGauge viper;
+        Gauge.BeastmasterGauge beastmaster;
+        Gauge.DarkKnightGauge dark_knight;
+        Gauge.PaladinGauge paladin;
+        Gauge.WarriorGauge warrior;
+        Gauge.GunbreakerGauge gunbreaker;
+    }
+}
+
+namespace MapDiscoveryManager {
+    [Size(0x10)]
+    struct DiscoveryTable16 {
+        [0x0] bool[16] discoveries;
+    }
+
+    [Size(0x20)]
+    struct DiscoveryTable32 {
+        [0x0] bool[32] discoveries;
+    }
+}
+
+namespace MirageManager {
+    [Size(0x48)]
+    struct GlamourPlate {
+        [0x0] u32[12] item_ids;
+        [0x30] u8[12] stain0_ids;
+        [0x3C] u8[12] stain1_ids;
+    }
+}
+
+namespace NameCache {
+    [Size(0xB)]
+    struct CharacterInfo {
+        [0x0] cstring name;
+        [0x8] u16 home_world_id;
+        [0xA] u8 sex;
+    }
+
+    [Size(0x48)]
+    struct ContentIdCacheEntry {
+        [0x0] utf8[64] name;
+        [0x40] u64 content_id;
+    }
+
+    [Size(0x4C)]
+    struct EntityCacheEntry {
+        [0x0] utf8[64] name;
+        [0x40] u8 sex;
+        [0x44] u32 entity_id;
+        [0x48] u16 home_world_id;
+    }
+}
+
+namespace OutdoorTerritory {
+    // Mirrors the EXD layout of HousingMapMarkerInfo
+    [Size(0x14)]
+    struct HousingMapMarkerInfo {
+        [0x0] f32 x;
+        [0x4] f32 y;
+        [0x8] f32 z;
+        [0xC] f32 unknown0;
+        [0x10] u16 map_id;
+    }
+}
+
+namespace RaceChocoboManager {
+    enum RaceChocoboState : i32 {
+        invalid = 0,
+        requested = 1,
+        loaded = 2,
+    }
+}
+
+namespace RetainerManager {
+    [Size(0x48)]
+    struct Retainer {
+        [0x0] u64 retainer_id;
+        [0x8] utf8[32] name;
+        [0x28] bool available;
+        [0x29] u8 class_job;
+        [0x2A] u8 level;
+        [0x2B] u8 item_count;
+        [0x2C] u32 gil;
+        [0x30] RetainerTown town;
+        [0x31] u8 market_item_count;
+        [0x34] u32 market_expire;
+        [0x38] u16 venture_id;
+        [0x3C] u32 venture_complete;
+    }
+
+    enum RetainerTown : u8 {
+        limsa_lominsa = 1,
+        gridania = 2,
+        uldah = 3,
+        ishgard = 4,
+        kugane = 7,
+        crystarium = 10,
+        old_sharlayan = 12,
+    }
+}
+
+namespace SatisfactionSupplyManager {
+    [Size(0x1C)]
+    struct NpcInfo {
+        [0x0] u32 npc_id;
+        [0x4] u32 image_id;
+        [0xC] u16 satisfaction_cur;
+        [0xE] u16 satisfaction_max;
+        [0x10] u8 rank_cur;
+        [0x11] u8 rank_max;
+        [0x12] u8 used_allowances;
+        [0x13] u8 max_allowances;
+        [0x14] u16 remaining_allowances;
+        [0x16] i16 level_unlocked;
+        [0x18] bool can_glamour;
+        [0x19] bool rank_quest_complete;
+    }
+}
+
+namespace SpectatorManager {
+    [Size(0x50)]
+    struct SpectatorManagerWaiter : Common.Component.Excel.ExcelSheetWaiter {
+        [0x30] void* unk30;
+        [0x38] void* arg;
+        [0x40] void* callback;
+        [0x48] void* unk48;
+    }
+}
+
+namespace WeatherManager {
+    [Size(0x18)]
+    struct ServerWeather : WeatherInterface {
+        [0x8] u8 next_weather_id;
+        [0x9] u8 current_weather_id;
+        [0xC] f32 daytime_fade_time_left;
+        [0x10] f32 daytime_fade_length;
+        [0x14] bool is_current_weather_forced;
+        [0x15] bool is_next_weather_forced;
+    }
+
+    [Size(0x8)]
+    struct WeatherInterface {
+        [0x0] void* virtual_table;
+        [Virtual(0)] WeatherInterface* dtor(u8 free_flags);
+        [Virtual(1)] bool isActive();
+        [Virtual(2)] u8 getCurrentWeatherId();
+        [Virtual(3)] void setNextWeather(u8 weather_id, f32 fade_length, bool disables_override);
+        [Virtual(4)] u8 getNextWeatherId();
+        [Virtual(5)] bool update();
+        [Virtual(6)] f32 getDaytimeFadeLength();
+        [Virtual(7)] bool getIsCurrentWeatherForced();
+        [Virtual(8)] bool getIsNextWeatherForced();
+    }
+}
+
+namespace XBMManager {
+    enum DataState : i32 {
+        none = 0,
+        requested = 1,
+        received = 3,
+    }
+}

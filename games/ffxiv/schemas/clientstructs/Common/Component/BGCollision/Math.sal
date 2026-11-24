@@ -1,0 +1,26 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Common.Component.BGCollision.Math;
+
+[Size(0x18)]
+struct AABB {
+    [0x0] Vec3 min;
+    [0xC] Vec3 max;
+}
+
+[Size(0x30)]
+struct Matrix4x3 {
+    [0x0] f32 m11;
+    [0x4] f32 m12;
+    [0x8] f32 m13;
+    [0xC] f32 m21;
+    [0x10] f32 m22;
+    [0x14] f32 m23;
+    [0x18] f32 m31;
+    [0x1C] f32 m32;
+    [0x20] f32 m33;
+    [0x24] f32 m41;
+    [0x28] f32 m42;
+    [0x2C] f32 m43;
+}

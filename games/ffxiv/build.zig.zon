@@ -1,0 +1,17 @@
+.{
+    .name = .ffxiv,
+    .version = "0.0.1",
+    .dependencies = .{
+        .wraith = .{
+            .url = "git+https://github.com/ratatoskr/wraith#e28663533094232fa274fff0df4ae6b32bc33660",
+            .hash = "wraith-0.0.0-sZo_98YhXQDnrrGRTUBXM4onpo1yn-7L4Bj0vQX-Lkq4",
+        },
+        .ffxivclientstructs = .{
+            .url = "git+https://github.com/aers/ffxivclientstructs#f76f33bdc572d69992ef771ea5a4cd26a8035a6a",
+            .hash = "N-V-__8AADgSkAOHMIuIaYeEJLyIdYd6Jgq6MXxLmUbO-0rI",
+        },
+    },
+    .minimum_zig_version = "0.18.0-dev.1279+81de6a1c6",
+    .paths = .{""},
+    .fingerprint = 0x99a6e020de4062aa,
+}

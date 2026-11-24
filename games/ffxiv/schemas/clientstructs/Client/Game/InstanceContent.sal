@@ -1,0 +1,499 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Game.InstanceContent;
+
+[Size(0xF0)]
+struct BozjaState {
+    [0x0] u32 current_experience;
+    [0x4] u32 needed_experience;
+    [0x6C] u8[100] holster_actions;
+}
+
+[Size(0xD30), VirtualTable("48 8D 05 ?? ?? ?? ?? ?? ?? ?? 48 8D 8F ?? ?? ?? ?? 48 8D 05 ?? ?? ?? ?? 48 89 87 ?? ?? ?? ?? 48 8D 05", FirstMatch, Offset(3), Rel32)]
+struct ContentDirector : Event.Director {
+    [0x4E6] u8 content_type_row_id;
+    [0x528] DutyActionManager duty_action_manager;
+    [0xC88] System.String.Utf8String* instance_content_texts;
+    [0xC90] ContentDirector.MapEffectList* map_effects;
+    [0xC98] DynamicEventContainer* dynamic_events;
+    // This might also be a countdown until the content starts (e.g. Frontlines), then the actual time left
+    // of the content.
+    [0xCF0] f32 content_time_left;
+    [0xCFC] u32 instance_content_text_start_row_id;
+    [0xD00] u32 instance_content_text_row_count;
+    [Virtual(304)] u32 getCurrentLevel();
+    [Virtual(305)] u32 getMaxLevel();
+    // Processes updates specific for this director. This handles the categories between 0 and 0x80000000.
+    [Virtual(325)] void processDirectorSpecificDirectorUpdate(u32 category, u32* parameters);
+    // Gets the max time for the content in seconds
+    [Virtual(329)] u32 getContentTimeMax();
+    [Virtual(354)] System.String.Utf8String* getInstanceContentText(u32 row_id);
+    [Sig("E8 ?? ?? ?? ?? 80 AB ?? ?? ?? ?? ?? 75", FirstMatch, Offset(1), Rel32)] void* loadInstanceContentTexts(u32 start_row_id, u32 row_count);
+    [Sig("E8 ?? ?? ?? ?? FF C7 48 8D 76 ?? 3B FD", FirstMatch, Offset(1), Rel32)] void setInstanceContentText(u32 row_id, cstring text);
+    // Changes the state of a map effect.
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 8B FA 41 0F B7 E8", FirstMatch)] void applyMapEffect(u32 index, u16 state, u16 timeline_index);
+    // Handles changes the timeline for a map effect
+    [Sig("E8 ?? ?? ?? ?? 3A C3 74 ?? 44 0F B7 C5", FirstMatch, Offset(1), Rel32)] bool playMapEffectTimeline(u32 index, u16 timeline_index);
+    // Processes updates shared between all content (e.g. setting the background music). This handles
+    // categories above 0x80000000.
+    [Sig("48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 81 C2 ?? ?? ?? ?? 41 8B E9", FirstMatch)] void processCommonDirectorUpdate(u32 category, u32 arg1, u32 arg2, u32 arg3, u32 arg4);
+}
+
+[Size(0x1D0)]
+struct DynamicEvent : Common.Component.Excel.ExcelSheetWaiter {
+    [0x30] u32 name_offset;
+    [0x34] u32 description_offset;
+    [0x38] u32 lgb_event_object;
+    [0x3C] u32 lgb_map_range;
+    // RowId of Quest Sheet
+    [0x40] u32 quest;
+    // RowId of LogMessage Sheet
+    [0x44] u32 announce;
+    [0x48] u32 unknown0;
+    [0x4C] u32 unknown1;
+    [0x50] u16 unknown6;
+    [0x52] u16 unknown7;
+    [0x54] u16 unknown2;
+    // RowId of DynamicEventType Sheet
+    [0x56] u8 event_type;
+    // RowId of DynamicEventEnemyType Sheet
+    [0x57] u8 enemy_type;
+    [0x58] u8 max_participants;
+    // In minutes
+    [0x59] u8 duration;
+    [0x5A] u8 unknown5;
+    // RowId of DynamicEventSingleBattle Sheet
+    [0x5B] u8 single_battle;
+    [0x5C] u8 unknown8;
+    [0x60] i32 start_timestamp;
+    [0x64] u32 seconds_left;
+    [0x68] u32 seconds_duration;
+    [0x6C] u32 seconds_registration_time;
+    [0x70] u32 seconds_warmup_time;
+    [0x74] u16 dynamic_event_id;
+    [0x76] u8 dynamic_event_type;
+    [0x77] bool unk77;
+    [0x78] DynamicEventState state;
+    [0x7A] u8 participants;
+    [0x7B] u8 progress;
+    [0x80] System.String.Utf8String name;
+    [0xE8] System.String.Utf8String description;
+    [0x150] u32 icon_objective0;
+    [0x154] u8 max_participants2;
+    [0x170] UI.MapMarkerData map_marker;
+    [0x1C0] DynamicEventContainer* event_container;
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 44 0F B7 03", FirstMatch, Offset(1), Rel32)] bool isActive();
+}
+
+[Size(0x1D80)]
+struct DynamicEventContainer {
+    [0x8] DynamicEvent[16] events;
+    [0x1D78] f32 unk1_d78;
+    [0x1D7C] u16 current_event_id;
+    [0x1D7E] i8 current_event_index;
+    [0x1D7F] u8 content_member_limit;
+    [Sig("E8 ?? ?? ?? ?? 48 8B E8 48 85 C0 74 ?? 0F B7 56", FirstMatch, Offset(1), Rel32)] static DynamicEventContainer* getInstance();
+    [Sig("48 0F BE 81 ?? ?? ?? ?? 48 8B D1 84 C0 79", FirstMatch)] DynamicEvent* getCurrentEvent();
+}
+
+enum DynamicEventState : u8 {
+    inactive = 0,
+    register = 1,
+    warmup = 2,
+    battle = 3,
+}
+
+[Size(0x12)]
+struct EurekaState {
+    [0x0] u32 current_experience;
+    [0x4] u32 needed_experience;
+    [0x8] u16 magia_aether_charge;
+    [0xA] u8 fire;
+    [0xB] u8 ice;
+    [0xC] u8 wind;
+    [0xD] u8 earth;
+    [0xE] u8 lightning;
+    [0xF] u8 water;
+    [0x10] u8 magicite;
+    [0x11] u8 magia_aether;
+}
+
+[Size(0x25A0)]
+struct InstanceContentCrucibleOfTheUnbroken : InstanceContentDirector {
+    [0x2380] InstanceContentCrucibleOfTheUnbroken.InventorySlot[10] inventory;
+    // Uses a Crucible item. If applicable, the item action will be used on the player's current soft or
+    // hard target.
+    [Sig("E8 ?? ?? ?? ?? 83 7F 44 00 48 8D 57 44", FirstMatch, Offset(1), Rel32)] void useItem(u32 slot, i32 beast_id);
+}
+
+[Size(0x2B30)]
+struct InstanceContentDeepDungeon : InstanceContentDirector {
+    [0x2038] InstanceContentDeepDungeon.DeepDungeonPartyInfo[4] party;
+    [0x2058] InstanceContentDeepDungeon.DeepDungeonItemInfo[16] items;
+    [0x2088] InstanceContentDeepDungeon.DeepDungeonChestInfo[16] chests;
+    [0x20B0] u8[3] magicite;
+    [0x20B8] u32 bonus_loot_item_id;
+    [0x20BC] u8 floor;
+    [0x20BD] u8 return_progress;
+    [0x20BE] u8 passage_progress;
+    [0x20C0] u8 weapon_level;
+    [0x20C1] u8 armor_level;
+    [0x20C2] u8 synced_gear_level;
+    [0x20C3] u8 hoard_count;
+    [0x20C4] u8 deep_dungeon_gimmick_effect_id_current;
+    [0x20C5] u8 deep_dungeon_gimmick_effect_id_next;
+    [0x20D2] u8 deep_dungeon_status_id;
+    [0x20D3] u8 deep_dungeon_ban_id;
+    [0x20D4] u8 deep_dungeon_danger_id;
+    [0x2A86] u8 deep_dungeon_id;
+    [0x2AF4] InstanceContentDeepDungeon.RoomFlags[25] map_data;
+    [0x2B27] u8 active_layout_index;
+    [0x2B28] u8 layout_initialization_type;
+    // Uses a pomander. Returns an error if the player's animation lock is greater than 0.
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8D 4F 10 E8 ?? ?? ?? ?? 48 63 F8", FirstMatch, Offset(1), Rel32)] void usePomander(u32 slot);
+    // Uses a magicite (Heaven-on-High) or a demiclone (Eureka Orthos). Returns an error if the player's
+    // animation lock is greater than 0.
+    [Sig("E8 ?? ?? ?? ?? EB ?? 48 8D 4F ?? E8 ?? ?? ?? ?? 85 C0 48 8B 43", FirstMatch, Offset(1), Rel32)] void useStone(u32 slot);
+}
+
+[Size(0x1F98), VirtualTable("48 8D 05 ?? ?? ?? ?? B9 ?? ?? ?? ?? ?? ?? ?? 33 ED 48 8D 05", FirstMatch, Offset(3), Rel32)]
+struct InstanceContentDirector : ContentDirector {
+    [0xD30] u32 new_player_bonus_gil;
+    [0xD34] u32 new_player_bonus_exp;
+    [0xD38] u32 final_boss_exp;
+    [0xD3C] u32 unknown0;
+    [0xD40] u32 boss_exp0;
+    [0xD44] u32 boss_exp1;
+    [0xD48] u32 boss_exp2;
+    [0xD4C] u32 boss_exp3;
+    [0xD50] u32 boss_exp4;
+    [0xD54] u32 instance_clear_exp;
+    [0xD58] u32 instance_clear_gil;
+    [0xD5C] u32 instance_content_reward_item;
+    [0xD60] u16 new_player_bonus_a;
+    [0xD62] u16 new_player_bonus_b;
+    [0xD64] u16 final_boss_currency_a;
+    [0xD66] u16 final_boss_currency_b;
+    [0xD68] u16 final_boss_currency_c;
+    [0xD6A] u16 boss_currency_a0;
+    [0xD6C] u16 boss_currency_a1;
+    [0xD6E] u16 boss_currency_a2;
+    [0xD70] u16 boss_currency_a3;
+    [0xD72] u16 boss_currency_a4;
+    [0xD74] u16 boss_currency_b0;
+    [0xD76] u16 boss_currency_b1;
+    [0xD78] u16 boss_currency_b2;
+    [0xD7A] u16 boss_currency_b3;
+    [0xD7C] u16 boss_currency_b4;
+    [0xD7E] u16 boss_currency_c0;
+    [0xD80] u16 boss_currency_c1;
+    [0xD82] u16 boss_currency_c2;
+    [0xD84] u16 boss_currency_c3;
+    [0xD86] u16 boss_currency_c4;
+    [0xD88] u16 unknown1;
+    [0xD8A] u8 unknown20;
+    [0xD8C] u32 cutscene;
+    [0xD90] u32 lgb_event_range;
+    [0xD94] u32 instance_content_text_data_boss_start;
+    [0xD98] u32 instance_content_text_data_boss_end;
+    [0xD9C] u32 b_npc_base_boss;
+    [0xDA0] u32 instance_content_text_data_objective_start;
+    [0xDA4] u32 instance_content_text_data_objective_end;
+    [0xDA8] u32 unknown2;
+    [0xDAC] u32 req_instance;
+    [0xDB0] i32 instance_content_buff;
+    // This field is stored in minutes
+    [0xDB4] u16 content_time_max;
+    [0xDB6] u16 bgm;
+    [0xDB8] u16 win_bgm;
+    [0xDBA] u16 order;
+    [0xDBC] u16 sort_key;
+    [0xDBE] u16 unknown3;
+    [0xDC0] u16 unknown4;
+    [0xDC2] u16 unknown5;
+    [0xDC4] u16 unknown6;
+    [0xDC6] u16 unknown7;
+    [0xDC8] u16 unknown8;
+    [0xDCA] u16 unknown_70;
+    [0xDCC] i16 party_condition;
+    [0xDCE] InstanceContentType instance_content_type;
+    [0xDCF] u8 week_restriction;
+    [0xDD0] u8 colosseum;
+    [0xDD1] u8 unknown9;
+    [0xDD2] u8 unknown10;
+    [0xDD3] u8 unknown11;
+    [0xDD4] u8 unknown12;
+    [0xDD5] u8 unknown19;
+    [0xDD6] u8 unknown13;
+    [0xDD7] u8 unknown14_unknown15_unknown16_unknown17_unknown18;
+    [0xDE0] ContentDirector.MapEffectList managed_shared_groups;
+    // InstanceContentTextData Row 0 - 11
+    [0x1A60] System.String.Utf8String[12] common_instance_content_texts;
+    // Dispatches updates specific to the content. This ends up calling
+    // ProcessContentSpecificDirectorUpdate and unrolls the parameters array.
+    [Virtual(380)] void dispatchContentSpecificDirectorUpdate(u32 category, u32* parameters);
+    // Processes updates specific to the content. This handles the categories between 0 and 0x40000000.
+    [Virtual(381)] void processContentSpecificDirectorUpdate(u32 category, u32 arg1, u32 arg2, u32 arg3, u32 arg4);
+}
+
+[Size(0x25E8)]
+struct InstanceContentOceanFishing : InstanceContentDirector {
+    [0x1FA8] u32 unk1_fa8;
+    [0x1FAC] u8 unk1_fac;
+    [0x1FB0] u32 unk1_fb0;
+    [0x1FB4] u8 unk1_fb4;
+    [0x1FB8] u32 current_route;
+    [0x1FBC] InstanceContentOceanFishing.OceanFishingStatus status;
+    [0x1FC0] u32 current_zone;
+    [0x1FC4] u32 duration;
+    [0x1FC8] u32 time_offset;
+    [0x1FCC] u32 weather_id;
+    [0x1FD0] bool spectral_current_active;
+    [0x1FD4] u32 festival_id;
+    [0x2024] InstanceContentOceanFishing.FishDataStruct[60] fish_data;
+    [0x23E8] u8 all_result_size;
+    [0x23E9] u8 local_index_in_all_result;
+    [0x23EA] InstanceContentOceanFishing.IndividualResultStruct individual_result;
+    [0x240C] InstanceContentOceanFishing.AllResultStruct local_player_all_result;
+    [0x2434] InstanceContentOceanFishing.AllResultStruct[10] all_results;
+    [0x25C8] u32 mission1_type;
+    [0x25CC] u32 mission2_type;
+    [0x25D0] u32 mission3_type;
+    [0x25D4] u16 mission1_progress;
+    [0x25D6] u16 mission2_progress;
+    [0x25D8] u16 mission3_progress;
+}
+
+enum InstanceContentType : u8 {
+    raid = 1,
+    dungeon = 2,
+    guild_order = 3,
+    trial = 4,
+    crystalline_conflict = 5,
+    frontlines = 6,
+    quest_battle = 7,
+    beginner_training = 8,
+    deep_dungeon = 9,
+    treasure_hunt_dungeon = 10,
+    seasonal_dungeon = 11,
+    rival_wing = 12,
+    masked_carnivale = 13,
+    mahjong = 14,
+    gold_saucer = 15,
+    ocean_fishing = 16,
+    unreal_trial = 17,
+    triple_triad = 18,
+    variant_dungeon = 19,
+    criterion_dungeon = 20,
+    advanced_variant_dungeon = 21,
+    crucible_of_the_unbroken = 22,
+    keybound_brawler = 23,
+}
+
+[Size(0x24)]
+struct OccultCrescentMKDData {
+    [0x0] u32 quest_id;
+    [0x4] u32 zone_name_id;
+    [0x8] u32[3] currency_item_ids;
+    [0x14] u32[3] currency_name_ids;
+    [0x20] u8 unknown8;
+    [0x21] u8 unknown9;
+}
+
+[Size(0x9C)]
+struct OccultCrescentState {
+    [0x0] u32[24] support_job_experience;
+    [0x60] u32 current_knowledge;
+    [0x64] u32 needed_knowledge;
+    [0x68] u32 needed_job_experience;
+    [0x6C] u16 silver;
+    [0x6E] u16 gold;
+    [0x76] u8[24] support_job_levels;
+    [0x8E] u8[3] unlocked_teleport_bitmask;
+    [0x91] u8 current_support_job;
+    [0x92] u8 knowledge_level_sync;
+    [0x93] u8 unk93;
+    [0x94] u8 unk94;
+    [0x95] u8 unk95;
+    [0x96] u8 unk96;
+    [0x97] u8 unk97;
+}
+
+[Size(0x3200)]
+struct PublicContentBozja : PublicContentDirector {
+    [0x1388] DynamicEventContainer dynamic_event_container;
+    [0x3108] BozjaState state;
+    [0x31F8] bool state_initialized;
+    [Sig("E8 ?? ?? ?? ?? 48 8B F8 E8 ?? ?? ?? ?? 48 85 FF 74 1D", FirstMatch, Offset(1), Rel32)] static PublicContentBozja* getInstance();
+    // Returns pointer to the state, if bozja director is active and state is initialized; otherwise
+    // returns null.
+    [Sig("E8 ?? ?? ?? ?? 48 85 FF 74 1D", FirstMatch, Offset(1), Rel32)] static BozjaState* getState();
+    // Use lost action from holster into specified duty action slot (slot is ignored for items, which are
+    // used directly).
+    [Sig("40 53 55 57 48 83 EC 40 8B FA", FirstMatch)] bool useFromHolster(u32 holster_index, u32 slot);
+}
+
+[Size(0x1380), VirtualTable("48 8D 05 ?? ?? ?? ?? BA ?? ?? ?? ?? ?? ?? ?? 33 C9 48 8D 05 ?? ?? ?? ?? 48 89 83", FirstMatch, Offset(3), Rel32)]
+struct PublicContentDirector : ContentDirector {
+    [0xD30] u32 name_offset;
+    [0xD34] u32 map_icon;
+    [0xD38] u32 text_data_start;
+    [0xD3C] u32 text_data_end;
+    [0xD40] u32 start_cutscene;
+    [0xD44] u32 lgb_event_range;
+    [0xD48] u32 lgb_pop_range;
+    [0xD4C] u32 end_cutscene;
+    [0xD50] u16 timelimit;
+    [0xD52] u16 content_finder_condition;
+    [0xD54] u16 additional_data;
+    [0xD56] u16 unknown0;
+    [0xD58] u16 unknown1;
+    [0xD5A] u16 unknown2;
+    [0xD5C] u16 unknown3;
+    [0xD5E] u16 unknown5;
+    [0xD60] PublicContentDirectorType type;
+    [0xD61] u8 unknown4;
+    [0xD64] ContentDirector.MapEffectList managed_shared_groups;
+    // Dispatches updates specific to the content. This ends up calling
+    // ProcessContentSpecificDirectorUpdate and unrolls the parameters array.
+    [Virtual(373)] void dispatchContentSpecificDirectorUpdate(u32 category, u32* parameters);
+    // Processes updates specific to the content. This handles the categories between 0 and 0x40000000.
+    [Virtual(374)] void processContentSpecificDirectorUpdate(u32 category, u32 arg1, u32 arg2, u32 arg3, u32 arg4);
+}
+
+enum PublicContentDirectorType : u8 {
+    bonding_ceremony = 1,
+    triple_triad = 2,
+    eureka = 3,
+    calamity_retold = 4,
+    leap_of_faith = 5,
+    diadem = 6,
+    bozja = 7,
+    delubrum = 8,
+    island_sanctuary = 9,
+    fall_guys = 10,
+    occult_crescent = 11,
+}
+
+[Size(0x15B8)]
+struct PublicContentEureka : PublicContentDirector {
+    [0x1380] u16 unk1380;
+    [0x1382] u16 unk1382;
+    [0x1384] u8 max_elemental_level;
+    [0x1388] EurekaState state;
+    [0x13A0] System.String.Utf8String[4] public_content_text_data_strings;
+    [0x1540] System.String.Utf8String unk1540;
+    [Sig("E8 ?? ?? ?? ?? 4D 8B 54 24", FirstMatch, Offset(1), Rel32)] static EurekaState* getState();
+}
+
+[Size(0x33A0)]
+struct PublicContentOccultCrescent : PublicContentDirector {
+    [0x1380] OccultCrescentMKDData mkd_data;
+    [0x13B8] DynamicEventContainer dynamic_event_container;
+    [0x3138] OccultCrescentState state;
+    [0x31E0] STD.StdPair<u32, u32>* unk31_a0;
+    [0x31E8] f32 unk31_a8;
+    [0x31EC] u8 unk31_ac;
+    [0x31F0] System.String.Utf8String[4] strings;
+    [0x339D] bool state_loaded;
+    [Sig("E8 ?? ?? ?? ?? 48 85 C0 74 08 0F B6 CB", FirstMatch, Offset(1), Rel32)] static PublicContentOccultCrescent* getInstance();
+    [Sig("E8 ?? ?? ?? ?? 4C 8B C0 48 85 C0 0F 84 ?? ?? ?? ?? 48 89 AD", FirstMatch, Offset(1), Rel32)] static OccultCrescentMKDData* getMkdData();
+    [Sig("E8 ?? ?? ?? ?? 48 8B E8 48 85 C0 75 12", FirstMatch, Offset(1), Rel32)] static OccultCrescentState* getState();
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? BF ?? ?? ?? ?? EB ?? 41 0F B6 45", FirstMatch, Offset(1), Rel32)] static bool isChainTarget(Character.Character* chara);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 06 48 8B CE FF 50 ?? EB ?? 48 8B 06 48 8B CE C7 46", FirstMatch, Offset(1), Rel32)] static bool changeSupportJob(u8 id);
+}
+
+namespace ContentDirector {
+    [Size(0xC)]
+    struct MapEffectItem {
+        [0x0] u32 layout_id;
+        [0x5] u8 unknown1;
+        [0x8] u16 state;
+        [0xA] u8 flags;
+    }
+
+    [Size(0x608)]
+    struct MapEffectList {
+        [0x0] MapEffectItem[128] items;
+        [0x600] u16 content_director_managed_sg_row_id;
+        [0x602] u16 item_count;
+        [0x604] u8 dirty;
+    }
+}
+
+namespace InstanceContentCrucibleOfTheUnbroken {
+    [Size(0xC)]
+    struct InventorySlot {
+        [0x4] u16 item_id;
+    }
+}
+
+namespace InstanceContentDeepDungeon {
+    [Size(0x2)]
+    struct DeepDungeonChestInfo {
+        [0x0] u8 chest_type;
+        [0x1] i8 room_index;
+    }
+
+    [Size(0x3)]
+    struct DeepDungeonItemInfo {
+        [0x0] u8 item_id;
+        [0x1] u8 count;
+        [0x2] u8 flags { [Bit(0)] bool is_usable; [Bit(1)] bool is_active; }
+    }
+
+    [Size(0x8)]
+    struct DeepDungeonPartyInfo {
+        [0x0] u32 entity_id;
+        [0x4] i8 room_index;
+    }
+
+    bitfield RoomFlags : u16 {
+        [Bit(0)] bool connection_n;
+        [Bit(1)] bool connection_s;
+        [Bit(2)] bool connection_w;
+        [Bit(3)] bool connection_e;
+        [Bit(4)] bool return;
+        [Bit(5)] bool passage;
+        [Bit(6)] bool home;
+        [Bit(7)] bool revealed;
+        // none is none of them
+    }
+}
+
+namespace InstanceContentOceanFishing {
+    [Size(0x28)]
+    struct AllResultStruct {
+        [0x0] u16 world_id;
+        [0x2] u16 caught_fish;
+        [0x4] u16 total_points;
+        [0x8] utf8[32] player_name;
+    }
+
+    [Size(0x10)]
+    struct FishDataStruct {
+        [0x0] u32 item_id;
+        [0x4] u16 fish_param_id;
+        [0x6] u16 nq_amount;
+        [0x8] u16 hq_amount;
+        [0xC] u32 total_points;
+    }
+
+    [Size(0x22)]
+    struct IndividualResultStruct {
+        [0x2] u32 total_points;
+        [0xA] u32 experience_points;
+        [0xE] u16 scrip1_amount;
+        [0x10] u16 scrip2_amount;
+        [0x12] u8[16] bonuses;
+    }
+
+    enum OceanFishingStatus : u32 {
+        waiting_for_players = 0,
+        switching_zone = 1,
+        fishing = 2,
+        new_zone = 3,
+        finished = 4,
+    }
+}

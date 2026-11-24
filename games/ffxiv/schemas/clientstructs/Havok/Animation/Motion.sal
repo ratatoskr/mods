@@ -1,0 +1,17 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Animation.Motion;
+
+[Size(0x18)]
+struct hkaAnimatedReferenceFrame : Common.Base.Object.hkReferencedObject {
+    [0x10] hkaAnimatedReferenceFrame.hkaReferenceFrameTypeEnum frame_type;
+}
+
+namespace hkaAnimatedReferenceFrame {
+    enum hkaReferenceFrameTypeEnum : i32 {
+        unknown = 0,
+        default = 1,
+        parametric = 2,
+    }
+}

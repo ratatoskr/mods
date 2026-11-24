@@ -1,0 +1,936 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.UI.Arrays;
+
+[Size(0x56F0)]
+struct ActionBarNumberArray {
+    [0x0] bool hot_bar_locked;
+    [0x3C] ActionBarNumberArray.ActionBarBarNumberArray[20] bars;
+    [0x5584] i32 pulse_dot_for_bar;
+    [0x5588] i32 pulse_dot_for_slot;
+    [0x55A8] bool display_pet_bar;
+}
+
+[Size(0x4A0)]
+struct AllianceListNumberArray {
+    [0x0] i32 member_count;
+    [0xC] i32 party_count;
+    [0x10] AllianceListNumberArray.AllianceListGroupNumberArray[5] groups;
+    [0x498] u32 targeted_entity_id;
+    [0x49C] u32 soft_target_entity_id;
+}
+
+[Size(0x168)]
+struct AllianceListStringArray {
+    [0x0] AllianceListStringArray.AllianceListGroupStringArray[5] groups;
+}
+
+[Size(0x18)]
+struct AreaMapNumberArray {
+    [0x0] i32 x;
+    [0x4] i32 y;
+    [0x8] i32 player_rotation;
+    [0xC] i32 cone_rotation;
+}
+
+[Size(0x198)]
+struct ArmouryBoardStringArray {
+    [0x0] cstring[50] item_names;
+    [0x190] cstring selected_category_name;
+}
+
+[Size(0x20)]
+struct BlackListNumberArray {
+    [0x0] i32 black_list_count;
+}
+
+[Size(0x12C0)]
+struct BlackListStringArray {
+    [0x0] cstring[200] player_names;
+    [0x640] cstring[200] homeworlds;
+    [0xC80] cstring[200] notes;
+}
+
+[Size(0x28)]
+struct BuddyNumberArray {
+    [0x0] i32 current_exp;
+    [0x4] i32 max_exp;
+    [0x8] i32 current_hp;
+    [0xC] i32 max_hp;
+    [0x10] i32 remaning_summon_time;
+    [0x14] i32 max_summon_time;
+    [0x18] i32 available_combat_points;
+    [0x20] i32 buddy_rank;
+}
+
+[Size(0x40)]
+struct BuddyStringArray {
+    [0x0] cstring buddy_name;
+    [0x10] cstring current_hp;
+    [0x18] cstring max_hp;
+    [0x20] cstring remaning_summon_time;
+    [0x28] cstring max_summon_time;
+    [0x30] cstring available_combat_points;
+    [0x38] cstring exp;
+}
+
+[Size(0xA8)]
+struct CastBarEnemyNumberArray {
+    [0x0] bool active;
+    [0x4] i32 cast_bar_count;
+    [0x8] CastBarEnemyNumberArray.CastBarArrayData[10] cast_bar_data;
+}
+
+[Size(0x50)]
+struct CastBarEnemyStringArray {
+    [0x0] cstring[10] cast_bar_strings;
+}
+
+[Size(0x1C)]
+struct CastBarNumberArray {
+    [0x0] u32 cast_icon_id;
+    [0x8] i32 cast_time;
+    [0xC] i32 total_cast_time;
+    // Range is 0 to 100
+    [0x10] i32 completion_percentage;
+    [0x14] bool interupted;
+}
+
+[Size(0x8)]
+struct CastBarStringArray {
+    [0x0] cstring cast_name;
+}
+
+[Size(0xD8)]
+struct CharacterItemsStringArray {
+    [0x0] cstring[13] item_names;
+    [0xD0] cstring displayed_item_level_text;
+}
+
+[Size(0x1F40)]
+struct ChatLog2NumberArray {
+    [0x0] ChatLog2NumberArray.ChatLog2ChatMessageNumberArray[250] tab1_messages;
+    [0x7D0] ChatLog2NumberArray.ChatLog2ChatMessageNumberArray[250] tab2_messages;
+    [0xFA0] ChatLog2NumberArray.ChatLog2ChatMessageNumberArray[250] tab3_messages;
+    [0x1770] ChatLog2NumberArray.ChatLog2ChatMessageNumberArray[250] tab4_messages;
+}
+
+[Size(0x88)]
+struct ChatLogNumberArray {
+    [0x14] ChatLogNumberArray.ChatLogChatTabNumberArray tab1;
+    [0x30] ChatLogNumberArray.ChatLogChatTabNumberArray tab2;
+    [0x4C] ChatLogNumberArray.ChatLogChatTabNumberArray tab3;
+    [0x68] ChatLogNumberArray.ChatLogChatTabNumberArray tab4;
+}
+
+[Size(0x48)]
+struct ChatLogStringArray {
+    [0x8] cstring tab1_visible_chat_text;
+    [0x18] cstring tab2_visible_chat_text;
+    [0x28] cstring tab3_visible_chat_text;
+    [0x38] cstring tab4_visible_chat_text;
+}
+
+[Size(0x58)]
+struct CommonCurrenciesStringArray {
+    [0x0] cstring gil_text;
+    [0x8] cstring grand_company_seals_text;
+    [0x10] cstring grand_company_seals_with_max_text;
+    [0x18] cstring[8] self_repair_dark_matter_text;
+}
+
+[Size(0x64)]
+struct ConfigSystemNumberArray {
+    [0x0] i32 fps;
+}
+
+[Size(0x10)]
+struct ConfigSystemStringArray {
+    [0x0] cstring fps_text;
+    [0x8] cstring immersive_gamepack_warning_label;
+}
+
+[Size(0x408)]
+struct CrossWorldLinkShellStringArray {
+    [0x0] CrossWorldLinkShellStringArray.CrossWorldSyncshellMemberStringArray[64] members;
+    [0x400] cstring member_count_text;
+}
+
+[Size(0xD4)]
+struct EnemyListNumberArray {
+    [0x0] i32 unk0;
+    [0x4] i32 enemy_count;
+    [0x8] i32 target_entity_id;
+    [0xC] i32 unk_entity_id;
+    [0x10] i32 unk4;
+}
+
+[Size(0x80)]
+struct EnemyListStringArray {
+    [0x0] EnemyListStringArray.EnemyListEnemyStringArray[8] members;
+}
+
+[Size(0x2BD8)]
+struct FreeCompanyMemberNumberArray {
+    // A FixedSizeArray200`1, which has no .sal type
+    [0x0] u8[9600] free_company_members;
+    [0x28B8] i32[200] free_company_member_memo_sort_indexes;
+}
+
+[Size(0x2BC8)]
+struct FreeCompanyMemberStringArray {
+    // A FixedSizeArray200`1, which has no .sal type
+    [0x0] u8[8000] members;
+    [0x1F40] cstring your_memo;
+    [0x1F48] FreeCompanyMemberStringArray.FreeCompanyMemoStringArray[200] memos;
+}
+
+[Size(0x2590)]
+struct FriendListNumberArray {
+    // A FixedSizeArray200`1, which has no .sal type
+    [0x0] u8[9600] friends;
+    [0x2580] i32 total_friend_count;
+    [0x2584] i32 friend_count_in_group;
+    [0x258C] bool unk_bool2403;
+}
+
+[Size(0x1F50)]
+struct FriendListStringArray {
+    // A FixedSizeArray200`1, which has no .sal type
+    [0x0] u8[8000] friends;
+    [0x1F40] cstring friends_with_mark_found_text;
+    [0x1F48] cstring friends_in_group_text;
+}
+
+[Size(0x378)]
+struct GearSetListStringArray {
+    [0x0] cstring count_text;
+    [0x8] cstring[10] warning_texts;
+    [0x58] cstring[100] gear_set_names;
+}
+
+[Size(0x300)]
+struct Hud2NumberArray {
+    [0x0] bool target_info_ui_combined;
+    // Keeps count of how often you targeted someone and the target changed.
+    [0x4] i32 target_count;
+    [0x8] Game.Object.ObjectKind target_object_kind;
+    // Range 0 to 10,000
+    [0xC] i32 target_current_health;
+    [0x10] i32 target_status_count;
+    // The final 3 bytes per status are used for the UIColor RowId
+    [0x14] u32[30] target_status_icon_ids;
+    [0x8C] bool[30] target_status_dispellable;
+    [0x104] Hud2NumberArray.Hud2ColorNumberArray target_bar_fill_color;
+    [0x108] Hud2NumberArray.Hud2ColorNumberArray target_bar_backdrop_color;
+    [0x10C] bool unk_flag1;
+    [0x114] i32 target_cast_percent;
+    [0x120] bool target_has_target;
+    // Keeps count of how your target has targeted a new target.
+    [0x128] i32 target_of_target_count;
+    [0x130] bool unk_flag2;
+    [0x134] i32 target_of_target_entity_id;
+    [0x138] Hud2NumberArray.Hud2ColorNumberArray target_of_target_bar_fill_color;
+    [0x13C] Hud2NumberArray.Hud2ColorNumberArray target_of_target_bar_backdrop_color;
+    [0x140] i32 focus_target_count;
+    [0x144] i32 focus_target_level;
+    [0x150] i32 focus_target_max_health;
+    // Range 0 to 10,000
+    [0x154] i32 focus_target_current_health;
+    [0x158] Hud2NumberArray.Hud2ColorNumberArray focus_target_bar_fill_color;
+    [0x15C] Hud2NumberArray.Hud2ColorNumberArray focus_target_bar_backdrop_color;
+    [0x160] i32 focus_target_cast_percent;
+    [0x16C] i32 focus_target_status_count;
+    [0x170] u32[5] focus_target_status_icon_ids;
+    [0x184] bool[5] focus_target_status_dispellable;
+}
+
+[Size(0x28C)]
+struct HudNumberArray {
+    [0x0] i32 current_health;
+    [0x4] i32 max_health;
+    [0x8] i32 current_mana;
+    [0xC] i32 max_mana;
+    [0x10] i32 current_tp;
+    [0x14] i32 max_tp;
+    [0x18] i32 current_cp;
+    [0x1C] i32 max_cp;
+    [0x20] i32 current_gp;
+    [0x24] i32 max_gp;
+    [0x28] i32 current_mana2;
+    [0x2C] i32 max_mana2;
+    [0x30] i32 unk12;
+    [0x34] i32 unk13;
+    [0x38] i32 unk14;
+    [0x3C] i32 player_entity_id;
+    [0x40] i32 current_exp;
+    // Range is 0 - 10,000
+    [0x44] i32 exp_gauge_fill_percent;
+    [0x48] i32 max_exp;
+    [0x4C] i32 total_rested_exp;
+    // Range is 0 - 10,000
+    [0x50] i32 rested_exp_gauge_fill_percent;
+    [0x54] bool show_rested_area_indicator;
+    [0x58] bool show_combat_area_indicator;
+    [0x5C] bool show_exp_bar;
+    [0x60] u32 current_level;
+    [0x64] u32 current_level2;
+    [0x68] u32 current_job_id;
+    [0x6C] u32 current_job_id2;
+    [0x70] u32 current_job_icon_id;
+    [0x74] HudNumberArray.HudJobType job_type;
+    [0x78] HudNumberArray.HudJobType job_type2;
+    [0x7C] HudNumberArray.HudStatusElementLayout status_element_layout;
+    [0x80] i32[20] positive_status_indexes;
+    [0xD0] i32[20] negative_status_indexes;
+    [0x120] i32[20] other_status_indexes;
+    [0x170] i32[8] combo_status_indexes;
+    [0x190] u32[30] status_icon_ids;
+    [0x208] bool[30] status_dispellables;
+    [0x280] u32 grand_company_icon_id;
+    [0x284] u32 grand_company_rank_icon_id;
+    [0x288] u32 chain_count;
+}
+
+[Size(0x240)]
+struct HudStringArray {
+    [0x0] cstring local_player_name;
+    [0x8] cstring mp_indicator;
+    [0x10] cstring hp_indicator;
+    [0x18] cstring gp_indicator;
+    [0x20] cstring tp_indicator;
+    [0x28] cstring cp_indicator;
+    [0x30] cstring unk6;
+    [0x38] cstring[30] status_times_remaining;
+    [0x128] cstring[30] status_tooltips;
+    [0x218] cstring job_name;
+    [0x220] cstring unk68;
+    [0x228] cstring exp_bar_text;
+    [0x230] cstring unk70;
+    [0x238] cstring combat_type_indicator;
+}
+
+[Size(0xD20)]
+struct InventoryBuddyNumberArray {
+    [0x0] InventoryNumberArray.InventoryItemNumberArray[140] items;
+}
+
+[Size(0x470)]
+struct InventoryBuddyStringArray {
+    // Formatted as used/total.
+    [0x0] cstring used_slots_text;
+    [0x8] cstring[140] item_names;
+}
+
+[Size(0x151C)]
+struct InventoryNumberArray {
+    [0x0] InventoryNumberArray.InventoryItemNumberArray[140] items;
+    [0xD20] InventoryNumberArray.InventoryKeyItemNumberArray[124] key_items;
+    [0x1430] InventoryNumberArray.InventoryCrystalNumberArray[18] crystals;
+}
+
+[Size(0xE04)]
+struct InventoryRetainerNumberArray {
+    [0x0] u32 tab_indices { [Bit(0)] u8 selected_tab_index : 8; [Bit(8)] u16 first_tab_index : 16; }
+    [0x4] InventoryNumberArray.InventoryItemNumberArray[140] items;
+    [0xD24] InventoryRetainerNumberArray.InventoryRetainerCrystalNumberArray[18] crystals;
+    [0xDFC] u32 gil;
+    [0xE00] i32 market_item_count;
+}
+
+[Size(0x538)]
+struct InventoryRetainerStringArray {
+    [0x0] cstring[140] item_names;
+    [0x460] cstring[18] crystal_names;
+    // Formatted as used/total.
+    [0x4F0] cstring used_slots_text;
+    [0x500] cstring gil_text;
+    [0x508] cstring[6] tab_labels;
+}
+
+[Size(0xA20)]
+struct InventoryStringArray {
+    [0x0] cstring[140] item_names;
+    [0x460] cstring[124] key_item_names;
+    [0x910] cstring[18] crystal_names;
+    // Formatted as used/total.
+    [0x9A0] cstring used_slots_text;
+    [0x9A8] cstring[5] tab_labels;
+    [0x9D0] cstring[5] key_item_tab_labels;
+    [0x9F8] cstring gil_text;
+    [0xA00] cstring[4] page_used_slots_text;
+}
+
+[Size(0x248)]
+struct LetterNumberArray {
+    [0x0] LetterNumberArray.LetterLetterNumberArray[100] friend_letters;
+    [0x190] LetterNumberArray.LetterLetterNumberArray[20] store_letters;
+    [0x1E0] LetterNumberArray.LetterLetterNumberArray[10] gm_letters;
+    [0x208] i32 letters_in_mailbox;
+    [0x20C] i32 letters_from_game_masters;
+    [0x210] i32 letters_from_store;
+    [0x214] i32 unclaimed_goods;
+    [0x21C] bool can_speed_up_store_process;
+    [0x220] bool client_occupied_sending_letter;
+    [0x228] bool client_acquiring_letters;
+    [0x230] i32 attatched_gil_amount;
+    [0x234] i32[5] attatched_item_ids;
+}
+
+[Size(0xC48)]
+struct LetterStringArray {
+    // Ordered based on date received. It doesn't care about which tab.
+    [0x0] cstring[130] mail_senders;
+    // Ordered based on date received. It doesn't care about which tab.
+    [0x410] cstring[130] times_passed;
+    // Ordered based on date received. It doesn't care about which tab.
+    [0x820] cstring[130] mail_text_previews;
+    [0xC38] cstring full_mail_text;
+    [0xC40] cstring unclaimed_goods_count_text;
+}
+
+[Size(0x1080)]
+struct NamePlateNumberArray {
+    [0x0] i32 active_name_plate_count;
+    // One-shot flag that causes all nameplates to be rebaked. The addon clears it after consuming it.
+    [0x4] bool force_name_plate_rebake;
+    [0x8] i32 name_plate_size;
+    [0xC] bool disable_fixed_font_resolution;
+    [0x10] bool is_in_pv_p_area;
+    [0x14] bool is_participating_in_custom_match_or_spectating;
+    [0x18] NamePlateNumberArray.NamePlateObjectIntArrayData[50] object_data;
+}
+
+[Size(0x960)]
+struct NamePlateStringArray {
+    [0x0] cstring[50] name;
+    [0x190] cstring[50] title;
+    [0x320] cstring[50] fc;
+    [0x4B0] cstring[50] letter;
+    [0x640] cstring[50] target;
+    [0x7D0] cstring[50] level;
+}
+
+[Size(0xBA8)]
+struct PartyListNumberArray {
+    [0x0] bool is_visible;
+    [0x4] bool is_cross_realm_party;
+    [0x8] i32 party_leader_index;
+    [0xC] bool party_has_members;
+    [0x10] bool hide_when_in_solo_party;
+    // Amount of players in the party.
+    [0x18] i32 party_list_count;
+    [0x1C] i32 enmity_leader_index;
+    [0x20] PartyListNumberArray.PartyListMemberNumberArray[8] party_members;
+    [0x580] i32 trust_count;
+    [0x584] PartyListNumberArray.PartyListMemberNumberArray[7] trust_members;
+    // Pet/chocobo display data blocks. When `chocobo_count` is non-zero, `Pets[0]` contains the Chocobo
+    // data and `Pets[1]` contains the Pet data. When `chocobo_count` is zero, `Pets[0]` contains the Pet
+    // data.
+    [0xA38] PartyListNumberArray.PartyListMemberNumberArray[2] pets;
+    [0xB90] i32 chocobo_count;
+    [0xB94] i32 pet_count;
+    [0xB98] bool use_pet_slot;
+    [0xB9C] bool hide_enmity_leader;
+    [0xBA0] u32 targeted_entity_id;
+    [0xBA4] u32 soft_target_entity_id;
+}
+
+[Size(0xC68)]
+struct PartyListStringArray {
+    [0x0] cstring enmity_leader_text;
+    [0x8] cstring enmity_disabled_text;
+    [0x10] cstring invalid_value_text;
+    [0x20] cstring party_type_text;
+    [0x30] PartyListStringArray.PartyListMemberStringArray[17] members;
+}
+
+[Size(0x9E4)]
+struct PartyMemberListNumberArray {
+    // A FixedSizeArray48`1, which has no .sal type
+    [0x0] u8[2304] party_members;
+}
+
+[Size(0x7B8)]
+struct PartyMemberListStringArray {
+    // A FixedSizeArray48`1, which has no .sal type
+    [0x0] u8[1920] friends;
+}
+
+[Size(0x6B0)]
+struct QuickPanelNumberArray {
+    [0x0] QuickPanelNumberArray.MouseRestrictionFlags mouse_restrictions;
+    [0x4] i32 command_panel_tint;
+    [0x8] i32 active_tab;
+    [0xC] Common.ActionBarSlotNumberArray[25] slots2;
+}
+
+[Size(0x258)]
+struct QuickPanelStringArray {
+    [0x0] Common.ActionBarSlotStringArray[25] slots2;
+}
+
+[Size(0x258C)]
+struct SocialListNumberArray {
+    // A FixedSizeArray200`1, which has no .sal type
+    [0x0] u8[9600] players;
+    [0x2580] i32 social_list_size;
+}
+
+[Size(0x1F50)]
+struct SocialListStringArray {
+    // A FixedSizeArray200`1, which has no .sal type
+    [0x0] u8[8000] friends;
+    [0x1F40] cstring not_found_text;
+}
+
+[Size(0x318)]
+struct ToDoListNumberArray {
+    [0x0] i32 hide_duty_list;
+    [0x4] i32 force_full_redraw;
+    [0x8] i32 duty_timer_enabled;
+    [0xC] i32 duty_header_icon;
+    [0x10] i32 duty_state;
+    [0x14] i32 duty_finder_name_text_count;
+    [0x18] i32 duty_finder_texts_count;
+    [0x1C] bool quest_list_enabled;
+    [0x20] i32 quest_count;
+    [0x24] i32[10] quest_type_icon;
+    [0x4C] i32[10] objective_count_for_quest;
+    [0x74] i32[10] objective_progress;
+    [0x9C] i32[10] button_count_for_quest;
+    [0xC4] i32[40] quest_button_action_id;
+    [0x164] i32[40] quest_button_icon_id;
+    [0x204] i32 duty_section_enable;
+    [0x208] i32 duty_icon_id;
+    [0x20C] i32 leve_card_icon_id;
+    [0x210] i32 leve_frame_icon_id;
+    [0x214] i32 leve_location_icon_id;
+    [0x218] i32 event_item_id;
+    [0x21C] i32 deep_dungeon_button_icon_id;
+    [0x220] i32 duty_objective_count;
+    [0x224] ToDoListNumberArray.ObjectiveType[10] duty_objective_types;
+    [0x24C] i32[10] duty_objective_value;
+    [0x274] ToDoListNumberArray.BarColor[10] bar_colors;
+    [0x29C] u32 duty_completed_objectives;
+    [0x2A0] u32 objective_focusable;
+    [0x2A4] u32 duty_title_focusable;
+    [0x2AC] i32 show_fate_ui;
+    [0x2B0] i32 show_bonus_exp_indicator;
+    [0x2B4] ToDoListNumberArray.CheckboxButtonFlags level_sync_button;
+    [0x2B8] i32 fate_icon_id;
+    [0x2BC] i32 fate_objective_count;
+    [0x2C0] ToDoListNumberArray.ObjectiveType[10] fate_objective_type;
+    [0x2E8] i32[10] fate_objective_value;
+}
+
+[Size(0x6A0)]
+struct ToDoListStringArray {
+    [0x0] cstring[5] queued_duties;
+    [0x28] cstring[4] queue_status_messages;
+    [0x48] cstring[60] quest_texts;
+    [0x3B8] cstring[40] quest_status_messages;
+    [0x4F8] cstring active_duty_title;
+    [0x500] cstring leve_description;
+    [0x508] cstring left_of_duty_timer_and_icon_text;
+    [0x510] cstring duty_timer;
+    [0x518] cstring duty_item_label;
+    [0x520] cstring duty_item_tooltip;
+    [0x528] cstring[10] duty_objectives;
+    [0x578] cstring[10] duty_timers;
+    [0x5C8] cstring fate_title;
+    [0x5D0] cstring fate_detail;
+    [0x5D8] cstring fate_level;
+    [0x5E0] cstring fate_timer;
+    [0x5E8] cstring level_sync_button_text;
+    [0x5F0] cstring[10] fate_objectives;
+    [0x640] cstring[10] fate_timers;
+    [0x690] cstring duty_title_text;
+    [0x698] cstring readying_duty_text;
+}
+
+[Size(0x214)]
+struct TradeNumberArray {
+    // 0 -> 4 = Trade Away Items 5 -> 9 = Trade Receive Items
+    [0x0] TradeNumberArray.TradeItem[10] item_data;
+    [0xF0] u32 send_gil_count;
+    [0xF4] u32 receive_gil_count;
+    // 2 = Adding Items 3 = Locked In
+    [0xF8] i32 self_state;
+    // 2 = Adding Items 3 = Locked In
+    [0xFC] i32 other_state;
+    [0x100] bool is_locked_in;
+}
+
+[Size(0xB0)]
+struct TradeStringArray {
+    // 0 -> 4 = Trade Away Items 5 -> 9 = Trade Receive Items
+    [0x0] cstring[10] item_names;
+    [0x50] cstring own_name;
+    [0x58] cstring trade_partner_name;
+}
+
+namespace ActionBarNumberArray {
+    [Size(0x440)]
+    struct ActionBarBarNumberArray {
+        [0x0] Common.ActionBarSlotNumberArray[12] slots2;
+    }
+}
+
+namespace AllianceListNumberArray {
+    [Size(0xE8)]
+    struct AllianceListGroupNumberArray {
+        [0x0] i32 member_count;
+        [0x4] i32 aggro_member_index;
+        [0x8] AllianceListMemberNumberArray[8] members;
+    }
+
+    [Size(0x1C)]
+    struct AllianceListMemberNumberArray {
+        [0x0] i32 current_health_percent;
+        [0x4] i32 class_job_icon_id;
+        [0xC] u32 entity_id;
+        [0x10] bool has_debuff;
+        [0x18] bool is_targetable;
+    }
+}
+
+namespace AllianceListStringArray {
+    [Size(0x48)]
+    struct AllianceListGroupStringArray {
+        [0x0] cstring header;
+        [0x8] cstring[8] member_names;
+    }
+}
+
+namespace CastBarEnemyNumberArray {
+    [Size(0x10)]
+    struct CastBarArrayData {
+        [0x0] u32 entity_id;
+        // 0-100 on progress bars, -1 on non-progress bars
+        [0x4] i32 percentage;
+        [0x8] bool interruptible;
+        [0xC] bool is_interrupted;
+    }
+}
+
+namespace ChatLog2NumberArray {
+    [Size(0x8)]
+    struct ChatLog2ChatMessageNumberArray {
+        [0x0] i32 message_index;
+        [0x4] bool update_line_spacing;
+    }
+}
+
+namespace ChatLogNumberArray {
+    [Size(0x1C)]
+    struct ChatLogChatTabNumberArray {
+        [0x0] i32 unk_last_line_visible_helper;
+        [0x4] i32 line_count_visible;
+        [0x8] i32 line_count_loaded;
+        [0xC] i32 total_line_count;
+        [0x10] i32 scroll_offset;
+        [0x18] i32 total_message_count;
+    }
+}
+
+namespace CrossWorldLinkShellStringArray {
+    [Size(0x10)]
+    struct CrossWorldSyncshellMemberStringArray {
+        [0x0] cstring player_name;
+        [0x8] cstring homeworld;
+    }
+}
+
+namespace EnemyListNumberArray {
+    [Size(0x18)]
+    struct EnemyListEnemyNumberArray {
+        // Range from 0 to 100
+        [0x0] i32 remaining_hp_percent;
+        // Range from 0 to 100
+        [0x4] i32 max_hp_percent;
+        // Range from 0 to 100
+        [0x8] i32 cast_percent;
+        [0xC] i32 entity_id;
+        [0x10] bool active_in_list;
+        [0x14] bool locked_in_list;
+    }
+}
+
+namespace EnemyListStringArray {
+    [Size(0x10)]
+    struct EnemyListEnemyStringArray {
+        [0x0] cstring enemy_name;
+        [0x8] cstring castname;
+    }
+}
+
+namespace FreeCompanyMemberStringArray {
+    [Size(0x10)]
+    struct FreeCompanyMemoStringArray {
+        [0x0] cstring memo;
+        [0x8] cstring since;
+    }
+}
+
+namespace Hud2NumberArray {
+    [Size(0x4)]
+    struct Hud2ColorNumberArray {
+        [0x0] u8 a;
+        [0x1] u8 b;
+        [0x2] u8 g;
+        [0x3] u8 r;
+    }
+}
+
+namespace HudNumberArray {
+    enum HudJobType : u8 {
+        combat_job = 1,
+        gatherer_job = 2,
+        crafter_job = 4,
+    }
+
+    enum HudStatusElementLayout : u8 {
+        three_elements = 0,
+        one_element = 1,
+        four_elements = 2,
+    }
+}
+
+namespace InventoryNumberArray {
+    [Size(0xC)]
+    struct InventoryCrystalNumberArray {
+        [0x0] u32 icon_id;
+        [0x4] u32 stack_count { [Bit(16)] u16 stack_count : 16; }
+        [0x8] u32 crystal_index;
+    }
+
+    [Size(0x18)]
+    struct InventoryItemNumberArray {
+        [0x0] u32 icon_id;
+        [0x8] u32 stack_count { [Bit(16)] u16 stack_count : 16; }
+        [0xC] InventoryItemNumberArray.ItemFlag item_flags;
+        [0x10] InventoryItemNumberArray.ItemDye dye_slot0;
+        [0x14] InventoryItemNumberArray.ItemDye dye_slot1;
+    }
+
+    [Size(0xC)]
+    struct InventoryKeyItemNumberArray {
+        [0x0] u32 icon_id;
+        [0x4] InventoryKeyItemNumberArray.InventoryKeyItemFlagsNumberArray key_item_flags;
+        [0x8] u32 unk_flags;
+    }
+}
+
+namespace InventoryNumberArray.InventoryItemNumberArray {
+    [Size(0x4)]
+    struct ItemDye {
+        [0x0] u8 dye_flags;
+        [0x1] u8 b;
+        [0x2] u8 g;
+        [0x3] u8 r;
+    }
+
+    [Size(0x4)]
+    struct ItemFlag {
+        [0x0] u8 item_type;
+        [0x2] ItemFlag.ItemWearableIcon wearable;
+        [0x3] u8 mirage_flag;
+    }
+}
+
+namespace InventoryNumberArray.InventoryItemNumberArray.ItemFlag {
+    enum ItemWearableIcon : u8 {
+        wearable = 1,
+        impossible = 2,
+        unavailable = 3,
+    }
+}
+
+namespace InventoryNumberArray.InventoryKeyItemNumberArray {
+    [Size(0x4)]
+    struct InventoryKeyItemFlagsNumberArray {
+        [0x0] u8 stack_count;
+        [0x1] u8 unk_flags3;
+        [0x2] u8 tooltip_index;
+        [0x3] u8 unk_flags1;
+    }
+}
+
+namespace InventoryRetainerNumberArray {
+    [Size(0xC)]
+    struct InventoryRetainerCrystalNumberArray {
+        [0x0] u32 icon_id;
+        [0x4] u32 stack_count { [Bit(16)] u16 stack_count : 16; }
+        [0x8] u16 slot_index;
+    }
+}
+
+namespace LetterNumberArray {
+    [Size(0x4)]
+    struct LetterLetterNumberArray {
+        [0x0] u8 unk_flag3;
+        [0x1] u8 unk_flag2;
+        [0x2] u8 unk_flag1;
+        [0x3] LetterLetterNumberArray.LetterLetterMessageStatus message_status;
+    }
+}
+
+namespace LetterNumberArray.LetterLetterNumberArray {
+    enum LetterLetterMessageStatus : u8 {
+        from_friend_read = 1,
+        from_friend_unread = 2,
+        from_friend_read_but_ignored = 3,
+        from_store_read = 17,
+        from_store_unread = 18,
+        from_store_read_but_ignored = 19,
+        from_gm_read = 33,
+        from_gm_unread = 34,
+        from_gm_read_but_ignored = 35,
+    }
+}
+
+namespace NamePlateNumberArray {
+    [Size(0x54)]
+    struct NamePlateObjectIntArrayData {
+        [0x0] UIObjectKind name_plate_kind;
+        [0x4] i32 hp_label_state;
+        // & 0x1 - Update & 0x2 - Update Colors
+        [0x8] i32 update_flags;
+        [0xC] i32 x;
+        [0x10] i32 y;
+        [0x14] f32 depth;
+        [0x18] i32 scale;
+        [0x1C] i32 gauge_fill_percentage;
+        [0x20] u32 name_text_color;
+        [0x24] u32 name_edge_color;
+        [0x28] u32 gauge_fill_color;
+        [0x2C] u32 gauge_container_color;
+        [0x30] i32 marker_icon_id;
+        [0x34] i32 name_icon_id;
+        [0x38] bool use_large_name_icon;
+        [0x3C] i32 name_plate_object_index;
+        // & 0x1 - Is prefix title & 0x4 - PvP enemy & 0x8 - Use Depth-based Priority (terrain obstruction) &
+        // 0x20 - Enable gauge & 0x40 - Use attack cursor & 0x80 - Hide title & 0x100 - Disable Alternate Part
+        // Id
+        [0x44] i32 draw_flags;
+        // & 0x1 - Draw name text & 0x2 - Draw gauge & 0x4 - Nameplate already exists with unchanged data. Uses
+        // the timeline.
+        [0x4C] i32 visibility_flags;
+        [0x50] u32 entity_id;
+    }
+}
+
+namespace PartyListNumberArray {
+    [Size(0xAC)]
+    struct PartyListMemberNumberArray {
+        [0x8] i32 level;
+        [0xC] i32 class_icon_id;
+        [0x18] i32 current_health;
+        [0x1C] i32 max_health;
+        // Goes from 0 to 200%
+        [0x20] i32 shields_percentage;
+        [0x24] i32 current_mana;
+        [0x28] i32 max_mana;
+        // Goes from 0 to 100%
+        [0x30] i32 enmity_percent;
+        // Starts at 1 [A] [2] [3] ... [8]
+        [0x34] i32 enmity_level;
+        // Amount of Statuses applied to the player. Max is 10.
+        [0x40] i32 status_count;
+        [0x44] i32[10] status_icon_ids;
+        [0x6C] bool[10] status_is_dispellable;
+        // -1 if not active
+        [0x94] i32 cast_time;
+        [0x98] i32 cast_id;
+        [0xA0] u32 entity_id;
+        [0xA4] bool targetable;
+        [0xA8] i32 display_row;
+    }
+}
+
+namespace PartyListStringArray {
+    [Size(0xB8)]
+    struct PartyListMemberStringArray {
+        [0x0] cstring group_slot_indicator;
+        [0x8] cstring name;
+        [0x10] cstring casting_action_name;
+        [0x18] cstring[10] status_texts;
+    }
+}
+
+namespace QuickPanelNumberArray {
+    enum MouseRestrictionFlags : u8 {
+        no_restriction = 0,
+        open_panel_at_mouse_cursor_position = 1,
+        disable_dragging_within_command_panel = 2,
+    }
+}
+
+namespace ToDoListNumberArray {
+    enum BarColor : i32 {
+        blue = 0,
+        red = 1,
+        yellow = 2,
+        white = 3,
+        green = 4,
+    }
+
+    bitfield CheckboxButtonFlags : u32 {
+        [Bit(12)] bool show;
+        [Bit(4)] bool toggled;
+        [Bit(8)] bool as_checkbox;
+    }
+
+    // See also `TodoType` (same thing, different values).
+    enum ObjectiveType : i32 {
+        // See `text`.
+        text = 0,
+        // See `number`.
+        number = 1,
+        // See `fraction`.
+        fraction = 2,
+        // See `bar`.
+        bar = 3,
+        // See `fraction_bar`.
+        fraction_bar = 4,
+        // See `time_remaining`.
+        time_remaining = 5,
+        // See `large_gray_text`.
+        large_gray_text = 6,
+        // See `large_gray_number`.
+        large_gray_number = 7,
+        // See `large_gray_fraction`.
+        large_gray_fraction = 8,
+        // See `large_bar`.
+        progress_bar = 9,
+        // See `colorable_bar`.
+        colorable_bar = 10,
+        // See `quest_title`.
+        quest_title = 11,
+        // See `large_blue_text`.
+        large_blue_text = 12,
+        // See `large_time_remaining`.
+        large_time_remaining = 13,
+        // See `join_button`.
+        join_button = 14,
+        // See `long_bar`.
+        long_bar = 15,
+    }
+}
+
+namespace TradeNumberArray {
+    [Size(0x18)]
+    struct TradeItem {
+        [0x0] i32 icon_id;
+        [0x4] u32 quantity;
+        [0x8] i32 equip_slot_category;
+        // 0 = None 1 = Equipment 2 = CanExtractMateria 4 = NoCondition 16 = MaxStackQuantity 32 =
+        // IsCollectable 64 = CanStackWithSomeOtherStackInInventory
+        [0xC] i32 item_flags;
+        // 0x000000FF = Flags mask 0xFFFFFF00 = Color mask Flags: 0 = None 1 = ContainsData 2 =
+        // HasUnlockedStainSlot 4 = IsGlamoured 2nd stain only has flag component 0 and 1
+        [0x10] i32[2] stain_flags_and_color;
+    }
+}

@@ -1,0 +1,13 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Animation;
+
+[Size(0x60)]
+struct hkaAnimationContainer : Common.Base.Object.hkReferencedObject {
+    [0x10] Common.Base.Container.Array.hkArray<Rig.hkaSkeleton*> skeletons;
+    [0x20] Common.Base.Container.Array.hkArray<Animation.hkaAnimation*> animations;
+    [0x30] Common.Base.Container.Array.hkArray<Animation.hkaAnimationBinding*> bindings;
+    [0x40] Common.Base.Container.Array.hkArray<Rig.hkaBoneAttachment*> attachments;
+    [0x50] Common.Base.Container.Array.hkArray<Deform.Skinning.hkaMeshBinding*> skins;
+}

@@ -1,0 +1,21 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Animation.Deform.Skinning;
+
+[Size(0x50)]
+struct hkaMeshBinding : Common.Base.Object.hkReferencedObject {
+    [0x10] Common.SceneData.Mesh.hkxMesh* mesh;
+    [0x18] Common.Base.Container.String.hkStringPtr original_skeleton_name;
+    [0x20] Common.Base.Container.String.hkStringPtr name;
+    [0x28] Rig.hkaSkeleton* skeleton;
+    [0x30] Common.Base.Container.Array.hkArray<hkaMeshBinding.Mapping> mappings;
+    [0x40] Common.Base.Container.Array.hkArray<Common.Base.Math.Matrix.hkTransformf> bone_from_skin_mesh_transforms;
+}
+
+namespace hkaMeshBinding {
+    [Size(0x10)]
+    struct Mapping {
+        [0x0] Common.Base.Container.Array.hkArray<i16> mapping;
+    }
+}

@@ -1,0 +1,31 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.System.Streaming;
+
+[Size(0x8)]
+struct IStreamingCtrl {
+}
+
+// Owned by `StreamingPlayer`.
+[Size(0x30)]
+struct StreamingCtrl : IStreamingCtrl {
+    // Inherited parent class accessor for `StreamingNotifier`
+    [0x8] StreamingNotifier streaming_notifier;
+}
+
+[Size(0x18)]
+struct StreamingNotifier : Graphics.Kernel.Notifier {
+}
+
+// Created on first use and added to the framework's task manager.
+[Size(0x40)]
+struct StreamingPlayer : Framework.Task {
+    [0x38] StreamingCtrl* ctrl;
+    [Sig("48 89 1D ?? ?? ?? ?? BA 02", FirstMatch, Offset(3), Rel32)] static StreamingPlayer* instance;
+}
+
+[Size(0x360)]
+struct TextureRenderer {
+    [0x1E0] StreamingNotifier notifier;
+}

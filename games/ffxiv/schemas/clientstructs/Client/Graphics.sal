@@ -1,0 +1,120 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Graphics;
+
+[Size(0x18)]
+struct AllocatorLowLevel : IAllocator {
+    [0x8] System.Memory.IMemorySpace* memory_space;
+    [0x10] cstring name;
+}
+
+[Size(0x1B8)]
+struct AllocatorManager {
+    [0x0] void* virtual_table;
+    [0x8] IAllocator*[13] allocators;
+    [0x70] AllocatorLowLevel[13] low_level_allocators;
+    [Sig("74 12 48 8B 05 ?? ?? ?? ?? 48 8B 48 38", FirstMatch, Offset(5), Rel32)] static AllocatorManager* instance;
+    [Sig("E8 ?? ?? ?? ?? 41 0F B6 CD E8", FirstMatch, Offset(1), Rel32)] bool initialize();
+    [Virtual(0)] AllocatorManager* dtor(u8 free_flags);
+    [Virtual(1)] void cleanup();
+}
+
+// Small blocks from 16 KB chunks of `backing`, split into 1 KB pages of one size class; anything else
+// goes to `backing`. Free takes `lock` before checking which of the two a block came from.
+[Size(0x180), VirtualTable("48 8D 05 ?? ?? ?? ?? 48 8B D9 48 89 01 33 C0 48 89 81", FirstMatch, Offset(3), Rel32)]
+struct AllocatorPool : IAllocator {
+    [0x108] IAllocator* backing;
+    [0x110] void* chunks;
+    [0x130] u32 chunk_count;
+    [0x138] u64 reserved_bytes;
+    [0x140] u64 used_bytes;
+    [0x158] u8[40] lock;
+}
+
+[Size(0x4)]
+struct ByteColor {
+    [0x0] u8 r;
+    [0x1] u8 g;
+    [0x2] u8 b;
+    [0x3] u8 a;
+}
+
+[Size(0x8)]
+struct IAllocator {
+    [0x0] void* virtual_table;
+    [Virtual(0)] IAllocator* dtor(u8 free_flags);
+    [Virtual(1)] void cleanup();
+    [Virtual(2)] void* allocate(isize size, isize alignment);
+    [Virtual(3)] void* reallocate(void* ptr, isize new_size, isize new_alignment);
+    [Virtual(4)] void free(void* ptr);
+    // Usable size of a block from this allocator.
+    [Virtual(9)] u64 getSize(void* ptr);
+}
+
+// Parallel-for over items appended by any thread through its `Writer`. Items go into blocks (u32 item
+// count, then the items from +0x10), 32 blocks per chunk, item size depending on Job. Running it
+// schedules `job_list`, helps on the calling thread, then waits for the list.
+[Size(0xC0)]
+struct JobSystem {
+    [0x8] JobSystem.Writer* writers;
+    [0x10] u32 writer_count;
+    [0x14] u32 next_writer;
+    // `writer_count` - 1 tasks, each a help call.
+    [0x18] System.Framework.JobListArgArrayAndIndex* job_list;
+    [0x20] void* callback_this_arg;
+    [0x28] void* callback_function;
+    [0x30] u32*[16] block_chunks;
+    [0xB0] u32 block_count;
+    [0xB4] u32 next_block;
+    [0xB8] u32 next_item;
+    // Helpers claim single items instead of whole blocks.
+    [0xBC] bool claim_per_item;
+}
+
+[Size(0x20)]
+struct Ray {
+    [0x0] Common.Math.Vector3 origin;
+    [0x10] Common.Math.Vector3 direction;
+}
+
+[Size(0x10)]
+struct ReferencedClassBase {
+    [0x0] void* virtual_table;
+    [0x8] u32 ref_count;
+    [Virtual(0)] ReferencedClassBase* dtor(u8 free_flags);
+    [Virtual(1)] void cleanup();
+    [Virtual(2)] i32 incRef();
+    // Will call `cleanup` and `dtor` when `ref_count` was `1`.
+    [Virtual(3)] i32 decRef();
+}
+
+[Size(0x8)]
+struct Singleton {
+    [0x0] void* virtual_table;
+    [Virtual(0)] Singleton* dtor(u8 free_flags);
+}
+
+[Size(0x30)]
+struct Transform {
+    [0x0] Common.Math.Vector3 position;
+    [0x10] Common.Math.Quaternion rotation;
+    [0x20] Common.Math.Vector3 scale;
+}
+
+namespace JobSystem {
+    // Each pool thread claims one writer per JobSystem when it starts (through `next_writer`) and keeps it
+    // in its TLS block (TLS[_tls_index] + slot): 0x250 CullingManager.OcclusionTestJobs, 0x258
+    // CullingManager.CallbackJobs, 0x260 CullingManager.CullingJobs, 0x268
+    // CullingManager.RenderCallbackJobs, 0x270 CullingManager.OccluderJobs, 0x278 VerticalFogRenderer,
+    // 0x288 LightShaftRenderer, 0x290 LookAtIkUpdater, 0x298 SkeletonUpdater, 0x2A0 WaterRenderer, 0x2A8
+    // OffscreenRenderingManager, 0x2B0 Render.Manager, 0x2B8 DecalRenderer, 0x2C0 ModelRenderer, 0x2C8
+    // ShadowMaskRenderer.
+    [Size(0x28)]
+    struct Writer {
+        [0x8] void* items;
+        [0x10] u32 item_count;
+        [0x18] JobSystem* owner;
+        [0x20] u32* block;
+    }
+}

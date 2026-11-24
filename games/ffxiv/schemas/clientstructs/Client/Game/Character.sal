@@ -1,0 +1,827 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Game.Character;
+
+[Size(0xF00)]
+struct ActionEffectHandler {
+    [0x0] ActionEffectHandler.EffectEntry[32] incoming_effects;
+    // The main entry point, called when receiving ActionEffectN server packets.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 8D ?? ?? ?? ?? 48 33 CC E8 ?? ?? ?? ?? 48 81 C4 00 05 00 00", FirstMatch, Offset(1), Rel32)] static void receive(u32 caster_entity_id, Character* caster_ptr, Vec3* target_pos, ActionEffectHandler.Header* header, ActionEffectHandler.TargetEffects* effects, Object.GameObjectId* target_entity_ids);
+}
+
+[Size(0x3810), VirtualTable("48 8D 05 ?? ?? ?? ?? ?? ?? ?? 41 B8 ?? ?? ?? ?? 48 8D 05", FirstMatch, Offset(3), Rel32)]
+struct BattleChara : Character {
+    [0x2370] STD.StdDeque<UI.Misc.ScreenLogEntry> screen_log_manager;
+    [0x23B0] StatusManager status_manager;
+    [0x2790] CastInfo cast_info;
+    [0x2900] ActionEffectHandler action_effect_handler;
+    [0x3800] ForayInfo foray_info;
+    [Sig("48 85 C9 0F 84 ?? ?? ?? ?? 48 89 6C 24 ?? 56 48 83 EC 30", FirstMatch)] void ridePillion(u32 seat_index);
+}
+
+[Size(0x170)]
+struct CastInfo {
+    [0x0] u8 flags { [Bit(0)] bool is_casting; [Bit(1)] bool interruptible; }
+    [0x1] u8 action_type;
+    [0x4] u32 action_id;
+    [0x8] u32 source_sequence;
+    [0x10] Object.GameObjectId target_id;
+    [0x20] Common.Math.Vector3 target_location;
+    [0x30] f32 rotation;
+    [0x34] f32 current_cast_time;
+    [0x38] f32 base_cast_time;
+    [0x3C] f32 total_cast_time;
+    [0x40] u32 response_spell_id;
+    [0x44] ActionType response_action_type;
+    [0x48] u32 response_action_id;
+    [0x4C] u32 response_global_sequence;
+    [0x50] u32 response_source_sequence;
+    [0x58] Object.GameObjectId[32] response_target_ids;
+    [0x158] u8 response_target_count;
+    [0x159] u8 response_flags;
+}
+
+[Size(0x2370), VirtualTable("48 8D 05 ?? ?? ?? ?? 48 89 07 48 8D 8F ?? ?? ?? ?? 48 8D 05 ?? ?? ?? ?? 48 89 87 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8D 8F ?? ?? ?? ?? 33 ED 48 8D 05 ?? ?? ?? ??", FirstMatch, Offset(3), Rel32)]
+struct Character : Object.GameObject {
+    // Inherited parent class accessor for `CharacterData`
+    [0x1A0] CharacterData character_data;
+    [0x1F0] Control.MoveControl.MoveController move_controller;
+    [0x630] Control.EmoteController emote_controller;
+    [0x670] MountContainer mount;
+    [0x6D8] CompanionContainer companion_data;
+    [0x6F8] DrawDataContainer draw_data;
+    [0x960] OrnamentContainer ornament_data;
+    [0x9D8] TransformationContainer transformation;
+    [0xA30] TimelineContainer timeline;
+    [0xD80] LookAtContainer look_at;
+    [0x1960] LifeSkillContainer life_skill_container;
+    [0x1988] VfxContainer vfx;
+    [0x1A78] TargetStatusContainer target_status_container;
+    [0x1A90] EffectContainer effects;
+    [0x1B10] CharacterSetupContainer character_setup;
+    [0x1B28] ModelContainer model_container;
+    [0x1B80] RepresentationContainer representation_container;
+    // Instance ID of an Event NPC. Used by QuestEventHandler. Seen for Event NPCs that turn into Battle
+    // NPCs (during quests, for example.)
+    [0x1BC0] u32 event_npc_instance_id;
+    [0x1CE2] u8 relation_flags { [Bit(0)] bool is_party_member; [Bit(1)] bool is_alliance_member; [Bit(2)] bool is_friend; }
+    [0x1CE8] u8 actor_control_flags;
+    [0x21E0] Balloon balloon;
+    [0x2260] NpcYellBalloon yell_balloon;
+    [0x22E8] f32 alpha;
+    // Depending on it's ObjectKind, this may be a `Companion`*, Mount (`Character`*), or `Ornament`*.
+    [0x22F8] Character* child_object;
+    [0x2300] utf8[7] free_company_tag;
+    // The current (hard) target for this Character. This will not be set for the LocalPlayer. Developers
+    // should generally use `getTargetId` over reading this field directly, as it will properly handle
+    // resolving the target for the local player.
+    [0x2308] Object.GameObjectId target_id;
+    // The current soft target for this Character. This will not be set for the LocalPlayer. Developers
+    // should generally use `getSoftTargetId` over reading this field directly, as it will properly handle
+    // resolving the soft target for the local player.
+    [0x2310] Object.GameObjectId soft_target_id;
+    [0x231C] f32 cast_rotation;
+    [0x2338] u32 name_id;
+    [0x233C] u32 event_handler_name_id;
+    [0x2340] u32 transformation_name_id;
+    [0x2344] u32 companion_owner_id;
+    [0x2348] Object.ObjectType object_type;
+    [0x2350] u64 account_id;
+    [0x2358] u64 content_id;
+    [0x2360] u16 current_world;
+    [0x2362] u16 home_world;
+    [0x2364] CharacterModes mode;
+    [0x2365] u8 mode_param;
+    [0x2366] u8 gm_rank;
+    // See `SoundVolumeCategory`.
+    [0x2369] u8 sound_volume_category;
+    [0x236A] u8 sound_volume_category_override;
+    [0x236B] u8 sound_flags;
+    // Gets the (hard) target ID for this character. If this character is the LocalPlayer, this will
+    // instead read the target ID from the `TargetSystem`. Used for calculating ToT via /assist.
+    [Sig("E8 ?? ?? ?? ?? 4C 8B E0 48 8B 4F", FirstMatch, Offset(1), Rel32)] Object.GameObjectId getTargetId();
+    [Sig("E8 ?? ?? ?? ?? 48 3B FD 74 36", FirstMatch, Offset(1), Rel32)] void setTargetId(Object.GameObjectId id);
+    // Gets the soft target ID for this character. If this character is the LocalPlayer, this will instead
+    // read the soft target ID from the `TargetSystem`.
+    [Sig("E8 ?? ?? ?? ?? 48 8B F0 EB 12", FirstMatch, Offset(1), Rel32)] Object.GameObjectId getSoftTargetId();
+    [Sig("E8 ?? ?? ?? ?? EB 05 4C 3B E0", FirstMatch, Offset(1), Rel32)] void setSoftTargetId(Object.GameObjectId id);
+    [Sig("E8 ?? ?? ?? ?? 45 84 FF 75 40", FirstMatch, Offset(1), Rel32)] void setMode(CharacterModes mode, u8 mode_param);
+    // Can only be used for Mounts, Minions, and Ornaments. Literally just checks if the game object at
+    // index - 1 is a character and returns that.
+    [Sig("E8 ?? ?? ?? ?? 48 3B 47 ?? 75 ?? 48 8B CE", FirstMatch, Offset(1), Rel32)] Character* getParentCharacter();
+    [Sig("E8 ?? ?? ?? ?? 38 43 ?? 0F 85", FirstMatch, Offset(1), Rel32)] bool hasStatus(u32 status_id);
+    // Check if this character is in a jumping/falling animation.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 46 48 8B 4B 08", FirstMatch, Offset(1), Rel32)] bool isJumping();
+    // Check if the character is using the World Visit system.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 8B CF", FirstMatch, Offset(1), Rel32)] bool isWanderer();
+    // Check if the character is using the Data Center Travel system.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? 40 0F B6 C6", FirstMatch, Offset(1), Rel32)] bool isTraveler();
+    // Check if the character is using the Cross-region Data Center Travel system.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 80 4E ?? ?? ?? ?? ?? 48 8B CB FF 92", FirstMatch, Offset(1), Rel32)] bool isVoyager();
+    // Checks if Character is in a PvP state Will need to be called multiple times before returning correct
+    // result
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 05 8B 4D F4", FirstMatch, Offset(1), Rel32)] bool isInPvP();
+    // Resolves the correct emote id, based on the targets height or distance. For example, this is used
+    // for Throw/Snowball, Dote, Splash, All Saints' Charm, Bouquet or Photograph.
+    [Sig("E8 ?? ?? ?? ?? 48 8B 5D ?? 0F B7 F8", FirstMatch, Offset(1), Rel32)] u16 resolveTargetedEmoteId(u16 emote_id, Control.EmoteController.PlayEmoteOption* options);
+    [Virtual(78)] StatusManager* getStatusManager();
+    [Virtual(79)] StatusManager* getStatusManager2();
+    // Gets the `CastInfo` struct for this Character. May be null for certain Character subclasses, e.g.
+    // `Companion`.
+    [Virtual(80)] CastInfo* getCastInfo();
+    [Virtual(81)] CastInfo* getCastInfo2();
+    [Virtual(82)] ActionEffectHandler* getActionEffectHandler();
+    [Virtual(83)] STD.StdDeque<UI.Misc.ScreenLogEntry>* getScreenLogManager();
+    [Virtual(84)] ForayInfo* getForayInfo();
+    [Virtual(85)] ForayInfo* getForayInfo2();
+}
+
+[Size(0x50)]
+struct CharacterData {
+    [0x0] void* virtual_table;
+    [0x8] f32 model_scale;
+    [0xC] u32 health;
+    [0x10] u32 max_health;
+    [0x14] u32 mana;
+    [0x18] u32 max_mana;
+    [0x1C] u16 gathering_points;
+    [0x1E] u16 max_gathering_points;
+    [0x20] u16 crafting_points;
+    [0x22] u16 max_crafting_points;
+    [0x24] i16 transformation_id;
+    [0x26] u16 title_id;
+    [0x28] u16 status_loop_vfx_id;
+    [0x2A] u8 class_job;
+    [0x2B] u8 level;
+    [0x2C] u8 icon;
+    [0x2D] u8 se_pack;
+    [0x2E] u8 shield_value;
+    [0x2F] u8 map;
+    [0x30] u8 online_status;
+    [0x31] u8 battalion;
+    [0x32] u8 unk32;
+    [0x33] u8 unk33;
+    [0x34] u8 flags { [Bit(0)] bool is_hostile; [Bit(1)] bool in_combat; }
+    // The type of tagger, as represented in `combat_tagger_id`. Known values: 0 - Entity Not Tagged 1 -
+    // Character Tag (players, battle NPCs, etc.) 2 - Party Tag (PVP?) 4 - Observed, but unknown.
+    [0x35] u8 combat_tag_type;
+    // The GameObjectID of the entity that currently has the combat tag on this character. May be set to a
+    // party ID if certain conditions are met (PVP?). See `combat_tag_type` for information about the type
+    // of tagger. A tagger is generally the first entity to deal damage to this character, and will persist
+    // until that entity has died, at which point it will reset.
+    [0x38] Object.GameObjectId combat_tagger_id;
+    [Virtual(0)] CharacterData* dtor(u8 free_flags);
+    [Virtual(1)] void classJobChanged(u8 from, u8 to);
+}
+
+[Size(0x3A8)]
+struct CharacterManager : CharacterManagerInterface {
+    [0x50] BattleChara*[100] battle_charas;
+    [0x370] BattleChara* battle_chara_memory;
+    [0x378] Companion* companion_memory;
+    [0x380] i32 companion_class_size;
+    [0x384] i32 update_index;
+    [Sig("8B D0 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 85 C0 0F 84 ?? ?? ?? ?? 48 8B D0", FirstMatch, Offset(5), Rel32)] static CharacterManager instance;
+    [Sig("E8 ?? ?? ?? ?? 48 89 84 3D ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] BattleChara* lookupBattleCharaByEntityId(u32 entity_id);
+    [Sig("E8 ?? ?? ?? ?? 48 8B F8 48 85 C0 74 3A 0F B7 4C 24", FirstMatch, Offset(1), Rel32)] BattleChara* lookupBattleCharaByName(cstring name, bool only_players, i16 world);
+    [Sig("E8 ?? ?? ?? ?? 49 8D 4F 20 48 89 44 24", FirstMatch, Offset(1), Rel32)] BattleChara* lookupBuddyByOwnerObject(BattleChara* owner);
+    [Sig("E8 ?? ?? ?? ?? EB 41 83 FF 1C", FirstMatch, Offset(1), Rel32)] BattleChara* lookupPetByOwnerObject(BattleChara* owner);
+}
+
+[Size(0x18)]
+struct CharacterManagerInterface {
+    [0x0] void* virtual_table;
+    [Virtual(5)] CharacterManagerInterface* dtor(u8 free_flags);
+}
+
+enum CharacterModes : u8 {
+    none = 0,
+    normal = 1,
+    dead = 2,
+    emote_loop = 3,
+    mounted = 4,
+    crafting = 5,
+    gathering = 6,
+    materia_attach = 7,
+    anim_lock = 8,
+    carrying = 9,
+    riding_pillion = 10,
+    in_position_loop = 11,
+    race_chocobo = 12,
+    triple_triad = 13,
+    lovm = 14,
+    performance = 16,
+}
+
+[Size(0x18)]
+struct CharacterSetupContainer : ContainerInterface {
+    [Sig("E8 ?? ?? ?? ?? 8B 87 ?? ?? ?? ?? 85 C0 74 ?? 83 F8", FirstMatch, Offset(1), Rel32)] u64 copyFromCharacter(Character* source, CharacterSetupContainer.CopyFlags flags);
+    [Sig("E8 ?? ?? ?? ?? 45 0F B6 86 ?? ?? ?? ?? 48 8D 8F", FirstMatch, Offset(1), Rel32)] void setupBNpc(u32 b_npc_base_id, u32 b_npc_name_id);
+}
+
+[Size(0x2470), VirtualTable("48 8D 05 ?? ?? ?? ?? ?? ?? ?? 48 8D 05 ?? ?? ?? ?? 48 89 83 ?? ?? ?? ?? 48 8D 05 ?? ?? ?? ?? 48 89 8B ?? ?? ?? ?? 48 C7 83", FirstMatch, Offset(3), Rel32)]
+struct Companion : Character {
+    [0x2370] CompanionType companion_type;
+    [0x2374] u16 companion_model;
+    [0x2376] u16 follow_mount_id;
+    [0x2378] u8 companion_scale;
+    [0x2379] u8[2] inactive_idle;
+    [0x237B] u8 follow_mount_unknown12;
+    [0x237C] u8 follow_mount_unknown13;
+    [0x237D] u8 follow_mount_unknown14;
+    [0x237E] u8 inactive_battle;
+    [0x237F] u8 inactive_wandering;
+    [0x2380] u32 follow_mount_unknown0;
+    [0x2384] u32 follow_mount_unknown1;
+    [0x2388] u32 follow_mount_unknown2;
+    [0x238C] u32 follow_mount_unknown3;
+    [0x2390] u32 follow_mount_unknown4;
+    [0x2394] CompanionMove behavior;
+    [0x2395] u8 special;
+    [0x2396] u8 companion_unknown10;
+    [0x2397] u8 companion_unknown11;
+    [0x2398] u8 wandering_wait;
+    [0x239A] u16 priority;
+    [0x239C] bool is_companion_unknown5;
+    [0x239D] bool is_companion_unknown6;
+    [0x239E] bool is_companion_unknown7;
+    [0x239F] bool is_companion_unknown8;
+    [0x23A0] bool is_companion_unknown9;
+    [0x23A2] u16 enemy;
+    [0x23A4] bool is_battle;
+    [0x23A8] Companion.VfxList vfx_list_listenner;
+    [0x23D0] Common.Math.Vector3 move_destination;
+    [0x23E0] Common.Math.Vector3 unk23_e0;
+    [0x23F0] Common.Math.Vector3 place_position;
+    [0x2400] BattleChara* owner;
+    [0x2418] f32 unk2418;
+    [0x241C] f32 unk241_c;
+    [0x2420] f32 unk2420;
+    [0x2424] f32 unk2424;
+    [0x2428] f32 unk2428;
+    [0x242C] f32 unk242_c;
+    [0x2430] f32 unk2430;
+    [0x2434] f32 unk2434;
+    [0x2438] f32 unk2438;
+    [0x2440] f32 unk2440;
+    [0x2444] f32 move_cooldown;
+    [0x2448] f32 unk2448;
+    [0x244C] u32 unk244_c;
+    [0x2450] u16 unk2450;
+    [0x2452] u16 unk2452;
+    [0x2454] u16 emote_owner_object_index;
+    [0x2456] u8 unk2456;
+    [0x2457] CompanionSpawnState spawn_state;
+    [0x2458] CompanionBehaviorState behavior_state;
+    [0x2459] u8 unk2459;
+    [0x245A] u8 behavior_special;
+    [0x245B] u8 unk245_b;
+    [0x245C] u8 unk245_c;
+    [0x245D] bool unk245_d;
+    [0x245E] bool is_emote_from_owner;
+    [0x245F] bool unk245_f;
+    [0x2460] bool unk2460;
+    [0x2461] bool unk2461;
+    [0x2462] bool unk2462;
+    [0x2463] bool unk2463;
+    // Used when the companion places itself on its owner's shoulder or head.
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8B CF E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 0F B6 87", FirstMatch, Offset(1), Rel32)] void placeCompanion();
+    // Follow movement, including a sphere sweep against the level collision. Called by Update every frame.
+    [Sig("E9 ?? ?? ?? ?? 48 8B CF E8 ?? ?? ?? ?? F3 0F 58 87 ?? ?? ?? ?? 0F 2F 05", FirstMatch, Offset(1), Rel32)] void updateFollow();
+}
+
+enum CompanionBehaviorState : u8 {
+    idle = 0,
+    follow = 1,
+    unk2 = 2,
+    being_fed = 3,
+    unk4 = 4,
+    move = 5,
+    unk6 = 6,
+    unk7 = 7,
+    unk8 = 8,
+    place = 9,
+    unk10 = 10,
+    unk11 = 11,
+    unk12 = 12,
+    unk13 = 13,
+    unk14 = 14,
+    unk15 = 15,
+    unk16 = 16,
+    unk17 = 17,
+}
+
+[Size(0x20)]
+struct CompanionContainer : ContainerInterface {
+    [0x10] Companion* companion_object;
+    [0x18] u16 companion_id;
+    [0x1A] u16 follow_mount_id;
+    [0x1C] u16 unk_follow_mount_id2;
+    [0x1E] u8 unk1_e;
+    [Sig("E8 ?? ?? ?? ?? B3 ?? 41 0F BA E6", FirstMatch, Offset(1), Rel32)] void setupCompanion(i16 companion_id, u32 param);
+}
+
+enum CompanionMove : u8 {
+    none = 0,
+    obedient = 1,
+    independent = 2,
+    stationary = 3,
+}
+
+enum CompanionSpawnState : u8 {
+    none = 0,
+    spawning = 1,
+    despawning = 2,
+    active = 3,
+    unk4 = 4,
+}
+
+enum CompanionType : i32 {
+    none = 0,
+    // Uses the Companion sheet.
+    companion = 1,
+    // Uses the FollowMount sheet.
+    follow_mount = 2,
+}
+
+[Size(0x10)]
+struct ContainerInterface {
+    [0x8] Character* owner_object;
+}
+
+[Size(0x1A)]
+struct CustomizeData {
+    [0x0] u8 race;
+    [0x1] u8 sex;
+    [0x2] u8 body_type;
+    [0x3] u8 height;
+    [0x4] u8 tribe;
+    [0x5] u8 face;
+    [0x6] u8 hairstyle;
+    [0x7] u8 data7 { [Bit(7)] bool highlights; }
+    [0x8] u8 skin_color;
+    [0x9] u8 eye_color_right;
+    [0xA] u8 hair_color;
+    [0xB] u8 highlights_color;
+    [0xC] u8 data_c { [Bit(0)] bool facial_feature1; [Bit(1)] bool facial_feature2; [Bit(2)] bool facial_feature3; [Bit(3)] bool facial_feature4; [Bit(4)] bool facial_feature5; [Bit(5)] bool facial_feature6; [Bit(6)] bool facial_feature7; [Bit(7)] bool legacy_tattoo; }
+    [0xD] u8 tattoo_color;
+    [0xE] u8 eyebrows;
+    [0xF] u8 eye_color_left;
+    [0x10] u8 data10 { [Bit(0)] u8 eye_shape : 7; [Bit(7)] bool small_iris; }
+    [0x11] u8 nose;
+    [0x12] u8 jaw;
+    [0x13] u8 data13 { [Bit(0)] u8 mouth : 7; [Bit(7)] bool lipstick; }
+    [0x14] u8 lip_color_fur_pattern;
+    [0x15] u8 muscle_mass;
+    [0x16] u8 tail_shape;
+    [0x17] u8 bust_size;
+    [0x18] u8 data18 { [Bit(0)] u8 face_paint : 7; [Bit(7)] bool face_paint_reversed; }
+    [0x19] u8 face_paint_color;
+    [Sig("40 53 48 83 EC ?? 48 8B D9 48 8D 42", FirstMatch)] bool normalize(CustomizeData* source);
+}
+
+[Size(0x48)]
+struct DrawData {
+    [0x8] Graphics.Scene.DrawObject* draw_object;
+    [0x10] Graphics.Scene.CharacterBase* character_base;
+    [0x18] System.Resource.Handle.AttachOffsetResourceHandle* attach_offset_resource_handle;
+    [0x2C] u32 slot;
+}
+
+[Size(0x268)]
+struct DrawDataContainer : ContainerInterface {
+    [0x10] DrawObjectData[3] weapon_data;
+    [0x160] DrawObjectData[1] unk_weapon_data;
+    [0x1D0] EquipmentModelId[10] equipment_model_ids;
+    [0x220] CustomizeData customize_data;
+    [0x23A] i16 arrow_attribute_id;
+    [0x23C] i16 attach_attribute_id;
+    [0x23E] u8 flags1 { [Bit(0)] bool is_hat_hidden; }
+    [0x23F] u8 flags2 { [Bit(0)] bool is_weapon_hidden; [Bit(4)] bool is_visor_toggled; [Bit(5)] bool viera_ears_hidden; }
+    [0x240] u16[2] glasses_ids;
+    [0x258] UI.Agent.CrestData free_company_crest_data;
+    [0x260] u8 free_company_crest_bitfield;
+    [Sig("E8 ?? ?? ?? ?? B1 ?? 41 FF C6", FirstMatch, Offset(1), Rel32)] void loadEquipment(DrawDataContainer.EquipmentSlot slot, EquipmentModelId* model_id, bool force);
+    [Sig("E8 ?? ?? ?? ?? 4C 8B 45 7F", FirstMatch, Offset(1), Rel32)] void loadWeapon(DrawDataContainer.WeaponSlot slot, WeaponModelId weapon_data, u8 redraw_on_equality, u8 a5, u8 skip_game_object, u8 a7, bool a8);
+    // Called when Hide/Display Weapons when sheathed is toggled or /displayarms is used.
+    [Sig("E8 ?? ?? ?? ?? 8B 46 54 0F BA E0 08", FirstMatch, Offset(1), Rel32)] void hideWeapons(bool hide);
+    // Called when Hide/Display Headgear is toggled or /displayhead is used.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 55 C9", FirstMatch, Offset(1), Rel32)] void hideHeadgear(u32 unk, bool hide);
+    [Sig("44 0F B6 81 ?? ?? ?? ?? 41 0F B6 C0 41 80 E0 7F", FirstMatch)] void hideLegacyTattoo(bool hide);
+    // Called when Manually Adjust Visor is toggled or /visor is used.
+    [Sig("E8 ?? ?? ?? ?? 41 0F B6 D6 48 8B CB", FirstMatch, Offset(1), Rel32)] void setVisor(bool state);
+    // Called when equipping facewear.
+    [Sig("E8 ?? ?? ?? ?? EB 50 44 8B 03", FirstMatch, Offset(1), Rel32)] void setGlasses(i32 index, u16 id);
+    // Called when changing the visbility of Viera ears.
+    [Sig("E8 ?? ?? ?? ?? 80 BF ?? ?? ?? ?? ?? 41 BD", FirstMatch, Offset(1), Rel32)] void hideVieraEars(bool hide);
+    [Sig("48 89 5C 24 ?? 55 56 57 41 54 41 55 41 56 41 57 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 44 0F B6 B9", FirstMatch)] void handleGearsetDrawDataPacket(Network.GearsetDrawDataPacket* packet);
+}
+
+[Size(0x70)]
+struct DrawObjectData {
+    [0x0] WeaponModelId model_id;
+    [0x8] Graphics.Scene.Weapon* weapon;
+    [0x10] DrawData draw_data;
+    [0x60] u8 state { [Bit(1)] bool is_hidden; }
+    [0x62] u16 flags1;
+    [0x64] u8 flags2;
+    [0x66] u16 unk_weapon_timeline_id;
+    [0x68] u16 unk_timeline_id;
+}
+
+[Size(0x80)]
+struct EffectContainer : ContainerInterface {
+    [0x10] f32 current_float_height;
+    [0x14] f32 target_float_height;
+    [0x18] f32 float_height_change_speed;
+    [0x30] EffectContainer.StatusEffect status_effects;
+    [0x31] u8 unk_tilt1;
+    [0x32] u8 unktilt2;
+    [0x33] u8 unktilt3;
+    [0x34] i32 mount_tilt_setup_state1;
+    [0x38] i32 mount_tilt_setup_state2;
+    [0x3C] EffectContainer.TiltOrigin mount_ground_tilt_origin;
+    [0x3D] u8 mount_ground_unk1;
+    [0x3E] u8 mount_ground_unk2;
+    [0x40] f32 mount_ground_tilt_angle;
+    [0x44] f32 mount_ground_tilt_speed;
+    [0x48] EffectContainer.TiltFlags mount_ground_tilt_flags;
+    [0x4C] EffectContainer.TiltOrigin mount_flight_swim_tilt_origin;
+    [0x4D] u8 mount_flight_swim_unk1;
+    [0x4E] u8 mount_flight_swim_unk2;
+    [0x50] f32 mount_flight_swim_tilt_angle;
+    [0x54] f32 mount_flight_swim_tilt_speed;
+    [0x58] EffectContainer.TiltFlags mount_flight_swim_tilt_flags;
+    [0x5C] EffectContainer.TiltOrigin rider_ground_tilt_origin;
+    [0x5D] u8 rider_ground_unk1;
+    [0x5E] u8 rider_ground_unk2;
+    [0x60] f32 rider_ground_tilt_angle;
+    [0x64] f32 rider_ground_tilt_speed;
+    [0x68] EffectContainer.TiltFlags rider_ground_tilt_flags;
+    [0x6C] EffectContainer.TiltOrigin rider_flight_swim_tilt_origin;
+    [0x6D] u8 rider_flight_swim_unk1;
+    [0x6E] u8 rider_flight_swim_unk2;
+    [0x70] f32 rider_flight_swim_tilt_angle;
+    [0x74] f32 rider_flight_swim_tilt_speed;
+    [0x78] EffectContainer.TiltFlags rider_flight_swim_reverse_tilt;
+    // Mount tilt setup, and possibly unmounted tilt setup
+    [Sig("48 89 5C 24 ?? 55 48 83 EC ?? C6 41", FirstMatch)] void loadMountTiltData();
+    // Mounted player tilt setup
+    [Sig("E8 ?? ?? ?? ?? C6 83 ?? ?? ?? ?? ?? 48 8B 45", FirstMatch, Offset(1), Rel32)] void loadPlayerTiltData();
+}
+
+[Size(0x8)]
+struct EquipmentModelId {
+    [0x0] u16 id;
+    [0x2] u8 variant;
+    [0x3] u8 stain0;
+    [0x4] u8 stain1;
+}
+
+[Size(0x2)]
+struct ForayInfo {
+    [0x0] u8 level;
+    [0x1] u8 element;
+}
+
+[Size(0x4)]
+struct LegacyEquipmentModelId {
+    [0x0] u16 id;
+    [0x2] u8 variant;
+    [0x3] u8 stain;
+}
+
+[Size(0x28)]
+struct LifeSkillContainer : ContainerInterface {
+    [0x10] i32 unk_action_timeline_id1;
+    [0x14] i32 unk_action_timeline_id2;
+    [0x18] i32 unk_action_timeline_id3;
+    [0x1C] u8 vfx_type1;
+    [0x1D] u8 vfx_type2;
+    [0x1E] u8 vfx_type3;
+    [0x1F] u8 unk1_f;
+    [0x20] u8 weapon_flags { [Bit(0)] bool is_offhand_drawn; }
+}
+
+[Size(0xBE0)]
+struct LookAtContainer : ContainerInterface {
+    [0x10] Control.CharacterLookAtController controller;
+    // When using /facecamera, this is the rotation of the camera. When editing banner and the character is
+    // following the camera (either with head or eyes), this field holds the position of the camera.
+    [0xBA0] Common.Math.Vector3 camera_vector;
+    [0xBB0] u8 face_camera_flag { [Bit(0)] bool is_facing_camera; }
+    [0xBB4] Common.Math.Vector2 banner_head_direction;
+    [0xBBC] Common.Math.Vector2 banner_eye_direction;
+    [0xBC4] LookAtContainer.BannerCameraFollowFlags banner_camera_follow_flag;
+}
+
+[Size(0x2370)]
+struct MJILivelyActor : Character {
+}
+
+[Size(0x58), VirtualTable("48 8D 05 ?? ?? ?? ?? 80 61 ?? ?? 33 D2 ?? ?? ?? 48 8B C1 48 89 51 ?? 48 89 51 ?? C7 41", FirstMatch, Offset(3), Rel32)]
+struct ModelContainer : ContainerInterface {
+    [0x10] i32 model_chara_id;
+    [0x14] i32 model_skeleton_id;
+    // If this is -1, returns `model_chara_id`.
+    [0x18] i32 model_chara_id_2;
+    // If this is 0, returns `model_skeleton_id`.
+    [0x1C] i32 model_skeleton_id_2;
+    [0x21] u8 model_scale_id;
+    [0x22] u8 mode_attribute_flags;
+    // If character is unmounted, it's hitbox radius is calculated to be this value multiplied by scale.
+    [0x24] f32 unscaled_radius;
+    // Uses TransformationId, Tribe, BodyType, Sex and Height as well as RSP scaling values to calculate
+    // current height of the owner character.
+    [Sig("E8 ?? ?? ?? ?? 0F 28 F8 0F 57 C9", FirstMatch, Offset(1), Rel32)] f32 calculateHeight();
+}
+
+[Size(0x68)]
+struct MountContainer : ContainerInterface {
+    [0x10] Character* mount_object;
+    [0x18] u16 mount_id;
+    [0x1C] f32 dismount_timer;
+    [0x20] u8 flags;
+    [0x24] u32[7] mounted_entity_ids;
+    [Sig("E8 ?? ?? ?? ?? 0F B7 56 66", FirstMatch, Offset(1), Rel32)] void createAndSetupMount(i16 mount_id, u32 buddy_model_top, u32 buddy_model_body, u32 buddy_model_legs, u8 buddy_stain, u8 unk6, u8 unk7);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 45 08 0F B6 90 ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] void setupMount(i16 mount_id, u32 buddy_model_top, u32 buddy_model_body, u32 buddy_model_legs, u8 buddy_stain);
+}
+
+enum MovementStateOptions : u8 {
+    normal = 0,
+    flying = 1,
+    diving = 2,
+}
+
+[Size(0x2390)]
+struct Ornament : Character {
+    [0x2370] u32 ornament_id;
+    // OrnamentCustomizeGroup RowId
+    [0x2374] u32 customize_group_id;
+}
+
+[Size(0x78)]
+struct OrnamentContainer : ContainerInterface {
+    [0x10] Ornament* ornament_object;
+    [0x18] u16 ornament_id;
+    [0x34] u16 auto_umbrella_ornament_id;
+    [0x38] f32 auto_umbrella_cooldown;
+    [0x3C] u32 unk_weather_check_result;
+    [0x40] f32 unk_auto_umbrella_speed;
+    [0x44] bool unk44;
+    [0x48] i32 current_weather_check_index;
+    [0x50] isize*[2] unk_weather_check_classes;
+    [0x60] u8 weather_cover_flags;
+    [0x61] u8 raycast_cover_flags;
+    [0x64] u32[4] unk64;
+    [Sig("E8 ?? ?? ?? ?? 48 8D 7B ?? 48 8B 74 24", FirstMatch, Offset(1), Rel32)] void setupOrnament(i16 ornament_id, u32 param);
+}
+
+[Size(0x58)]
+struct ReaperShroudContainer : ContainerInterface {
+    [0x18] u8 stance_change_id;
+    [0x1C] u32 stance_change_state;
+    [0x20] f32 timer;
+    [0x28] Character* copy_object;
+    [0x30] ReaperShroudContainer.ShroudFlags flags;
+    [0x3C] u16 npc_equip_id;
+    [0x40] Graphics.Vfx.VfxData* vfx;
+}
+
+[Size(0x30)]
+struct RepresentationContainer : ContainerInterface {
+    [0x10] u8 name_type;
+    [0x18] System.String.Utf8String* name_override;
+    [0x20] f32 update_timer;
+    [0x24] u8 unk24;
+    [0x25] u16 unk25;
+    [0x28] u8 unk28;
+}
+
+[Size(0x18)]
+struct TargetStatusContainer : ContainerInterface {
+    [0x10] u8 unk10_flags;
+    [0x11] bool unk11;
+    [0x12] bool unk12;
+}
+
+[Size(0x350)]
+struct TimelineContainer : ContainerInterface {
+    [0x10] Control.ActionTimelineSequencer timeline_sequencer;
+    [0x200] Control.TimelineTransitController timeline_transit;
+    [0x2C0] u8 model_state;
+    [0x2C1] u8[2] animation_state;
+    [0x2C8] f32 overall_speed;
+    [0x2E6] u16 base_override;
+    [0x2E8] u16 lips_override;
+    [0x308] isize banner_timeline_sheet;
+    [0x310] isize banner_timeline_row_descriptor;
+    [0x318] u16 banner_timeline_row_id;
+    [0x31A] u8 banner_facial_row_id;
+    [0x320] f32 banner_request_start_timestamp;
+    [0x330] u32 banner_timeline_name_offset;
+    [0x334] u32 banner_timeline_additional_data;
+    [0x338] i32 banner_timeline_icon;
+    [0x33C] u16 banner_timeline_unlock_condition;
+    [0x33E] u16 banner_timeline_unknown_70_1;
+    [0x340] u16 banner_timeline_unknown_70_2;
+    [0x342] u16 banner_timeline_unknown0;
+    [0x344] u16 banner_timeline_sort_key;
+    [0x346] u8 banner_timeline_type;
+    [0x347] u8 banner_timeline_accept_class_job_category;
+    [0x348] u8 banner_timeline_category;
+    [0x34E] u8 flags3 { [Bit(6)] bool is_weapon_drawn; }
+    // Computes height difference between the player the action timeline belongs to and target to height
+    // adjust emotes.
+    [Sig("E8 ?? ?? ?? ?? 44 0F B7 E8 45 85 ED", FirstMatch, Offset(1), Rel32)] u32 getHeightAdjustActionTimelineRowId(Object.GameObjectId target, u32 emote_id);
+    [Sig("0F B7 C2 4C 8B C9 3D 72 02 00 00", FirstMatch)] void setLipsOverrideTimeline(u16 action_timeline_id);
+    [Sig("40 53 48 83 EC 30 48 8B D9 0F 29 74 24 ?? 48 8B 49 08 E8 ?? ?? ?? ?? 0F 28 F0 0F 57 C9 0F 2F F1 0F 86 ?? ?? ?? ?? 48 8B 4B 08 48 8B 01 FF 50 10 83 F8 08 75 60 48 8B 4B 08 48 89 7C 24 ?? E8 ?? ?? ?? ?? 48 8B F8 48 85 C0 74 45 66 83 B8 ?? ?? ?? ?? ?? 74 3B 48 8D 88 ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 74 2B 0F B7 8F ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 85 C0 74 1A 0F B6 40 50 66 0F 6E C0 0F 5B C0 F3 0F 59 C6 0F 28 F0 F3 0F 5E 35 ?? ?? ?? ?? 48 8B 7C 24 ?? F6 83", FirstMatch)] bool calculateAndApplyOverallSpeed();
+    [Sig("E8 ?? ?? ?? ?? 48 8D 8F ?? ?? ?? ?? B2 12", FirstMatch, Offset(1), Rel32)] bool playActionTimeline(u16 intro_id, u16 loop_id, void* a4);
+}
+
+[Size(0x58)]
+struct TransformationContainer : ContainerInterface {
+    // Inherited parent class accessor for `VfxDataListenner`
+    [0x10] Graphics.Vfx.VfxDataListenner vfx_data_listenner;
+    [0x18] u8 stance_change_id;
+    [0x1C] u32 stance_change_state;
+    [0x20] f32 timer;
+    [0x28] Character* copy_object;
+    [0x30] TransformationContainer.TransformationFlags flags;
+    [0x34] i32 effect_index;
+    [0x38] u8 flags2;
+    [0x40] Graphics.Vfx.VfxData* vfx;
+    [0x48] bool is_effect_pending;
+    [0x49] bool is_character_not_ready;
+    [0x4C] u16 npc_equip_id;
+    [0x50] bool are_weapon_loaded;
+    [0x52] u16 unk_action_timeline_id;
+    [Sig("E8 ?? ?? ?? ?? BF ?? ?? ?? ?? 40 84 7B", FirstMatch, Offset(1), Rel32)] void setTransformation(u32 transformation_id, bool a3, bool play_start_vfx);
+}
+
+[Size(0xF0)]
+struct VfxContainer : ContainerInterface {
+    [0x18] Graphics.Vfx.VfxData*[14] vfx_data;
+    [0xA0] VfxContainer.Tether[2] tethers;
+    [0xD0] u16 voice_id;
+    [Sig("E8 ?? ?? ?? ?? EB 6A 0F BE 83 ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] isize loadCharacterSound(i32 sound_number, i32 unk2, isize unk_game_object, u64 auto_release, i32 weapon_data_index, i32 unk6, u64 unk7);
+}
+
+[Size(0x8)]
+struct WeaponModelId {
+    [0x0] u16 id;
+    [0x2] u16 type;
+    [0x4] u16 variant;
+    [0x6] u8 stain0;
+    [0x7] u8 stain1;
+}
+
+namespace ActionEffectHandler {
+    // A single effect (damage, heal, status, miss, etc) an action had on a single target.
+    [Size(0x8)]
+    struct Effect {
+        [0x0] u8 type;
+        [0x1] u8 param0;
+        [0x2] u8 param1;
+        [0x3] u8 param2;
+        [0x4] u8 param3;
+        [0x5] u8 param4;
+        [0x6] u16 value;
+    }
+
+    [Size(0x78)]
+    struct EffectEntry {
+        [0x0] u32 global_sequence;
+        [0x8] u8 target_index;
+        [0x9] u8 action_type;
+        [0xC] u32 action_id;
+        [0x10] u16 spell_id;
+        [0x18] Object.GameObjectId source;
+        [0x20] bool source_confirmed;
+        [0x28] Object.GameObjectId target;
+        [0x30] bool target_confirmed;
+        [0x38] TargetEffects effects;
+    }
+
+    // Global result of a single action. Used in combination with target data: a list of GameObjectId's and
+    // sets of Effect's.
+    [Size(0x28)]
+    struct Header {
+        [0x0] Object.GameObjectId animation_target_id;
+        [0x8] u32 action_id;
+        [0xC] u32 global_sequence;
+        [0x10] f32 animation_lock;
+        [0x14] u32 ballista_entity_id;
+        [0x18] u16 source_sequence;
+        [0x1A] u16 rotation_int;
+        [0x1C] u16 spell_id;
+        [0x1E] u8 animation_variation;
+        [0x1F] u8 action_type;
+        [0x20] u8 flags { [Bit(0)] bool show_in_log; [Bit(1)] bool force_animation_lock; }
+        [0x21] u8 num_targets;
+    }
+
+    // A full set of effects an action had on a single target.
+    [Size(0x40)]
+    struct TargetEffects {
+        [0x0] Effect[8] effects;
+    }
+}
+
+namespace CharacterSetupContainer {
+    bitfield CopyFlags : u32 {
+        [Bit(0)] bool mode;
+        [Bit(1)] bool mount;
+        [Bit(2)] bool class_job;
+        [Bit(5)] bool companion;
+        [Bit(7)] bool weapon_hiding;
+        [Bit(10)] bool target;
+        [Bit(12)] bool name;
+        [Bit(15)] bool last_animation;
+        [Bit(16)] bool position;
+        [Bit(21)] bool use_secondary_chara_id;
+        [Bit(22)] bool ornament;
+        // none is none of them
+    }
+}
+
+namespace Companion {
+    [Size(0x28)]
+    struct VfxList : Graphics.Vfx.VfxDataListenner {
+        [0x8] Object.GameObject* owner_object;
+        [0x10] Graphics.Vfx.VfxData*[3] vfx_data;
+    }
+}
+
+namespace DrawDataContainer {
+    enum EquipmentSlot : u32 {
+        head = 0,
+        body = 1,
+        hands = 2,
+        legs = 3,
+        feet = 4,
+        ears = 5,
+        neck = 6,
+        wrists = 7,
+        r_finger = 8,
+        l_finger = 9,
+    }
+
+    enum WeaponSlot : u32 {
+        main_hand = 0,
+        off_hand = 1,
+        system = 2,
+    }
+}
+
+namespace EffectContainer {
+    bitfield StatusEffect : u8 {
+        [Bit(0)] bool is_g_pose_wet;
+        // none is none of them
+    }
+
+    bitfield TiltFlags : u8 {
+        [Bit(0)] bool reverse_rotation;
+        // none is none of them
+    }
+
+    enum TiltOrigin : u8 {
+        ground = 1,
+        center = 2,
+        waist = 3,
+        upper_body = 4,
+    }
+}
+
+namespace LookAtContainer {
+    bitfield BannerCameraFollowFlags : u8 {
+        [Bit(0)] bool head;
+        [Bit(1)] bool eyes;
+        // none is none of them
+    }
+}
+
+namespace ReaperShroudContainer {
+    bitfield ShroudFlags : u32 {
+        [Bit(0)] bool shroud_attacking;
+        [Bit(1)] bool shroud_active;
+        [Bit(8)] bool shroud_loading;
+    }
+}
+
+namespace TransformationContainer {
+    bitfield TransformationFlags : u8 {
+        [Bit(0)] bool attacking;
+        [Bit(1)] bool active;
+    }
+}
+
+namespace VfxContainer {
+    [Size(0x18)]
+    struct Tether {
+        [0x0] u16 id;
+        [0x2] u8 progress;
+        [0x10] Object.GameObjectId target_id;
+    }
+}

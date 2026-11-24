@@ -1,0 +1,59 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.UI.Shell;
+
+[Size(0x1250)]
+struct RaptureShellModule : Component.Shell.ShellCommandModule {
+    [0x250] Component.Shell.ShellCommandInterface shell_command_interface;
+    [0x258] UIModule* ui_module;
+    [0x260] Component.Shell.ShellCommandInterface shell_command_emote;
+    [0x268] Component.Shell.ShellCommandInterface* shell_command_linkshell_index;
+    [0x270] Component.Shell.ShellCommandInterface* shell_command_chat_cross_world_linkshell;
+    [0x278] Component.Shell.ShellCommandInterface* shell_command_config_toggle;
+    [0x280] Component.Shell.ShellCommandInterface* shell_command_graphic_presets;
+    [0x288] Component.Shell.ShellCommandInterface* shell_command_agent;
+    [0x290] Common.TimePoint wait_start_time;
+    [0x2A8] u32 wait_time_ms;
+    [0x2AD] bool show_command_errors;
+    [0x2B2] bool suppress_macro_errors;
+    [0x2B3] bool macro_locked;
+    [0x2C0] i32 macro_current_line;
+    [0x2C8] System.String.Utf8String macro_line_text;
+    [0x338] System.String.Utf8String macro_name;
+    [0x3A0] System.String.Utf8String[15] macro_lines;
+    [0x9B8] System.String.Utf8String[15] skipped_macro_lines;
+    [0xFD0] i32 chat_type;
+    [0xFD8] System.String.Utf8String tell_name;
+    [0x1040] System.String.Utf8String tell_world;
+    [0x10A8] u64 content_id;
+    [0x10B0] u64 account_id;
+    [0x10B8] u16 tell_world_id;
+    [0x10BA] u16 tell_reason;
+    [0x10BC] i32 temp_chat_type;
+    [0x10C0] System.String.Utf8String temp_chat_command;
+    [0x1128] System.String.Utf8String temp_tell_name;
+    [0x1190] System.String.Utf8String temp_tell_world;
+    [0x11F8] u64 temp_content_id;
+    [0x1200] u64 temp_account_id;
+    [0x1208] u16 temp_tell_world_id;
+    [0x120A] u16 temp_tell_reason;
+    [0x1248] u32 flags { [Bit(0)] bool is_text_command_unavailable; }
+    [0x124C] u32 error_data;
+    [Sig("48 89 5C 24 ?? 41 56 48 83 EC ?? 80 B9 ?? ?? ?? ?? ?? 4C 8B F2", FirstMatch)] void executeMacro(Misc.RaptureMacroModule.Macro* macro);
+    [Sig("E8 ?? ?? ?? ?? EB 42 4C 8B C6", FirstMatch, Offset(1), Rel32)] void cancelMacro();
+    [Sig("E8 ?? ?? ?? ?? 48 BA ?? ?? ?? ?? ?? ?? ?? ?? 84 C0", FirstMatch, Offset(1), Rel32)] bool tryGetMacroIconCommand(Misc.RaptureMacroModule.Macro* macro, void* results_out);
+    [Sig("E8 ?? ?? ?? ?? 0F B7 44 37 ??", FirstMatch, Offset(1), Rel32)] bool changeChatChannel(i32 channel, u32 linkshell_index, System.String.Utf8String* target, bool set_chat_type);
+    [Sig("E8 ?? ?? ?? ?? 4C 8B 7C 24 ?? EB 34", FirstMatch, Offset(1), Rel32)] bool setContextTellTarget(System.String.Utf8String* player_name, System.String.Utf8String* world_name, u16 world_id, u64 account_id, u64 content_id, u16 reason, bool set_chat_type);
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 49 8B 45 ?? 66 83 F9", FirstMatch, Offset(1), Rel32)] void setContextTellTargetInForay(System.String.Utf8String* player_name, System.String.Utf8String* world_name, u16 world_id, u64 account_id, u64 content_id, u16 reason);
+    [Sig("48 89 5C 24 ?? 55 56 57 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 48 8B 02 41 0F B7 E9", FirstMatch)] bool setTellTargetInForay(System.String.Utf8String* player_name, System.String.Utf8String* world_name, u16 world_id, u64 account_id, u64 content_id, u16 reason, bool set_chat_type);
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8B 8B ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B D0 44 89 6C 24", FirstMatch, Offset(1), Rel32)] void replyInSelectedChatMode();
+}
+
+[Size(0x8)]
+struct ShellCommandAssist : Component.Shell.ShellCommandInterface {
+}
+
+[Size(0x8)]
+struct ShellCommandFocus : Component.Shell.ShellCommandInterface {
+}

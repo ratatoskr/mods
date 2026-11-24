@@ -1,0 +1,35 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Animation.Playback;
+
+[Size(0x40)]
+struct hkaAnimatedSkeleton : Common.Base.Object.hkReferencedObject {
+    [0x10] Control.hkaAnimationControlListener hka_animation_control_listener;
+    [0x20] Common.Base.Container.Array.hkArray<Control.Default.hkaDefaultAnimationControl*> animation_controls;
+    [0x30] Rig.hkaSkeleton* skeleton;
+    [0x38] f32 reference_pose_weight_threshold;
+    [0x3C] i32 num_quantized_animations;
+    [Sig("E8 ?? ?? ?? ?? 48 8B F8 48 89 BB ?? ?? ?? ?? C7 43 ?? ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] hkaAnimatedSkeleton* ctor1(Rig.hkaSkeleton* skeleton);
+    [Sig("48 89 5C 24 ?? 41 56 48 83 EC 20 48 8D 05", FirstMatch)] void dtor();
+    [Sig("48 83 EC 38 48 89 5C 24 ?? 48 89 74 24", FirstMatch)] void stepDeltaTime(f32 time);
+    [Sig("48 83 EC 38 4D 8B C8 C6 44 24 ?? ?? 4C 8B 41 30", FirstMatch)] void sampleAndCombineAnimations(Common.Base.Math.QsTransform.hkQsTransformf* pose_local_space_out, f32* float_slots_out);
+    [Sig("48 83 EC 38 8B 44 24 60 C6 44 24 ?? ?? 89 44 24 20 E8 ?? ?? ?? ?? 48 83 C4 38 C3 CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC 66 44 89 44 24", FirstMatch)] void sampleAndCombinePartialAnimations(Common.Base.Math.QsTransform.hkQsTransformf* pose_local_space_out, u32 max_bones, f32* float_slots_out, u32 max_float_slots);
+    [Sig("66 44 89 44 24 ?? 48 83 EC 48 33 C0", FirstMatch)] void sampleAndCombineSingleBone(Common.Base.Math.QsTransform.hkQsTransformf* local_space_out, i16 bone);
+    [Sig("66 44 89 44 24 ?? 48 83 EC 48 48 89 54 24", FirstMatch)] void sampleAndCombineSingleSlot(f32* float_out, i16 slot);
+    [Sig("48 83 EC 48 41 8B C1", FirstMatch)] void sampleAndCombineIndividualBones(Common.Base.Math.QsTransform.hkQsTransformf* local_space_out, i16* bones, u32 num_bones);
+    [Sig("48 83 EC 48 48 89 54 24 ?? 33 D2", FirstMatch)] void sampleAndCombineIndividualSlots(f32* float_out, i16* slots, u32 num_slots);
+    [Sig("48 8B C4 48 81 EC ?? ?? ?? ?? 48 89 58 10 49 8B D8", FirstMatch)] void getDeltaReferenceFrame(f32 delta_timestep, Common.Base.Math.QsTransform.hkQsTransformf* delta_motion_out);
+    [Sig("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 8B 41 2C 48 8B DA", FirstMatch)] void addAnimationControl(Control.hkaAnimationControl* animation);
+    [Sig("40 53 48 83 EC 20 48 63 41 28", FirstMatch)] void removeAnimationControl(Control.hkaAnimationControl* animation);
+    [Sig("48 89 5C 24 ?? 4C 89 4C 24 ?? 44 89 44 24 ?? 48 89 4C 24 ?? 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24", FirstMatch)] void sampleAndCombineInternal(Common.Base.Math.QsTransform.hkQsTransformf* pose_local_space_out, u32 max_bones, f32* float_slots_out, u32 max_float_slots, bool partial);
+    [Sig("48 8B C4 4C 89 48 20 4C 89 40 18 89 50 10 48 89 48 08 55 53 56 57 41 54", FirstMatch)] void sampleAndCombineIndividual(u32 num_bones, i16* individual_bones, Common.Base.Math.QsTransform.hkQsTransformf* pose_local_space_out, u32 num_float_slots, i16* individual_slots, f32* float_slots_out);
+}
+
+namespace hkaAnimatedSkeleton {
+    [Size(0x18)]
+    struct BoneAnnotation {
+        [0x0] u16 bone_id;
+        [0x8] Animation.hkaAnnotationTrack.Annotation annotation;
+    }
+}

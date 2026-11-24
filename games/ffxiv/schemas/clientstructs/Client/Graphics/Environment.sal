@@ -1,0 +1,58 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Graphics.Environment;
+
+[Size(0x5C)]
+struct EnvColorFilterParameters {
+    [0x0] Common.Math.Vector4 curve;
+    [0x10] f32 hue;
+    [0x14] f32 saturation;
+    [0x18] f32 brightness;
+    [0x1C] f32 contrast;
+    [0x20] Vec3 tint_color;
+    [0x2C] f32 tint_strength;
+    [0x30] f32 sepia;
+    [0x34] f32 monochrome;
+    [0x38] f32 invert;
+    [0x3C] f32 dark_saturation;
+    [0x40] Vec3 dark_tint_color;
+    [0x4C] f32 dark_threshold;
+    [0x50] f32 dark_range;
+    [0x54] f32 dark_tint_strength;
+    [0x58] f32 strength;
+    [Sig("E8 ?? ?? ?? ?? 8B 46 78 48 8D 55 ?? F3 0F 10 45 ??", FirstMatch, Offset(1), Rel32)] void buildMatrix(Common.Math.Matrix4x4* output);
+}
+
+[Size(0xBF0)]
+struct EnvManager {
+    [0x8] Scene.EnvScene* env_scene;
+    [0x10] f32 day_time_seconds;
+    [0x14] f32 active_transition_time;
+    [0x18] f32 current_transition_time;
+    [0x1C] f32 transition_progress;
+    [0x27] u8 active_weather;
+    [0x28] f32 transition_time;
+    [0x38] Scene.EnvSpace* env_space;
+    [0x58] EnvState env_state;
+    [0x3D0] EnvColorFilterParameters color_filter_override;
+    [0x468] EnvSoundState env_sound_state;
+    [0x4E0] EnvSimulator env_simulator;
+    [0x8E0] Render.ShadowCamera shadow_camera;
+    [Sig("0F 28 F2 48 8B 05", FirstMatch, Offset(6), Rel32)] static EnvManager* instance;
+}
+
+[Size(0x3C0)]
+struct EnvSimulator {
+}
+
+[Size(0x68)]
+struct EnvSoundState {
+    [0x20] Sound.SoundData* sound_data;
+}
+
+[Size(0x2F8)]
+struct EnvState {
+    [0x12C] f32 rain;
+    [0x224] EnvColorFilterParameters color_filter;
+}

@@ -1,0 +1,35 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Common.Component.Environment;
+
+[Size(0x8)]
+struct AllocatorInterface {
+    [0x0] void* virtual_table;
+    [Virtual(0)] AllocatorInterface* dtor(u8 free_flags);
+}
+
+[Size(0x8)]
+struct DebugInterface {
+    [0x0] void* virtual_table;
+    [Virtual(0)] DebugInterface* dtor(u8 free_flags);
+}
+
+[Size(0x8)]
+struct ResourceInterface {
+    [0x0] void* virtual_table;
+    [Virtual(0)] ResourceInterface* dtor(u8 free_flags);
+}
+
+namespace ResourceInterface {
+    [Size(0x8)]
+    struct ResourceHandleInterface {
+        [0x0] void* virtual_table;
+        [Virtual(0)] ResourceHandleInterface* dtor(u8 free_flags);
+        [Virtual(1)] cstring getPath();
+        [Virtual(2)] bool isLoadSucceed();
+        [Virtual(3)] bool isLoadFail();
+        [Virtual(4)] u8* getData();
+        [Virtual(5)] u32 getSize();
+    }
+}

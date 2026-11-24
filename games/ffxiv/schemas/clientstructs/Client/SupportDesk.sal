@@ -1,0 +1,73 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.SupportDesk;
+
+[Size(0x8)]
+struct HttpConnection {
+    [0x0] void* virtual_table;
+    [Virtual(0)] HttpRequest* dtor(u8 free_flags);
+    // Initializes the HTTP session.
+    [Virtual(1)] void openSession();
+    // Cleans up the HTTP session.
+    [Virtual(2)] void closeSession();
+    // Creates a new HTTPRequest.
+    [Virtual(4)] HttpRequest* makeRequest(cstring url, cstring verb, u8* data, u64 data_length);
+}
+
+[Size(0x10)]
+struct HttpConnectionImpl : HttpConnection {
+    [0x8] void* session_handle;
+}
+
+[Size(0x8)]
+struct HttpRequest {
+    [0x0] void* virtual_table;
+    [Virtual(0)] HttpRequest* dtor(u8 free_flags);
+    // Updates various bits based on the current stage.
+    [Virtual(1)] bool update();
+    // Cleans up the open handle.
+    [Virtual(2)] bool closeHandle();
+}
+
+[Size(0x8C8)]
+struct HttpRequestImpl : HttpRequest {
+    [0x10] void* request_handle;
+    [0x18] u8* response_data;
+    [0x20] i64 response_data_offset;
+    [0x28] u64 response_data_size;
+    [0x470] u8* optional_data;
+    [0x480] HttpRequestStage stage;
+    [0x48C] i32 status_code;
+    // Increased by Framework.FrameDeltaTime every time Update is called.
+    [0x8C0] f32 frame_delta_time_counter;
+    // Initializes and begins this request.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? 48 8B 03 BA ?? ?? ?? ?? 48 8B CB FF 10 33 DB", FirstMatch, Offset(1), Rel32)] bool beginRequest(void* session_handle, cstring url, cstring verb, u8* data, u64 data_length);
+    // Used as the WinHttp status callback. Documentation for this callback can be found here .
+    [Sig("48 85 D2 0F 84 ?? ?? ?? ?? 48 89 5C 24 ?? 56 57", FirstMatch)] static void statusCallback(void* request_handle, HttpRequestImpl* context, u32 internet_status, void* status_information, u32 status_information_length);
+}
+
+enum HttpRequestStage : i32 {
+    unk0 = 0,
+    // Set during BeginRequest.
+    began = 1,
+    // Used while and shortly after fetching the ContentLength and StatusCode headers from the response.
+    reading_headers = 2,
+    // Used while reading the response data.
+    reading_data = 3,
+    // Seen after FetchingData, and there's nothing more to read.
+    read_all_data = 4,
+    unk5 = 5,
+    unk6 = 6,
+    // Set for WINHTTP_CALLBACK_STATUS_HANDLE_CLOSING.
+    closing = 7,
+    // Set when the StatusCode is not 200 OK. Can also happen when WinHttpSendRequest is unsuccessful.
+    not_ok = 8,
+    unk9 = 9,
+    unk10 = 10,
+    unk11 = 11,
+    unk12 = 12,
+    unk13 = 13,
+    // Set for WINHTTP_CALLBACK_STATUS_SECURE_FAILURE.
+    secure_failure = 14,
+}

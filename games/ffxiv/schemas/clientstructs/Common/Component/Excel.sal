@@ -1,0 +1,167 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Common.Component.Excel;
+
+enum ExcelColumnType : u16 {
+    string = 0,
+    bool = 1,
+    int8 = 2,
+    u_int8 = 3,
+    int16 = 4,
+    u_int16 = 5,
+    int32 = 6,
+    u_int32 = 7,
+    float32 = 9,
+    int64 = 10,
+    u_int64 = 11,
+    packed_bool0 = 25,
+    packed_bool1 = 26,
+    packed_bool2 = 27,
+    packed_bool3 = 28,
+    packed_bool4 = 29,
+    packed_bool5 = 30,
+    packed_bool6 = 31,
+    packed_bool7 = 32,
+}
+
+enum ExcelLanguage : i32 {
+    none = 0,
+    japanese = 1,
+    english = 2,
+    german = 3,
+    french = 4,
+    chinese_simplified = 5,
+    chinese_traditional = 6,
+    korean = 7,
+    chinese_traditional2 = 8,
+}
+
+[Size(0x820)]
+struct ExcelModule : ExcelResourceListener {
+    [0x2C] ExcelLanguage language;
+    [0x7A8] ExcelSheet** sheets_by_index;
+}
+
+[Size(0x8)]
+struct ExcelResourceListener {
+    [0x0] void* virtual_table;
+    [Virtual(0)] ExcelResourceListener* dtor(u8 free_flags);
+    [Virtual(1)] void onResourceLoad(isize unk);
+}
+
+[Size(0x100)]
+struct ExcelSheet {
+    [0x0] LinkList2<ExcelSheet> base;
+    [0x18] ExcelLanguage language;
+    [0x20] ExcelSheetNameVar sheet_name_var;
+    [0x30] u32 row_count;
+    [0x38] ExcelSheet.ColumnInfo* column_definitions;
+    [0x40] u32 data_offset;
+    [0x44] u32 row_length;
+    [0x70] ExcelSheet.LinkedListContainer excel_pages;
+    [0xA8] u32 cached_allocated_row_count;
+    [0xB0] Component.Excel.IExcelPageRowResolver* row_resolver;
+    [0xD0] ExcelVariant variant;
+    [0xD4] u16 column_count;
+    [0xD6] i16 start_column;
+    [0xD8] u16 version;
+    [0xDA] u16 sheet_index;
+    [0xDD] bool excel_pages_linked;
+    [0xE0] ExcelSheet.WaiterContainer waiters;
+    [Sig("E8 ?? ?? ?? ?? 8B D0 BD", FirstMatch, Offset(1), Rel32)] u32 getAllocatedRowCount();
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 48 8B F9 48 8D 74 24", FirstMatch)] Component.Excel.IExcelRowWrapper* getRowByDescriptor(Component.Excel.ExcelRowDescriptor* descriptor, u32* out_error_code);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4F ?? 49 89 44 0E", FirstMatch, Offset(1), Rel32)] Component.Excel.IExcelRowWrapper* getSubRowByDescriptor(Component.Excel.ExcelRowDescriptor* descriptor, u32* out_error_code);
+    [Sig("E8 ?? ?? ?? ?? 48 85 C0 74 ?? B0 ?? EB", FirstMatch, Offset(1), Rel32)] Component.Excel.IExcelRowWrapper* getRowByIndex(u32 row_index, Component.Excel.ExcelRowDescriptor* descriptor);
+    [Sig("E8 ?? ?? ?? ?? 8B D3 48 8B F8", FirstMatch, Offset(1), Rel32)] Component.Excel.IExcelRowWrapper* getRowById(u32 row_id, u32* out_error_code);
+    [Sig("E8 ?? ?? ?? ?? 41 80 46", FirstMatch, Offset(1), Rel32)] bool addWaiter(ExcelSheetWaiter* waiter);
+    [Sig("E8 ?? ?? ?? ?? 8B 53 ?? 44 8B C5", FirstMatch, Offset(1), Rel32)] void removeWaiter(ExcelSheetWaiter* waiter);
+}
+
+[Size(0x10)]
+struct ExcelSheetNameVar {
+    [0x0] cstring sheet_name_ptr;
+    [0x8] u16 sheet_name_hash;
+    [0xA] u8 type;
+}
+
+[Size(0x30)]
+struct ExcelSheetWaiter {
+    [0x0] void* virtual_table;
+    [0x8] u32 row_descriptor_count;
+    [0xC] u32 unk_c;
+    [0x18] i64 sheet_index;
+    [0x20] ExcelSheetWaiter.DescriptorRowWrapperEntry* row_descriptors;
+    [0x28] Component.Excel.ExcelRow** rows;
+    [Virtual(0)] ExcelSheetWaiter* dtor(u8 free_flags);
+    [Sig("E8 ?? ?? ?? ?? C0 E3", FirstMatch, Offset(1), Rel32)] void reset();
+    [Sig("E8 ?? ?? ?? ?? 48 39 6B", FirstMatch, Offset(1), Rel32)] void prepare(u32 a2, u32 row_descriptor_count);
+    [Sig("E8 ?? ?? ?? ?? 48 8D 74 24 ?? BF", FirstMatch, Offset(1), Rel32)] void setSheetIndex(i64 sheet_index);
+    [Sig("E8 ?? ?? ?? ?? FF C7 4D 8D B6", FirstMatch, Offset(1), Rel32)] void setRowDescriptor(u32 index, Component.Excel.ExcelRowDescriptor* descriptor);
+    // Sets a `ExcelRowDescriptor` with the given `row_id` at given `index`.
+    [Sig("E8 ?? ?? ?? ?? 49 8B 94 EE", FirstMatch, Offset(1), Rel32)] void enqueueRowLookup(u32 index, u32 row_id);
+}
+
+enum ExcelVariant : u32 {
+    single_row = 0,
+    multi_row = 1,
+}
+
+[Size(0x18)]
+struct IExcelListener : Environment.AllocatorInterface {
+    // Inherited parent class accessor for `ResourceInterface`
+    [0x8] Environment.ResourceInterface resource_interface;
+    // Inherited parent class accessor for `DebugInterface`
+    [0x10] Environment.DebugInterface debug_interface;
+}
+
+[Size(0x8)]
+struct LinkList {
+    [0x0] void* virtual_table;
+    [Virtual(0)] LinkList* dtor(u8 free_flags);
+}
+
+struct LinkList2<T> {
+    LinkList base;
+    T* previous;
+    T* next;
+}
+
+namespace ExcelSheet {
+    [Size(0x6)]
+    struct ColumnInfo {
+        [0x0] ExcelColumnType column_type;
+        [0x2] u16 index;
+        [0x4] u16 offset;
+    }
+
+    [Size(0x38)]
+    struct LinkedListContainer {
+        [0x0] LinkList2<Component.Excel.ExcelPage> list1;
+        [0x18] LinkList2<Component.Excel.ExcelPage> list2;
+        [0x30] i32 num_created_excel_pages;
+    }
+
+    [Size(0x20)]
+    struct WaiterContainer {
+        [0x0] LinkList2<WaiterContainer.WaiterEntry> base;
+        [0x18] i32 count;
+    }
+}
+
+namespace ExcelSheet.WaiterContainer {
+    [Size(0x18)]
+    struct WaiterEntry {
+        [0x0] ExcelSheetWaiter* waiter;
+        [0x8] i32 index;
+        [0x10] WaiterEntry* next;
+    }
+}
+
+namespace ExcelSheetWaiter {
+    [Size(0x18)]
+    struct DescriptorRowWrapperEntry {
+        [0x0] Component.Excel.ExcelRowDescriptor descriptor;
+        [0x10] Component.Excel.IExcelRowWrapper* row_wrapper;
+    }
+}

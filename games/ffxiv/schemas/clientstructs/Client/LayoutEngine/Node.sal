@@ -1,0 +1,22 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.LayoutEngine.Node;
+
+[Size(0x28)]
+struct ChildNodeContainer {
+    [0x0] void* virtual_table;
+    [0x8] Group.SharedGroupLayoutInstance* owner;
+    [0x10] STD.StdVector<ChildNodeInstance*> instances;
+    [Virtual(0)] ChildNodeContainer* dtor(u8 free_flags);
+    [Sig("E8 ?? ?? ?? ?? F6 87 ?? ?? ?? ?? ?? 75 0E", FirstMatch, Offset(1), Rel32)] void applyTransforms();
+    [Sig("E8 ?? ?? ?? ?? 48 8B 47 10 48 85 C0 74 09", FirstMatch, Offset(1), Rel32)] void setCollidersActive(bool active);
+}
+
+[Size(0x50)]
+struct ChildNodeInstance {
+    [0x0] void* virtual_table;
+    [0x10] ILayoutInstance* instance;
+    [0x20] Transform transform;
+    [Virtual(0)] ChildNodeInstance* dtor(u8 free_flags);
+}

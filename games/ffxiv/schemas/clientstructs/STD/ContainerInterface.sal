@@ -1,0 +1,39 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace STD.ContainerInterface;
+
+// Based on MSVC 14.50.35717 definition
+struct ContainerBase12<T> {
+    ContainerProxy<T>* my_proxy;
+}
+
+// Based on MSVC 14.50.35717 definition
+struct ContainerProxy<T> {
+    StdDeque<T>* my_cont;
+    IteratorBase12<T>* my_first_iter;
+}
+
+// Based on MSVC 14.50.35717 definition
+struct IteratorBase12<T> {
+    ContainerProxy<T>* my_proxy;
+    IteratorBase12<T>* my_next_iter;
+}
+
+namespace IStdList {
+    struct Node<T> {
+        Node<T>* next;
+        Node<T>* previous;
+        T value;
+    }
+}
+
+namespace IStdMap {
+    struct KeyCollection<TKey, TValue> {
+        Helper.RedBlackTree<StdPair<TKey, TValue>, TKey>* tree;
+    }
+
+    struct ValueCollection<TKey, TValue> {
+        Helper.RedBlackTree<StdPair<TKey, TValue>, TKey>* tree;
+    }
+}

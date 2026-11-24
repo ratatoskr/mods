@@ -1,0 +1,24 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Animation.Playback.Control;
+
+[Size(0x58)]
+struct hkaAnimationControl : Common.Base.Object.hkReferencedObject {
+    [0x10] f32 local_time;
+    [0x14] f32 weight;
+    [0x18] Common.Base.Container.Array.hkArray<u8> transform_track_weights;
+    [0x28] Common.Base.Container.Array.hkArray<u8> float_track_weights;
+    [0x38] Animation.hkaAnimationBinding* binding;
+    [0x40] Common.Base.Container.Array.hkArray<hkaAnimationControlListener*> listeners;
+    [0x50] f32 motion_track_weight;
+    [Sig("E8 ?? ?? ?? ?? 48 8D 05 ?? ?? ?? ?? 48 8B CB 48 89 07", FirstMatch, Offset(1), Rel32)] hkaAnimationControl* ctor1(Animation.hkaAnimationBinding* binding);
+    [Sig("48 63 41 48 45 33 C9", FirstMatch)] void removeAnimationControlListener(hkaAnimationControlListener* listener);
+}
+
+[Size(0x8)]
+struct hkaAnimationControlListener {
+    [0x0] void* virtual_table;
+    [Virtual(0)] void controlDeletedCallback(hkaAnimationControl* control);
+    [Virtual(1)] hkaAnimationControlListener* dtor(u8 free_flags);
+}

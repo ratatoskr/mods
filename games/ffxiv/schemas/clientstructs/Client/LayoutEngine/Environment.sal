@@ -1,0 +1,11 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.LayoutEngine.Environment;
+
+[Size(0x28)]
+struct LayoutEnvironment {
+    [0x8] LayoutManager* layout_manager;
+    [0x10] Graphics.Scene.EnvScene* graphics_environment;
+    [0x18] void* unk18;
+}

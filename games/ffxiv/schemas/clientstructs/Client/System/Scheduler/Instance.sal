@@ -1,0 +1,53 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.System.Scheduler.Instance;
+
+[Size(0x90)]
+struct BgObject : SchedulerInstanceObject {
+    [0x80] Graphics.Scene.Object* graphics;
+}
+
+[Size(0xE0)]
+struct CharacterObject : SchedulerInstanceObject {
+    [0x80] i32 index;
+    [0x84] i32 spawn_index;
+    [0xAC] i32 race;
+    [0xB0] i32 tribe;
+}
+
+[Size(0x90)]
+struct LayoutMemberObject : LayoutReferenceObject {
+    [0x80] LayoutEngine.Layer.BgPartsLayoutInstance* instance;
+    [0x88] LayoutEngine.Group.SharedGroupLayoutInstance* parent;
+}
+
+[Size(0x80)]
+struct LayoutReferenceObject : SchedulerInstanceObject {
+    [Virtual(47)] LayoutEngine.ILayoutInstance* getLayoutInstance1();
+    [Virtual(48)] LayoutEngine.ILayoutInstance* getLayoutInstance2();
+    [Virtual(49)] LayoutEngine.Group.SharedGroupLayoutInstance* getParentInstance1();
+    [Virtual(50)] LayoutEngine.Group.SharedGroupLayoutInstance* getParentInstance2();
+}
+
+[Size(0xA0)]
+struct LayoutSharedGroupObject : LayoutReferenceObject {
+    [0x80] LayoutEngine.Group.SharedGroupLayoutInstance* instance;
+    [0x88] STD.StdMap<u32, LayoutReferenceObject*> sub_id_to_instance;
+    [Sig("E8 ?? ?? ?? ?? 48 8B 6B 10", FirstMatch, Offset(1), Rel32)] void insertObject(LayoutEngine.ILayoutInstance* inst);
+}
+
+[Size(0xB0)]
+struct LightObject : SchedulerInstanceObject {
+    [0xA8] Graphics.Scene.Object* graphics;
+}
+
+[Size(0x90)]
+struct VfxObject : SchedulerInstanceObject {
+    [0x80] Graphics.Scene.Object* graphics;
+}
+
+[Size(0xD0)]
+struct WeaponObject : SchedulerInstanceObject {
+    [0x80] Graphics.Scene.Object* graphics;
+}

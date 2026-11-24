@@ -1,0 +1,32 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.UI.Arrays.Common;
+
+[Size(0x44)]
+struct ActionBarSlotNumberArray {
+    [0x0] Misc.RaptureHotbarModule.HotbarUIIntermediate.SlotType type;
+    [0x4] i32 cost_type;
+    [0xC] u32 action_id;
+    [0x10] u32 icon_id;
+    [0x14] bool executable;
+    [0x18] bool executable2;
+    [0x1C] i32 max_charges;
+    // Range is 0 to 100
+    [0x20] i32 global_cool_down_percentage;
+    // Range is 0 to 100
+    [0x24] i32 charges_cooldown_percent;
+    [0x28] i32 recharge_time;
+    [0x30] bool display_dot;
+    [0x34] i32 current_charges;
+    [0x38] bool glows;
+    [0x3C] bool pulses;
+    [0x40] bool in_range;
+}
+
+[Size(0x18)]
+struct ActionBarSlotStringArray {
+    [0x0] cstring action_tooltip;
+    [0x8] cstring action_stacksize;
+    [0x10] cstring action_keybind;
+}

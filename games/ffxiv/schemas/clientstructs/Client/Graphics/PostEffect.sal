@@ -1,0 +1,246 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Graphics.PostEffect;
+
+// NGX state and the render sizes of the DLSS quality modes.
+[Size(0x188)]
+struct Dlss {
+    // Indexed by NGX PerfQualityValue: Performance, Balanced, Quality, Ultra Performance, Ultra Quality,
+    // DLAA.
+    [0x0] Dlss.QualityMode[6] quality_modes;
+    // Render sizes by `value` for the output size of the last query.
+    [0x90] STD.StdMap<i32, Dlss.RenderSettings> render_settings_by_mode;
+    // Settings for the next evaluation.
+    [0xA0] Dlss.Settings requested;
+    // Settings the feature was created with. It is released when `requested` differs.
+    [0xCC] Dlss.Settings applied;
+    // Output size of the last query. Both are 0xFFFFFFFF when there is none.
+    [0x150] u32 queried_output_width;
+    [0x154] u32 queried_output_height;
+    [0x158] void* ngx_parameters;
+    [0x160] void* ngx_feature;
+    [0x181] DlssFlags flags;
+    [Sig("E8 ?? ?? ?? ?? EB 03 49 8B C7 48 89 87 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] void ctor();
+    // Releases the NGX feature and parameters and shuts NGX down.
+    [Sig("E8 ?? ?? ?? ?? 32 C0 48 83 C4 38 41 5E 5F", FirstMatch, Offset(1), Rel32)] void shutdown();
+    // Fills `requested` for `output_size` (width, height) from `dlss_quality`.
+    [Sig("40 57 41 56 48 83 EC 38 F6 81 ?? ?? ?? ?? ??", FirstMatch)] bool updateSettings(u32* output_size, bool unk);
+    // Queries NGX for the render sizes of every mode at `output_size` (width, height).
+    [Sig("E8 ?? ?? ?? ?? 4C 8B 05 ?? ?? ?? ?? 45 33 E4", FirstMatch, Offset(1), Rel32)] void queryRenderSettings(u32* output_size);
+    // Releases the NGX feature. The next evaluation creates it again.
+    [Sig("E8 ?? ?? ?? ?? 0F B6 87 ?? ?? ?? ?? 0F 10 06", FirstMatch, Offset(1), Rel32)] void releaseFeature();
+}
+
+bitfield DlssFlags : u8 {
+    [Bit(0)] bool ngx_initialized;
+    [Bit(1)] bool feature_created;
+    // none is none of them
+}
+
+[Size(0x38)]
+struct PostEffectChain {
+    [0x8] PostEffectPart** parts;
+    [0x10] u32 part_count;
+    [0x20] u32 common_parameter_index;
+    [0x28] Kernel.ConstantBuffer* common_buffer;
+    [0x30] f32 scale;
+    [0x34] u32 enabled_part_mask;
+}
+
+[Size(0xD0), VirtualTable("48 89 6C 24 40 33 D2 B9 D0 00 00 00 E8 ?? ?? ?? ??", FirstMatch, Offset(129), Rel32)]
+struct PostEffectColorFilterDarkBlend : PostEffectPart {
+    [0xA0] Kernel.Texture*[3] lut_textures;
+    [0xB8] u32 lut_index;
+    [0xBC] u32 matrix_parameter_index;
+    [0xC0] u32 lut_parameter_index;
+    [0xC4] u32 lut_sampler_index;
+    [0xC8] u32 dark_matrix_parameter_index;
+    [0xCC] u32 dark_parameter_index;
+    [Sig("48 8B C4 48 89 58 ?? 55 56 41 56 48 8D 68 ?? 48 81 EC ?? ?? ?? ?? 0F 29 78", FirstMatch)] void updateLut();
+}
+
+[Size(0xF8), VirtualTable("48 89 6C 24 40 33 D2 B9 F8 00 00 00 E8 ?? ?? ?? ??", FirstMatch, Offset(132), Rel32)]
+struct PostEffectDepthOfFieldCocLut : PostEffectPart {
+    [0xA0] u32 weight_parameter_index;
+    [0xA4] u32 coc_parameter_index;
+    [0xA8] u32 lut_sampler_index;
+    [0xB0] Kernel.ConstantBuffer* coc_parameter_buffer;
+    [0xB8] Kernel.ConstantBuffer* disabled_coc_parameter_buffer;
+    [0xC0] f32 near_focus_distance;
+    [0xC4] f32 near_plane;
+    [0xC8] f32 far_focus_distance;
+    [0xCC] f32 far_blur_distance;
+    [0xD0] f32 near_blur_rate;
+    [0xD4] f32 far_blur_rate;
+    [0xD8] f32 effect_mask_rate;
+    [0xDC] f32 focal_length;
+    [0xE0] f32 focus_distance;
+    [0xE4] f32 f_number;
+    [0xEC] f32 previous_frame_weight;
+    [0xF0] f32 previous_range_scale;
+    [0xF4] bool reset_history;
+    [0xF5] bool use_manual_depth_of_field;
+    [0xF6] bool disable_coc;
+}
+
+[Size(0x34)]
+struct PostEffectDepthOfFieldParameters {
+    [0x0] bool use_updated_depth_of_field;
+    [0x1] bool use_manual_depth_of_field;
+    [0x2] bool use_focus_distance_override;
+    [0x4] f32 near_focus_distance;
+    [0x8] f32 far_focus_distance;
+    [0xC] f32 far_blur_distance;
+    [0x10] f32 near_blur_rate;
+    [0x14] f32 far_blur_rate;
+    [0x1C] f32 effect_mask_rate;
+    [0x20] f32 focus_distance;
+    [0x24] f32 f_number;
+    [0x28] f32 coc_normalization_divisor;
+    [0x2C] f32 previous_frame_weight;
+    [0x30] f32 previous_range_scale;
+}
+
+bitfield PostEffectFlags : u32 {
+    [Bit(0)] bool ambient_occlusion;
+    [Bit(1)] bool anti_aliasing;
+    [Bit(2)] bool sky;
+    [Bit(3)] bool moon;
+    [Bit(4)] bool sky_halo_rainbow;
+    [Bit(5)] bool halo;
+    [Bit(6)] bool fog;
+    [Bit(7)] bool depth_of_field;
+    [Bit(8)] bool camera_motion_blur;
+    [Bit(9)] bool radial_blur;
+    [Bit(10)] bool glare;
+    [Bit(11)] bool god_rays;
+    [Bit(12)] bool lens_flare;
+    [Bit(13)] bool tone_mapping;
+    [Bit(14)] bool saturate;
+    [Bit(15)] bool color_filter_dark_blend;
+    [Bit(16)] bool vignetting;
+    [Bit(17)] bool tone_adjust;
+    [Bit(18)] bool chromatic_aberration;
+    [Bit(19)] bool letter_box;
+    // none is none of them
+}
+
+[Size(0x48C0)]
+struct PostEffectManager : Singleton {
+    // Inherited parent class accessor for `Notifier`
+    [0x8] Kernel.Notifier notifier;
+    [0x488] PostEffectChain depth_of_field_chain;
+    [0x4C0] PostEffectChain depth_of_field_co_c_chain;
+    [0x4F8] PostEffectChain updated_depth_of_field_chain;
+    [0x5D8] PostEffectChain color_filter_chain;
+    [0x610] PostEffectChain vignetting_chain;
+    [0x4010] Kernel.Texture* scene_input;
+    [0x4030] Kernel.Texture* depth;
+    [0x4078] Kernel.Texture* scene_output;
+    [0x40A0] Kernel.Texture* unk40_a0;
+    [0x40A8] Kernel.Texture* unk40_a8;
+    [0x40B0] Kernel.Texture* unk40_b0;
+    [0x40B8] Kernel.Texture* unk40_b8;
+    [0x40C8] Kernel.Texture* unk40_c8;
+    [0x40D0] Kernel.Texture* unk40_d0;
+    // Null without `IsDlssSupported`.
+    [0x4220] Dlss* dlss;
+    [0x4410] u64 initialized_effects;
+    [0x4470] PostEffectFlags flags;
+    [0x46E8] PostEffectDepthOfFieldParameters depth_of_field;
+    [0x471C] Common.Math.Vector4 color_filter_curve;
+    [0x472C] PostEffectManager.ColorFilterParameters color_filter;
+    [0x4808] PostEffectVignettingParameters vignetting;
+    [Sig("48 8B 0D ?? ?? ?? ?? 8B 81 70 44 00 00 C1 E8 08 A8 01 0F 85", FirstMatch, Offset(3), Rel32)] static PostEffectManager* instance;
+}
+
+[Size(0xA0)]
+struct PostEffectPart {
+    [0x0] void* virtual_table;
+    [0x8] System.Resource.Handle.ShaderCodeResourceHandle* pixel_shader;
+    [0x10] void* parameter_data;
+    [0x18] void* constant_buffer_bindings;
+    [0x20] void* sampler_bindings;
+    [0x28] Kernel.Texture* input_texture;
+    [0x38] Kernel.Texture*[5] output_textures;
+    [0x8C] u8 parameter_count;
+    [0x8D] u8 sampler_count;
+    [0x8E] u8 output_count;
+    [0x94] i8 vertex_shader_index;
+    [0x98] u8 flags;
+    [Virtual(3)] bool resolve();
+    [Virtual(4)] bool isValid();
+    [Virtual(5)] void draw();
+}
+
+[Size(0xD0)]
+struct PostEffectResources {
+    [0x10] System.Resource.Handle.ShaderCodeResourceHandle*[16] vertex_shaders;
+    [0x90] void* vertex_declaration;
+    [0x98] void* vertex_buffer;
+    [0xA8] Kernel.ConstantBuffer* param_buffer;
+    [0xB8] Kernel.ConstantBuffer* sampling_offset_buffer;
+    [0xC8] Kernel.ConstantBuffer* dynamic_viewport_resolution_buffer;
+    [Sig("48 8B 05 ?? ?? ?? ?? 4C 8B 44 D0 10 4D 85 C0 74 ?? 49 83 B8 B0 00 00 00 00 74 ?? F6 81 98 00 00 00 08 74 ?? 80 B9 8E 00 00 00 00 76 ?? 48 83 79 38 00", FirstMatch, Offset(3), Rel32)] static PostEffectResources* instance;
+}
+
+[Size(0x18)]
+struct PostEffectVignettingParameters {
+    [0x0] f32 aspect_ratio_blend;
+    [0x4] f32 radius_squared;
+    [0x8] f32 falloff;
+    [0xC] Vec3 color;
+}
+
+namespace Dlss {
+    [Size(0x18)]
+    struct QualityMode {
+        // NGX PerfQualityValue.
+        [0x0] i32 value;
+        [0x8] u8* name;
+        [0x10] QualityModeFlags flags;
+    }
+
+    bitfield QualityModeFlags : u8 {
+        [Bit(0)] bool supported;
+        // Minimum and maximum render size differ.
+        [Bit(1)] bool dynamic_resolution;
+        // none is none of them
+    }
+
+    [Size(0x1C)]
+    struct RenderSettings {
+        [0x0] u32 optimal_width;
+        [0x4] u32 optimal_height;
+        [0x8] u32 min_width;
+        [0xC] u32 min_height;
+        [0x10] u32 max_width;
+        [0x14] u32 max_height;
+        [0x18] f32 sharpness;
+    }
+
+    [Size(0x2C)]
+    struct Settings {
+        [0x0] u32 output_width;
+        [0x4] u32 output_height;
+        [0x8] u32 optimal_width;
+        [0xC] u32 optimal_height;
+        [0x10] u32 min_width;
+        [0x14] u32 min_height;
+        [0x18] u32 max_width;
+        [0x1C] u32 max_height;
+        // `value` of the mode.
+        [0x20] i32 mode;
+    }
+}
+
+namespace PostEffectManager {
+    [Size(0x70)]
+    struct ColorFilterParameters {
+        [0x0] Common.Math.Vector4[3] matrix;
+        [0x30] Common.Math.Vector4[3] dark_matrix;
+        [0x60] Vec3 dark_parameters;
+        [0x6C] f32 strength;
+    }
+}

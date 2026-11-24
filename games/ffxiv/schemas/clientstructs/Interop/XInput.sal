@@ -1,0 +1,41 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Interop.XInput;
+
+// XINPUT_GAMEPAD
+[Size(0xC)]
+struct XInputGamepad {
+    [0x0] XInputGamepadButtons buttons;
+    [0x2] u8 left_trigger;
+    [0x3] u8 right_trigger;
+    [0x4] i16 thumb_lx;
+    [0x6] i16 thumb_ly;
+    [0x8] i16 thumb_rx;
+    [0xA] i16 thumb_ry;
+}
+
+// XINPUT_GAMEPAD_BUTTONS
+bitfield XInputGamepadButtons : u16 {
+    [Bit(0)] bool dpad_up;
+    [Bit(1)] bool dpad_down;
+    [Bit(2)] bool dpad_left;
+    [Bit(3)] bool dpad_right;
+    [Bit(4)] bool start;
+    [Bit(5)] bool back;
+    [Bit(6)] bool left_thumb;
+    [Bit(7)] bool right_thumb;
+    [Bit(8)] bool left_shoulder;
+    [Bit(9)] bool right_shoulder;
+    [Bit(12)] bool a;
+    [Bit(13)] bool b;
+    [Bit(14)] bool x;
+    [Bit(15)] bool y;
+}
+
+// XINPUT_STATE
+[Size(0x10)]
+struct XInputState {
+    [0x0] u32 packet_number;
+    [0x4] XInputGamepad gamepad;
+}

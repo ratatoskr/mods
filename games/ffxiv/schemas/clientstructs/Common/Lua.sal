@@ -1,0 +1,336 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Common.Lua;
+
+[Size(0x38)]
+struct CClosure {
+    [0x0] GCheader gch;
+    [0xA] u8 is_c;
+    [0xB] u8 nupvalues;
+    [0x10] GCObject* gclist;
+    [0x18] Table* env;
+    [0x20] void* f;
+    [0x28] TValue upvalue;
+}
+
+[Size(0x28)]
+struct CallInfo {
+    [0x0] TValue* base;
+    [0x8] TValue* func;
+    [0x10] TValue* top;
+    [0x18] u32* savedpc;
+    [0x20] i32 nresults;
+    [0x24] i32 tailcalls;
+}
+
+[Size(0x38)]
+union Closure {
+    CClosure c;
+    LClosure l;
+}
+
+[Size(0xB8)]
+union GCObject {
+    GCheader gch;
+    TString ts;
+    Udata u;
+    Closure cl;
+    Table h;
+    Proto p;
+    UpVal uv;
+    lua_State th;
+}
+
+[Size(0xA)]
+struct GCheader {
+    [0x0] GCObject* next;
+    [0x8] u8 tt;
+    [0x9] u8 marked;
+}
+
+[Size(0x30)]
+struct LClosure {
+    [0x0] GCheader gch;
+    [0xA] u8 is_c;
+    [0xB] u8 nupvalues;
+    [0x10] GCObject* gclist;
+    [0x18] Table* env;
+    [0x20] Proto* p;
+    [0x28] UpVal* upvals;
+}
+
+[Size(0x268)]
+struct LG {
+    [0x0] lua_State l;
+    [0xB8] global_State g;
+}
+
+[Size(0x10)]
+struct LocVar {
+    [0x0] TString* varname;
+    [0x8] i32 startpc;
+    [0xC] i32 endpc;
+}
+
+[Size(0x28)]
+struct LuaState {
+    [0x8] lua_State* state;
+    [0x10] bool gc_enabled;
+    [0x18] i64 last_gc_restart;
+    [0x20] void* db_errorfb;
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4D ?? 4C 8B C0 8B D6", FirstMatch, Offset(1), Rel32)] cstring classNameOf(i32 index);
+}
+
+enum LuaStatus : u32 {
+    // No errors.
+    ok = 0,
+    // The thread (coroutine) yields.
+    yield = 1,
+    // A runtime error.
+    err_run = 2,
+    // A syntax error during precompilation.
+    err_syntax = 3,
+    // A memory allocation error. For such errors, Lua does not call the message handler.
+    err_mem = 4,
+    // An error while running the message handler.
+    err_err = 5,
+}
+
+[Size(0x28)]
+struct LuaThread : LuaState {
+    [Sig("E8 ?? ?? ?? ?? 48 8B 74 24 ?? 8B D8 83 F8 ?? 74", FirstMatch, Offset(1), Rel32)] i32 resumeWithBool(bool value);
+}
+
+enum LuaType : i32 {
+    none = -1,
+    nil = 0,
+    boolean = 1,
+    light_user_data = 2,
+    number = 3,
+    string = 4,
+    table = 5,
+    function = 6,
+    user_data = 7,
+    thread = 8,
+    proto = 9,
+    upval = 10,
+}
+
+[Size(0x18)]
+struct Mbuffer {
+    [0x0] u8* buffer;
+    [0x8] u64 n;
+    [0x10] u64 buffsize;
+}
+
+[Size(0x28)]
+struct Node {
+    [0x0] TValue i_val;
+    [0x10] TKey i_key;
+}
+
+[Size(0x78)]
+struct Proto {
+    [0x0] GCheader gch;
+    [0x10] TValue* k;
+    [0x18] u32* code;
+    [0x20] Proto** p;
+    [0x28] i32* lineinfo;
+    [0x30] LocVar* locvars;
+    [0x38] TString** upvalues;
+    [0x40] TString* source;
+    [0x48] i32 sizeupvalues;
+    [0x4C] i32 sizek;
+    [0x50] i32 sizecode;
+    [0x54] i32 sizelineinfo;
+    [0x58] i32 sizep;
+    [0x5C] i32 sizelocvars;
+    [0x60] i32 linedefined;
+    [0x64] i32 lastlinedefined;
+    [0x68] GCObject* gclist;
+    [0x70] u8 nups;
+    [0x71] u8 numparams;
+    [0x72] u8 is_vararg;
+    [0x73] u8 maxstacksize;
+}
+
+[Size(0x18)]
+struct TKey {
+    [0x0] TValue tvk;
+    [0x10] Node* next;
+}
+
+[Size(0x18)]
+struct TString {
+    [0x0] GCheader gch;
+    [0xA] u8 reserved;
+    [0xC] u32 hash;
+    [0x10] u64 len;
+}
+
+[Size(0x10)]
+struct TValue {
+    [0x0] Value value;
+    [0x8] i32 tt;
+}
+
+[Size(0x40)]
+struct Table {
+    [0x0] GCheader gch;
+    [0xA] u8 flags;
+    [0xB] u8 lsizenode;
+    [0x10] Table* metatable;
+    [0x18] TValue* array;
+    [0x20] Node* node;
+    [0x28] Node* lastfree;
+    [0x30] GCObject* gclist;
+    [0x38] i32 sizearray;
+}
+
+[Size(0x28)]
+struct Udata {
+    [0x0] GCheader gch;
+    [0x10] Table* metatable;
+    [0x18] Table* env;
+    [0x20] u64 len;
+}
+
+[Size(0x28)]
+struct UpVal {
+    [0x0] GCheader gch;
+    [0x10] TValue* v;
+    // prev (Common.Lua.UpVal*) is at 0x18 inside it
+    // next (Common.Lua.UpVal*) is at 0x20 inside it
+    [0x18] TValue value;
+}
+
+[Size(0x8)]
+union Value {
+    GCObject* gc;
+    void* p;
+    f64 n;
+    i32 b;
+}
+
+[Size(0x1B0)]
+struct global_State {
+    [0x0] stringtable strt;
+    [0x10] void* frealloc;
+    [0x18] void* ud;
+    [0x20] u8 currentwhite;
+    [0x21] u8 gcstate;
+    [0x24] i32 sweepstrgc;
+    [0x28] GCObject* rootgc;
+    [0x30] GCObject** sweepgc;
+    [0x38] GCObject* gray;
+    [0x40] GCObject* grayagain;
+    [0x48] GCObject* weak;
+    [0x50] GCObject* tmudata;
+    [0x58] Mbuffer buff;
+    [0x70] u64 g_cthreshold;
+    [0x78] u64 totalbytes;
+    [0x80] u64 estimate;
+    [0x88] u64 gcdept;
+    [0x90] i32 gcpause;
+    [0x94] i32 gcstepmul;
+    [0x98] void* panic;
+    [0xA0] TValue l_registry;
+    [0xB0] lua_State* mainthread;
+    [0xB8] UpVal uvhead;
+    [0xE0] Table*[9] mt;
+    [0x128] TString*[17] tmname;
+}
+
+[Size(0x78)]
+struct lua_Debug {
+    [0x0] i32 event;
+    [0x8] u8* name;
+    [0x10] u8* namewhat;
+    [0x18] u8* what;
+    [0x20] u8* source;
+    [0x28] i32 currentline;
+    [0x2C] i32 nups;
+    [0x30] i32 linedefined;
+    [0x34] i32 lastlinedefined;
+    [0x38] utf8[60] short_src;
+    [0x74] i32 i_ci;
+}
+
+[Size(0xB8)]
+struct lua_State {
+    [0x0] GCheader gch;
+    [0xA] u8 status;
+    [0x10] TValue* top;
+    [0x18] TValue* base;
+    [0x20] global_State* l_g;
+    [0x28] CallInfo* ci;
+    [0x30] u32* savedpc;
+    [0x38] TValue* stack_last;
+    [0x40] TValue* stack;
+    [0x48] CallInfo* end_ci;
+    [0x50] CallInfo* base_ci;
+    [0x58] i32 stacksize;
+    [0x5C] i32 size_ci;
+    [0x60] u16 n_ccalls;
+    [0x62] u16 base_ccalls;
+    [0x64] u8 hookmask;
+    [0x65] u8 allowhook;
+    [0x68] i32 basehookcount;
+    [0x6C] i32 hookcount;
+    [0x70] void* hook;
+    [0x78] TValue l_gt;
+    [0x88] TValue env;
+    [0x98] GCObject* openupval;
+    [0xA0] GCObject* gclist;
+    [0xA8] lua_longjmp* error_jmp;
+    [0xB0] i64 errfunc;
+    [Sig("E8 ?? ?? ?? ?? FF C7 03 F8", FirstMatch, Offset(1), Rel32)] i32 luaGettop();
+    [Sig("E8 ?? ?? ?? ?? 83 FB 30", FirstMatch, Offset(1), Rel32)] void luaSettop(i32 idx);
+    [Sig("E8 ?? ?? ?? ?? 80 38 23", FirstMatch, Offset(1), Rel32)] cstring luaTolstring(i32 idx, i32* len);
+    [Sig("E8 ?? ?? ?? ?? 0F 28 D0 48 8D 15", FirstMatch, Offset(1), Rel32)] f64 luaTonumber(i32 idx);
+    [Sig("E8 ?? ?? ?? ?? 83 CA ?? 48 8B CB 2B D7", FirstMatch, Offset(1), Rel32)] void luaPushboolean(i32 b);
+    [Sig("E8 ?? ?? ?? ?? FF CD BA", FirstMatch, Offset(1), Rel32)] void luaPushvalue(i32 idx);
+    [Sig("E8 ?? ?? ?? ?? EB ?? 33 F6 EB ?? 49 8B D6", FirstMatch, Offset(1), Rel32)] void luaPushnumber(f64 n);
+    [Sig("E8 ?? ?? ?? ?? 48 63 47 ?? 48 8B CB", FirstMatch, Offset(1), Rel32)] void luaPushstring(cstring s);
+    [Sig("E8 ?? ?? ?? ?? 4D 8B 06 41 8B D7", FirstMatch, Offset(1), Rel32)] void luaPushcclosure(void* fn, i32 n);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 6C 24 ?? 8D 43", FirstMatch, Offset(1), Rel32)] void luaSetfield(i32 idx, cstring k);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4F ?? 48 85 ED", FirstMatch, Offset(1), Rel32)] void luaGetfield(i32 idx, cstring k);
+    [Sig("E8 ?? ?? ?? ?? 33 C9 40 F6 C6", FirstMatch, Offset(1), Rel32)] void luaRemove(i32 idx);
+    [Sig("E8 ?? ?? ?? ?? 8B D8 85 C0 74 39", FirstMatch, Offset(1), Rel32)] i32 luaPcall(i32 nargs, i32 nresults, i32 errfunc);
+    [Sig("48 83 EC 38 48 89 54 24 ?? 48 8D 15", FirstMatch)] i32 luaLLoadbuffer(cstring buff, i64 size, cstring name);
+    [Sig("E8 ?? ?? ?? ?? 8B D8 85 C0 75 ?? 40 84 ED", FirstMatch, Offset(1), Rel32)] i32 luaLLoadfile(cstring filename);
+    [Sig("E8 ?? ?? ?? ?? 3B C3 74 0D", FirstMatch, Offset(1), Rel32)] LuaType luaType(i32 idx);
+    [Sig("E8 ?? ?? ?? ?? 85 C0 74 ?? 83 CA", FirstMatch, Offset(1), Rel32)] i32 luaGetinfo(cstring what, lua_Debug* ar);
+    [Sig("E8 ?? ?? ?? ?? 41 8B D3", FirstMatch, Offset(1), Rel32)] TValue* index2adr(i32 idx);
+    [Sig("40 57 48 83 EC ?? BA ?? ?? ?? ?? 48 8B F9 E8 ?? ?? ?? ?? 4C 8D 05", FirstMatch)] i32 luaBTostring();
+    [Sig("E8 ?? ?? ?? ?? 85 C0 75 ?? 0F 28 CE", FirstMatch, Offset(1), Rel32)] i32 luaNext(i32 idx);
+    [Sig("E8 ?? ?? ?? ?? 41 2B ED", FirstMatch, Offset(1), Rel32)] void luaPushnil();
+    [Sig("E8 ?? ?? ?? ?? 85 C0 75 26 33 D2", FirstMatch, Offset(1), Rel32)] i32 luaGetmetatable(i32 idx);
+    [Sig("E8 ?? ?? ?? ?? EB ?? 4C 8B CF 4C 8B C6 49 8B D6", FirstMatch, Offset(1), Rel32)] i32 luaGettable(i32 idx);
+    [Sig("E8 ?? ?? ?? ?? FF C7 3B FE 7E", FirstMatch, Offset(1), Rel32)] void luaCall(i32 nargs, i32 nresults);
+    [Sig("E8 ?? ?? ?? ?? 33 DB 40 32 ED", FirstMatch, Offset(1), Rel32)] void* luaCheckudata(i32 index, cstring name);
+    [Sig("48 89 5C 24 ?? 57 48 83 EC ?? 0F B7 41 ?? 48 8B D9", FirstMatch)] i32 luaYield(i32 nresults);
+    [Sig("E8 ?? ?? ?? ?? 48 8B CB FF D0 48 8B 5C 24", FirstMatch, Offset(1), Rel32)] void* luaTocfunction(i32 index);
+}
+
+[Size(0x120)]
+struct lua_longjmp {
+    [0x0] lua_longjmp* previous;
+    [0x10] lua_longjmp.jmp_buf[16] b;
+    [0x110] i32 status;
+}
+
+[Size(0x10)]
+struct stringtable {
+    [0x0] GCObject** hash;
+    [0x8] u32 nuse;
+    [0xC] i32 size;
+}
+
+namespace lua_longjmp {
+    [Size(0x10)]
+    struct jmp_buf {
+        [0x0] u64[2] part;
+    }
+}

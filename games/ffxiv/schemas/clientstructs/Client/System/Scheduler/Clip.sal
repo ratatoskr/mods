@@ -1,0 +1,63 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.System.Scheduler.Clip;
+
+[Size(0x98), VirtualTable("48 8D 05 ?? ?? ?? ?? 33 D2 48 89 01 48 89 51 08 48 8B C1", FirstMatch, Offset(3), Rel32)]
+struct BaseClip : Base.SchedulerState {
+    [0x18] Base.LinkedList<BaseClip> list;
+    [0x48] void* data;
+    [Virtual(7)] bool isFinished();
+    [Virtual(9)] void processEvent(i32 event_type, void* a3);
+    [Virtual(16)] bool resolveText();
+    [Virtual(31)] void publish();
+    [Virtual(47)] void event10(void* a2);
+    [Virtual(49)] void event15(f32 dt);
+    [Virtual(51)] void event16(f32 dt);
+}
+
+[Size(0xD0), VirtualTable("48 8D 05 ?? ?? ?? ?? 48 8B D9 ?? ?? ?? 48 8B 89 ?? ?? ?? ?? 48 85 C9 74 ?? E8 ?? ?? ?? ?? 83 BB ?? ?? ?? ?? 00", FirstMatch, Offset(3), Rel32)]
+struct InstanceContentTextClip : BaseClip {
+    // InstanceContentTextData
+    [0x98] cstring text;
+    // BNpcName
+    [0xA0] cstring speaker;
+    [0xA8] u32 resolved_row_id;
+    [0xAC] u32 resolved_b_npc_name_row_id;
+    [0xB0] bool finished;
+    // The TalkSubtitle addon ID, or zero when the addon is not open.
+    [0xB4] u32 addon_id;
+    // Elapsed time in timeline frames (30 frames per second).
+    [0xB8] f32 elapsed_time;
+    [0xBC] f32 subtitle_scale_x;
+    [0xC0] f32 subtitle_scale_y;
+    [0xC4] f32 subtitle_position_x;
+    [0xC8] f32 subtitle_position_y;
+    [Sig("E8 ?? ?? ?? ?? 33 ED 84 C0 0F 84 ?? ?? ?? ?? 48 89 9C 24 ?? ?? ?? ?? 48 8D 44 24 ?? BB", FirstMatch, Offset(1), Rel32)] bool updateTalkSubtitleLayout(f32* scale_x, f32* scale_y, f32* position_y, f32* position_x);
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 48 8B D9 48 63 EA", FirstMatch)] void openOrUpdateTalkSubtitle(i32 event_kind, Component.GUI.AtkValue* values, u32 value_count);
+}
+
+[Size(0xD0), VirtualTable("48 8D 05 ?? ?? ?? ?? 33 D2 C7 41 ?? ?? ?? ?? ?? 48 89 51 ?? 88 51 ?? 48 89 51 ?? 48 89 51 ?? 48 89 51 ?? 48 89 51 ?? 48 89 51 ?? 48 89 51 ?? 48 89 51 ?? 48 89 51 ?? 48 89 51 ?? 48 89 51 ?? 89 51 ?? 48 89 51 ?? 89 51 ?? 89 91 ?? ?? ?? ?? C7 41 ?? ?? ?? ?? ?? C7 81 ?? ?? ?? ?? ?? ?? ?? ?? 48 89 91 ?? ?? ?? ?? ?? ?? ?? 48 8B C1 66 C7 81 ?? ?? ?? ?? ?? ?? 48 89 91 ?? ?? ?? ?? 48 89 91 ?? ?? ?? ?? 48 89 91 ?? ?? ?? ?? 48 89 91 ?? ?? ?? ?? F3 0F 10 05", FirstMatch, Offset(3), Rel32)]
+struct SharedGroupClip : BaseClip {
+}
+
+namespace InstanceContentTextClip {
+    [Size(0x1C)]
+    struct InstanceContentTextClipData {
+        [0x0] u16 id;
+        [0x2] u16 start_frame;
+        [0x4] u16 frame_count;
+        [0xC] InstanceContentTextDisplayMode display_mode;
+        [0x10] u32 row_id;
+        [0x14] u32 b_npc_name_row_id;
+        // The display duration in seconds.
+        [0x18] f32 duration;
+    }
+
+    enum InstanceContentTextDisplayMode : u32 {
+        // Displays the text through UIModule.ShowBattleTalkImage.
+        battle_talk_image = 0,
+        // Displays the text in the TalkSubtitle addon.
+        talk_subtitle = 1,
+    }
+}

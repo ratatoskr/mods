@@ -1,0 +1,14 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Game.MassivePcContent;
+
+[Size(0x918)]
+struct MassivePcContentDirector : Event.Director {
+    [0x600] STD.StdVector<Event.MassivePcContentTodo>[2] massive_pc_content_todos;
+    // Processes updates specific for this director. This handles the categories between 0 and 0x80000000.
+    [Virtual(325)] void processDirectorSpecificDirectorUpdate(u32 category, u32* parameters);
+    // Processes updates shared between all content (e.g. setting the background music). This handles
+    // categories above 0x80000000.
+    [Sig("48 89 5C 24 ?? 57 48 83 EC ?? 81 C2 ?? ?? ?? ?? 41 8B F8", FirstMatch)] void processCommonDirectorUpdate(u32 category, u32 arg1, u32 arg2, u32 arg3, u32 arg4);
+}

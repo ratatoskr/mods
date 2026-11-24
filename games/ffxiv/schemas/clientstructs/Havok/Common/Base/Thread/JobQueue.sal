@@ -1,0 +1,41 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Common.Base.Thread.JobQueue;
+
+[Size(0x8)]
+struct hkJob {
+    [0x0] u8 job_sub_type;
+    [0x1] Types.hkEnum<hkJob.hkJobType, u8> job_type;
+    [0x2] Types.hkEnum<hkJob.hkJobSpuType, u8> spu_type;
+    [0x4] u16 size;
+    [0x6] i16 thread_affinity;
+}
+
+namespace hkJob {
+    enum hkJobSpuType : i32 {
+        invalid = 0,
+        enabled = 1,
+        disabled = 2,
+    }
+
+    enum hkJobType : i32 {
+        dynamics = 0,
+        collide = 1,
+        collision_query = 2,
+        ray_cast_query = 3,
+        animation_sample_and_combine = 4,
+        animation_sample_and_blend = 5,
+        animation_mapping = 6,
+        behavior = 7,
+        cloth = 8,
+        destruction = 9,
+        unit_test = 10,
+        character_proxy = 11,
+        vehicle = 12,
+        collide_static_compound = 13,
+        havok_max = 14,
+        // user0 is havok_max too
+        max = 15,
+    }
+}

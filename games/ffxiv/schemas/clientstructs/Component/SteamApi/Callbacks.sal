@@ -1,0 +1,16 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Component.SteamApi.Callbacks;
+
+[Size(0x10)]
+struct AuthSessionTicketResponseCallback : SteamCallbackBase {
+}
+
+[Size(0x10)]
+struct FloatingGamepadTextInputDismissedCallback : SteamCallbackBase {
+}
+
+[Size(0x10)]
+struct GamepadTextInputDismissedCallback : SteamCallbackBase {
+}

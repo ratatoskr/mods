@@ -1,0 +1,141 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Client.Game.GoldSaucer;
+
+[Size(0x7B0)]
+struct GFateDirector : Event.GoldSaucerDirector {
+    [0x620] System.String.Utf8String map_marker_tooltip_text;
+    [0x688] u32 map_marker_level_id;
+    [0x690] u32 map_marker_icon_id;
+    [0x708] u32[32] object_ids;
+    [0x788] i32 end_timestamp;
+    [0x794] u16 bgm_id;
+    [0x798] u16 screen_image_id1;
+    [0x79A] u16 screen_image_id2;
+    [0x79C] u16 screen_image_id3;
+    [0x79E] GateType gate_type;
+    [0x79F] GatePositionType gate_position_type;
+    [0x7A4] GFateDirectorFlag flags;
+}
+
+bitfield GFateDirectorFlag : u32 {
+    [Bit(0)] bool is_joined;
+    [Bit(1)] bool is_finished;
+    [Bit(2)] bool unk2;
+    [Bit(3)] bool unk3;
+    [Bit(4)] bool unk4;
+    [Bit(5)] bool unk5;
+}
+
+enum GatePositionType : u8 {
+    none = 0,
+    wonder_square_east = 1,
+    event_square = 2,
+    round_square = 3,
+    the_cactpot_board = 4,
+}
+
+enum GateType : u8 {
+    none = 0,
+    cliffhanger = 1,
+    vase_off = 2,
+    skinchange_we_can_believe_in = 3,
+    the_time_of_my_life = 4,
+    any_way_the_wind_blows = 5,
+    leap_of_faith = 6,
+    air_force_one = 7,
+    slice_is_right = 8,
+}
+
+bitfield GoldSaucerFlag : u8 {
+    [Bit(0)] bool unk0;
+    [Bit(1)] bool chocobo_race_tutorial_clear;
+    [Bit(2)] bool unk2;
+    [Bit(3)] bool unk3;
+    [Bit(4)] bool unk4;
+    [Bit(5)] bool chocobo_race_all_open;
+    [Bit(6)] bool unk6;
+    [Bit(7)] bool unk7;
+}
+
+[Size(0x68)]
+struct GoldSaucerManager {
+    [0x28] GFateDirector* current_g_fate_director;
+    [0x50] u32 weekly_lot_offset_time;
+    [0x58] GoldSaucerFlag flags;
+    [Sig("89 43 64 48 89 1D", FirstMatch, Offset(6), Rel32)] static GoldSaucerManager* instance;
+}
+
+[Size(0x20C0)]
+struct RaceChocoboDirector : Event.GoldSaucerDirector {
+    [0x620] bool is_tutorial;
+    [0x622] bool racers_loaded;
+    [0x624] RaceChocoboDirector.RaceState state;
+    // Seconds, counts up from the value the server sent with the last `state` change.
+    [0x628] f32 state_timer;
+    [0x62C] u32 chocobo_race_id;
+    [0x630] bool unk630;
+    [0x634] f32 progress;
+    [0x638] u32 chocobo_race_tutorial_id;
+    [0x12EA] i8 racer_count;
+    [0x12EB] i8 local_racer_index;
+    [0x12F0] RaceChocoboDirector.Racer[8] racers;
+    // ChocoboRaceItem row id. 0 when no item is held.
+    [0x2070] u8 held_item;
+    [0x2071] u8 item_reel_spins;
+    // ChocoboRaceItem row ids
+    [0x2072] u8[8] item_reel;
+    [0x207A] i8 item_reel_index;
+    // ChocoboRaceAbility row ids
+    [0x207B] u8[3] abilities;
+    [0x207E] bool[3] ability_used;
+    [0x2081] bool is_accelerating;
+    [0x2082] bool is_turning_left;
+    [0x2083] bool is_turning_right;
+    [0x2084] bool is_decelerating;
+    [0x20A8] u8 new_rank;
+    [0x20A9] u8 learned_ability;
+    [Sig("E8 ?? ?? ?? ?? 48 8B CF E8 ?? ?? ?? ?? 48 8B CF E8 ?? ?? ?? ?? 48 8D 9F ?? ?? ?? ??", FirstMatch, Offset(1), Rel32)] void handleInput();
+    [Sig("45 33 C9 44 8B C2 41 8D 51 11", FirstMatch)] void useItem(u32 item_id);
+    [Sig("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 4C 39 35", FirstMatch, Offset(1), Rel32)] void useAbility(u32 ability_id);
+    [Sig("E8 ?? ?? ?? ?? 84 C0 74 ?? 33 C0 E9 ?? ?? ?? ?? B8 A5 12 00 00", FirstMatch, Offset(1), Rel32)] bool canUseItem();
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? B8 A6 12 00 00", FirstMatch, Offset(1), Rel32)] bool canUseAbility(u32 ability_id);
+}
+
+namespace RaceChocoboDirector {
+    enum RaceState : i32 {
+        none = 0,
+        lobby = 1,
+        countdown = 2,
+        racing = 3,
+        results = 4,
+    }
+
+    [Size(0x1B0)]
+    struct Racer {
+        [0x8] RaceChocoboDirector* director;
+        [0x10] i32 index;
+        [0x14] u32 entity_id;
+        [0x18] Event.RacingChocoboNameResolver name_resolver;
+        [0xD4] f32 stamina;
+        // Bit N is row N of the ChocoboRaceStatus
+        [0xD8] u32 status_flags;
+        [0x110] i8 previous_rank;
+        [0x111] i8 current_place;
+        [0x112] bool has_finished;
+        [0x114] i32 finish_time;
+        [0x120] Common.Math.Vector3 position;
+        [0x130] Common.Math.Vector3 previous_position;
+        [0x140] bool is_accelerating;
+        [0x141] bool is_decelerating;
+        [0x144] RacerTurn turn;
+        [0x150] Common.Math.Vector3 smoothed_position;
+    }
+
+    enum RacerTurn : i32 {
+        none = 0,
+        left = 1,
+        right = 2,
+    }
+}

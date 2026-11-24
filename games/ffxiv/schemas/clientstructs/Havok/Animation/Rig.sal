@@ -1,0 +1,108 @@
+// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
+// since this is written again.
+
+namespace Havok.Animation.Rig;
+
+[Size(0x10)]
+struct hkaBone {
+    [0x0] Common.Base.Container.String.hkStringPtr name;
+    [0x8] u8 lock_translation;
+}
+
+[Size(0x70)]
+struct hkaBoneAttachment : Common.Base.Object.hkReferencedObject {
+    [0x10] Common.Base.Container.String.hkStringPtr original_skeleton_name;
+    [0x18] Common.Base.Math.Matrix.hkMatrix4f bone_from_attachment;
+    [0x58] Common.Base.Types.hkRefVariant attachment;
+    [0x60] Common.Base.Container.String.hkStringPtr name;
+    [0x68] i16 bone_index;
+}
+
+[Size(0x50)]
+struct hkaPose {
+    [0x0] hkaSkeleton* skeleton;
+    [0x8] Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf> local_pose;
+    [0x18] Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf> model_pose;
+    [0x28] Common.Base.Container.Array.hkArray<u32> bone_flags;
+    [0x38] u8 model_in_sync;
+    [0x39] u8 local_in_sync;
+    [0x40] Common.Base.Container.Array.hkArray<f32> float_slot_values;
+    [Sig("40 53 48 83 EC 20 4C 89 01 33 C0", FirstMatch)] hkaPose* ctor1(hkaPose.PoseSpace space, hkaSkeleton* skeleton, Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf>* pose);
+    [Sig("40 53 48 83 EC 30 4C 89 01", FirstMatch)] hkaPose* ctor2(hkaPose.PoseSpace space, hkaSkeleton* skeleton, Common.Base.Math.QsTransform.hkQsTransformf* pose, i32 num_bones);
+    [Sig("E8 ?? ?? ?? ?? 48 8B 4C 24 ?? 48 8B D0 E8 ?? ?? ?? ?? 48 83 C4 20", FirstMatch, Offset(1), Rel32)] Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf>* getSyncedPoseLocalSpace();
+    [Sig("40 53 48 83 EC 20 48 8B D9 E8 ?? ?? ?? ?? 48 8D 43 18", FirstMatch)] Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf>* getSyncedPoseModelSpace();
+    [Sig("48 8B 01 4C 8B C1 4C 63 48 30 48 8B 02 48 8B 51 08", FirstMatch)] void setPoseLocalSpace(Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf>* pose_local);
+    [Sig("48 8B 01 4C 8B C1 4C 63 48 30 48 8B 02 48 8B 51 18", FirstMatch)] void setPoseModelSpace(Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf>* pose_model);
+    [Sig("4C 8B DC 53 48 81 EC ?? ?? ?? ?? 80 79 39 00", FirstMatch)] void syncLocalSpace();
+    [Sig("48 83 EC 18 80 79 38 00", FirstMatch)] void syncModelSpace();
+    [Sig("E8 ?? ?? ?? ?? 48 8D 5B ?? F3 0F 11 30", FirstMatch, Offset(1), Rel32)] Common.Base.Math.QsTransform.hkQsTransformf* accessBoneLocalSpace(i32 bone_idx);
+    [Sig("48 8B C4 89 50 10 53 57", FirstMatch)] Common.Base.Math.QsTransform.hkQsTransformf* accessBoneModelSpace(i32 bone_idx, hkaPose.PropagateOrNot propagate_or_not);
+    [Sig("E8 ?? ?? ?? ?? 4D 8B 4E 40", FirstMatch, Offset(1), Rel32)] Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf>* accessSyncedPoseLocalSpace();
+    [Sig("E8 ?? ?? ?? ?? 49 8B 8D ?? ?? ?? ?? 8B 58 08", FirstMatch, Offset(1), Rel32)] Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf>* accessSyncedPoseModelSpace();
+    [Sig("E8 ?? ?? ?? ?? EB 05 E8 ?? ?? ?? ?? 4D 8B 4E 40", FirstMatch, Offset(1), Rel32)] Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf>* accessUnsyncedPoseLocalSpace();
+    [Sig("48 8B 01 4C 8B C9 4C 8B 41 08", FirstMatch)] void setToReferencePose();
+    [Sig("48 89 5C 24 ?? 57 48 83 EC 20 48 8B 01 48 8B D9 48 63 78 30", FirstMatch)] void enforceSkeletonConstraintsLocalSpace();
+    [Sig("40 53 48 83 EC 30 48 8B 01 48 8B D9 48 89 74 24", FirstMatch)] void enforceSkeletonConstraintsModelSpace();
+    [Sig("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 0F 28 05", FirstMatch)] void getModelSpaceAabb(Common.Base.Types.Geometry.hkAabb* aabb_out);
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 56 57 41 56 48 83 EC 30 48 8B 01 49 8B E9", FirstMatch)] void init(hkaPose.PoseSpace space, hkaSkeleton* skeleton, Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf>* pose);
+    [Sig("E8 ?? ?? ?? ?? 0F 28 2F", FirstMatch, Offset(1), Rel32)] Common.Base.Math.QsTransform.hkQsTransformf* calculateBoneModelSpace(i32 bone_idx);
+    [Sig("48 89 5C 24 ?? 48 8B 01 45 33 C0", FirstMatch)] u8 checkPoseValidity();
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 41 56 48 83 EC 30 48 8B 01 33 FF 0F 29 74 24 ??", FirstMatch)] u8 checkPoseTransformsValidity();
+}
+
+[Size(0x88)]
+struct hkaSkeleton : Common.Base.Object.hkReferencedObject {
+    [0x10] Common.Base.Container.String.hkStringPtr name;
+    [0x18] Common.Base.Container.Array.hkArray<i16> parent_indices;
+    [0x28] Common.Base.Container.Array.hkArray<hkaBone> bones;
+    [0x38] Common.Base.Container.Array.hkArray<Common.Base.Math.QsTransform.hkQsTransformf> reference_pose;
+    [0x48] Common.Base.Container.Array.hkArray<f32> reference_floats;
+    [0x58] Common.Base.Container.Array.hkArray<Common.Base.Container.String.hkStringPtr> float_slots;
+    [0x68] Common.Base.Container.Array.hkArray<hkaSkeleton.LocalFrameOnBone> local_frames;
+    [0x78] Common.Base.Container.Array.hkArray<hkaSkeleton.Partition> partitions;
+}
+
+[Size(0x1)]
+struct hkaSkeletonUtils {
+    [Sig("E8 ?? ?? ?? ?? 41 8B FF 85 DB", FirstMatch, Offset(1), Rel32)] static void transformLocalPoseToModelPose(i32 num_transforms, i16* parent_indices, Common.Base.Math.QsTransform.hkQsTransformf* pose_local, Common.Base.Math.QsTransform.hkQsTransformf* pose_model_out);
+    [Sig("48 83 EC 38 4C 89 4C 24 ?? 4D 8B C8 4C 8D 05 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 83 C4 38 C3 CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC 48 83 EC 18", FirstMatch)] static void transformModelPoseToLocalPose(i32 num_transforms, i16* parent_indices, Common.Base.Math.QsTransform.hkQsTransformf* pose_model, Common.Base.Math.QsTransform.hkQsTransformf* pose_local_out);
+    [Sig("40 57 48 83 EC 10 48 63 F9", FirstMatch)] static void transformLocalPoseToWorldPose(i32 num_transforms, i16* parent_indices, Common.Base.Math.QsTransform.hkQsTransformf* world_from_model, Common.Base.Math.QsTransform.hkQsTransformf* pose_local, Common.Base.Math.QsTransform.hkQsTransformf* pose_world_out);
+    [Sig("85 C9 0F 8E ?? ?? ?? ?? 48 8B C4 55", FirstMatch)] static void transformWorldPoseToLocalPose(i32 num_transforms, i16* parent_indices, Common.Base.Math.QsTransform.hkQsTransformf* world_from_model, Common.Base.Math.QsTransform.hkQsTransformf* pose_world, Common.Base.Math.QsTransform.hkQsTransformf* pose_local_out);
+    [Sig("40 57 48 83 EC 10 48 63 79 30", FirstMatch)] static void enforcePoseConstraintsModelSpace(hkaSkeleton* skeleton, Common.Base.Math.QsTransform.hkQsTransformf* constraints_local, Common.Base.Math.QsTransform.hkQsTransformf* pose_model_in_out);
+    [Sig("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 48 8B 41 18 49 8B D8", FirstMatch)] static void getAncestors(hkaSkeleton* skeleton, i16 start_point, Common.Base.Container.Array.hkArray<i16>* bones_out);
+    [Sig("48 89 7C 24 ?? 45 0F B6 D9", FirstMatch)] static void markDescendants(hkaSkeleton* skeleton, i32 start_bone, bool* bool_out, bool include_start);
+    [Sig("4C 8B DC 49 89 5B 10 49 89 6B 18 49 89 73 20 57 41 56 41 57 48 83 EC 40", FirstMatch)] static void calcAabb(u32 num_bones, Common.Base.Math.QsTransform.hkQsTransformf* pose_local, i16* parent_indices, Common.Base.Math.QsTransform.hkQsTransformf* world_from_model, Common.Base.Types.Geometry.hkAabb* aabb_out);
+    [Sig("E8 ?? ?? ?? ?? 80 38 00 0F 84 ?? ?? ?? ?? 4C 8B 4B 08", FirstMatch, Offset(1), Rel32)] static u8 hasValidPartitions(hkaSkeleton* skeleton);
+}
+
+namespace hkaPose {
+    enum BoneFlag : i32 {
+        bone_local_dirty = 0,
+        bone_model_dirty = 1,
+    }
+
+    enum PoseSpace : i32 {
+        model_space = 0,
+        local_space = 1,
+    }
+
+    enum PropagateOrNot : i32 {
+        dont_propagate = 0,
+        propagate = 1,
+    }
+}
+
+namespace hkaSkeleton {
+    [Size(0x10)]
+    struct LocalFrameOnBone {
+        [0x0] Common.Base.Types.Geometry.LocalFrame.hkLocalFrame* local_frame;
+        [0x8] i16 bone_index;
+    }
+
+    [Size(0x10)]
+    struct Partition {
+        [0x0] Common.Base.Container.String.hkStringPtr name;
+        [0x8] i16 start_bone_index;
+        [0xA] i16 num_bones;
+    }
+}
