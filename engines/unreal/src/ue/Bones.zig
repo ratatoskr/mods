@@ -9,6 +9,7 @@ const sdk = @import("wraith_sdk");
 
 const Unreal = @import("Unreal.zig");
 
+const TArray = Unreal.TArray;
 const Vec3 = sdk.math.Vec3;
 const Mat4 = sdk.math.Mat4;
 const log = sdk.log.scoped(.unreal);
@@ -159,7 +160,7 @@ pub const Bones = struct {
         if (!self.watching_animated) return;
         self.watching_animated = false;
         const r = self.read_index orelse {
-            const values = self.ue.mem.read([Probe.slots]i32, self.watching + arrays + 32) orelse return;
+            const values = self.ue.mem.read([Probe.slots]i32, self.watching + arrays + 2 * @sizeOf(TArray)) orelse return;
             self.probe.add(values);
             if (self.probe.samples < Probe.enough) return;
             // Not animated every frame, maybe, so it's another go
@@ -167,7 +168,7 @@ pub const Bones = struct {
                 self.probe = .{};
                 return;
             };
-            self.read_index = arrays + 32 + (k + 1) * 4;
+            self.read_index = arrays + 2 * @sizeOf(TArray) + (k + 1) * 4;
             log.info("Posing reads bones at +0x{x} in skinned meshes, drawn as +0x{x} says", .{ arrays, self.read_index.? });
             return;
         };
@@ -196,38 +197,36 @@ pub const Bones = struct {
     fn array(self: *const Bones, component: usize, editable: bool) ?Array {
         const mem = self.ue.mem;
         const arrays = self.arrays orelse return null;
-        const h = mem.live([2][2]usize, component + arrays);
+        const h = mem.live([2]TArray, component + arrays);
         const which: usize = if (self.read_index) |r| blk: {
             if (!isDoubled(h)) break :blk 0;
             break :blk if (mem.live(i32, component + if (editable) r - 4 else r) == 1) 1 else 0;
         } else 0;
-        const count: u32 = @truncate(@as(u64, h[which][1]));
-        if (h[which][0] == 0 or count == 0 or count > max_total) return null;
-        return .{ .data = h[which][0], .count = count };
+        const count: u32 = @bitCast(h[which].num);
+        if (h[which].data == 0 or count == 0 or count > max_total) return null;
+        return .{ .data = h[which].data, .count = count };
     }
 
     /// Has a second array as full as its first. Checked, for meshes that may be gone.
     fn doubled(self: *const Bones, component: usize) bool {
         const arrays = self.arrays orelse return false;
-        return isDoubled(self.ue.mem.read([2][2]usize, component + arrays) orelse return false);
+        return isDoubled(self.ue.mem.read([2]TArray, component + arrays) orelse return false);
     }
 
-    fn isDoubled(h: [2][2]usize) bool {
-        const first: u32 = @truncate(@as(u64, h[0][1]));
-        const second: u32 = @truncate(@as(u64, h[1][1]));
-        return first != 0 and second == first and h[1][0] != 0;
+    fn isDoubled(h: [2]TArray) bool {
+        return h[0].num != 0 and h[1].num == h[0].num and h[1].data != 0;
     }
 
     /// Two `TArray<FTransform>`s of the bone count, or the second empty.
     fn findArrays(self: *const Bones, component: usize, n: u32) ?usize {
         const mem = self.ue.mem;
-        var o = std.mem.alignForward(usize, self.from, 8);
-        while (o + 64 <= self.to) : (o += 8) {
-            const a = mem.read([2]usize, component + o) orelse continue;
-            if (!countIs(a[1], n, false)) continue;
-            const b = mem.read([2]usize, component + o + 16) orelse continue;
-            if (!countIs(b[1], n, true)) continue;
-            if (!self.layout.plausible(mem, a[0])) continue;
+        var o = std.mem.alignForward(usize, self.from, @alignOf(TArray));
+        while (o + 64 <= self.to) : (o += @alignOf(TArray)) {
+            const a = mem.read(TArray, component + o) orelse continue;
+            if (!countIs(a, n, false)) continue;
+            const b = mem.read(TArray, component + o + @sizeOf(TArray)) orelse continue;
+            if (!countIs(b, n, true)) continue;
+            if (!self.layout.plausible(mem, a.data)) continue;
             return o;
         }
         log.warn("Can't find where skinned meshes keep their bones, so there's no posing", .{});
@@ -235,12 +234,9 @@ pub const Bones = struct {
     }
 };
 
-fn countIs(word: usize, n: u32, or_empty: bool) bool {
-    const w: u64 = word;
-    const num: u32 = @truncate(w);
-    const max: u32 = @truncate(w >> 32);
-    if (or_empty and num == 0) return true;
-    return num == n and max >= n;
+fn countIs(a: TArray, n: u32, or_empty: bool) bool {
+    if (or_empty and a.num == 0) return true;
+    return a.num == @as(i32, @intCast(n)) and a.max >= a.num;
 }
 
 const testing = std.testing;
@@ -271,8 +267,8 @@ test "the buffer indexes are the pair that swaps" {
 }
 
 test "bone counts in a TArray's header" {
-    try testing.expect(countIs((@as(usize, 70) << 32) | 70, 70, false));
-    try testing.expect(!countIs((@as(usize, 69) << 32) | 70, 70, false));
-    try testing.expect(countIs(0, 70, true));
-    try testing.expect(!countIs(0, 70, false));
+    try testing.expect(countIs(.{ .data = 0, .num = 70, .max = 70 }, 70, false));
+    try testing.expect(!countIs(.{ .data = 0, .num = 70, .max = 69 }, 70, false));
+    try testing.expect(countIs(.{ .data = 0, .num = 0, .max = 0 }, 70, true));
+    try testing.expect(!countIs(.{ .data = 0, .num = 0, .max = 0 }, 70, false));
 }

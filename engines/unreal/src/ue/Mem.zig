@@ -14,9 +14,20 @@ ranges: std.ArrayList(Range) = .empty,
 
 const Range = struct { start: usize, end: usize };
 
-/// Lowest and highest addresses user code gets on x64 Windows.
+/// A pointer's size, 4 in 32-bit games.
+pub const ptr_size = @sizeOf(usize);
+
+/// A TArray or FString's header, 12 bytes in 32-bit games and 16 in 64-bit ones.
+pub const TArray = extern struct {
+    data: usize,
+    num: i32,
+    max: i32,
+};
+
+/// Lowest and highest addresses user code gets on Windows. 32-bit games are mostly large address
+/// aware, so they get nearly all 4GB under WOW64.
 const lowest = 0x10000;
-const highest = 0x7FFF_FFFF_FFFF;
+const highest = if (ptr_size == 8) 0x7FFF_FFFF_FFFF else 0xFFFE_FFFF;
 
 pub fn init(allocator: std.mem.Allocator) !Mem {
     var self: Mem = .{ .allocator = allocator };
@@ -78,7 +89,7 @@ pub fn read(self: *const Mem, comptime T: type, address: usize) ?T {
 /// A non-null, aligned pointer to somewhere readable.
 pub fn ptr(self: *const Mem, address: usize) ?usize {
     const p = self.read(usize, address) orelse return null;
-    if (p % 8 != 0 or !self.readableNow(p, 8)) return null;
+    if (p % ptr_size != 0 or !self.readableNow(p, ptr_size)) return null;
     return p;
 }
 

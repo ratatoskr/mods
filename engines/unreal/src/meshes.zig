@@ -117,7 +117,7 @@ pub const Meshes = struct {
         const self: *Meshes = @ptrCast(@alignCast(raw));
         // The engine's animating it right now, so plain reads are fine
         const mem = self.ue.mem;
-        const component = mem.live(usize, anim_instance + Unreal.object.outer);
+        const component = mem.live(usize, anim_instance + self.ue.outerAt());
         if (component == 0) return;
         const entry = self.map.getOrPut(gpa, component) catch return;
         if (!entry.found_existing) entry.value_ptr.* = .{ .skip = !self.ue.isA(component, "SkeletalMeshComponent") };

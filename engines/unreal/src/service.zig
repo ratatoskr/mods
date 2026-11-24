@@ -464,7 +464,7 @@ fn write(ue: *const Unreal, field: usize, base: usize, v: Value) Error!void {
         },
         .object => put(usize, at, switch (v.kind) {
             .object => v.object,
-            .integer => @bitCast(v.integer),
+            .integer => @truncate(@as(u64, @bitCast(v.integer))),
             .none => 0,
             else => return wrongValue(v, "an object"),
         }),
@@ -520,11 +520,11 @@ fn wrongValue(v: Value, want: []const u8) Error {
 
 /// An FString: its UTF-16 and length, up to 1024 characters.
 fn readString(ue: *const Unreal, a: std.mem.Allocator, at: usize) []const u8 {
-    const arr = ue.mem.read([2]usize, at) orelse return "";
-    const num: i32 = @bitCast(@as(u32, @truncate(arr[1])));
-    if (arr[0] == 0 or num <= 1) return "";
+    const arr = ue.mem.read(Unreal.TArray, at) orelse return "";
+    const num = arr.num;
+    if (arr.data == 0 or num <= 1) return "";
     const n: usize = @min(@as(usize, @intCast(num - 1)), 1024);
     var units: [1024]u16 = undefined;
-    if (!ue.mem.bytes(arr[0], std.mem.sliceAsBytes(units[0..n]))) return "";
+    if (!ue.mem.bytes(arr.data, std.mem.sliceAsBytes(units[0..n]))) return "";
     return std.unicode.utf16LeToUtf8Alloc(a, units[0..n]) catch "";
 }

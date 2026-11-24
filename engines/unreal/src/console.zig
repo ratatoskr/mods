@@ -6,11 +6,13 @@ const std = @import("std");
 const sdk = @import("wraith_sdk");
 
 const World = @import("ue/World.zig");
+const TArray = @import("ue/Unreal.zig").TArray;
 const Loop = @import("loop.zig").Loop;
 
 const log = sdk.log.scoped(.unreal);
 const ui = sdk.ui;
 
+const P = @sizeOf(usize);
 const max_len = 512;
 const max_pending = 16;
 const max_history = 64;
@@ -130,8 +132,8 @@ pub const Console = struct {
         wide[len] = 0;
         var params: [256]u8 align(16) = @splat(0);
         if (f.size > params.len) return;
-        std.mem.writeInt(usize, params[f.params[0]..][0..8], w, .little);
-        writeString(params[f.params[1]..][0..16], wide[0 .. len + 1]);
+        std.mem.writeInt(usize, params[f.params[0]..][0..P], w, .little);
+        writeString(params[f.params[1]..][0..@sizeOf(TArray)], wide[0 .. len + 1]);
         loop.call(f.object, f.function, params[0..f.size]);
         log.info("Ran \"{s}\"", .{command});
     }
@@ -156,10 +158,10 @@ pub const Console = struct {
         if (class == 0) return true;
         var params: [64]u8 align(16) = @splat(0);
         if (spawn.size > params.len) return true;
-        std.mem.writeInt(usize, params[spawn.params[0]..][0..8], class, .little);
-        std.mem.writeInt(usize, params[spawn.params[1]..][0..8], viewport, .little);
+        std.mem.writeInt(usize, params[spawn.params[0]..][0..P], class, .little);
+        std.mem.writeInt(usize, params[spawn.params[1]..][0..P], viewport, .little);
         loop.call(spawn.object, spawn.function, params[0..spawn.size]);
-        const console = std.mem.readInt(usize, params[spawn.params[2]..][0..8], .little);
+        const console = std.mem.readInt(usize, params[spawn.params[2]..][0..P], .little);
         if (console == 0) {
             log.warn("Couldn't make the game a console", .{});
             return true;
@@ -174,13 +176,12 @@ pub const Console = struct {
 fn keysNote(world: *const World) []const u8 {
     const at = world.off.console_keys orelse return "";
     if (world.input_settings == 0) return "";
-    const count = world.ue.mem.read(i32, world.input_settings + at + 8) orelse return "";
+    const count = world.ue.mem.read(i32, world.input_settings + at + @offsetOf(TArray, "num")) orelse return "";
     return if (count > 0) "The game's console key opens it, usually ` or ~" else "The game has no console key set, so use Wraith's Unreal console window";
 }
 
 /// An FString pointing at `text`, which ends in 0 and has to outlive the call.
-fn writeString(out: *[16]u8, text: []const u16) void {
-    std.mem.writeInt(usize, out[0..8], @intFromPtr(text.ptr), .little);
-    std.mem.writeInt(i32, out[8..12], @intCast(text.len), .little);
-    std.mem.writeInt(i32, out[12..16], @intCast(text.len), .little);
+fn writeString(out: *[@sizeOf(TArray)]u8, text: []const u16) void {
+    const s: TArray = .{ .data = @intFromPtr(text.ptr), .num = @intCast(text.len), .max = @intCast(text.len) };
+    out.* = std.mem.toBytes(s);
 }

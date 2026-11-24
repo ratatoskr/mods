@@ -71,14 +71,14 @@ pub const Morphs = struct {
         var buf: [256]u8 = undefined;
         for (components) |c| {
             const asset = mem.ptr(c + self.off.skeletal_mesh) orelse continue;
-            const header = mem.read([2]usize, asset + self.off.morph_targets) orelse continue;
-            const count: u32 = @truncate(@as(u64, header[1]));
-            if (header[0] == 0 or count == 0) continue;
+            const header = mem.read(Unreal.TArray, asset + self.off.morph_targets) orelse continue;
+            const count: u32 = @bitCast(header.num);
+            if (header.data == 0 or header.num <= 0) continue;
             const mesh = try a.dupe(u8, self.ue.nameOf(asset, &buf) orelse "?");
             for (0..count) |i| {
                 if (shapes.items.len == max_shapes) return;
-                const target = mem.ptr(header[0] + i * @sizeOf(usize)) orelse continue;
-                const name = mem.read(FName, target + Unreal.object.name) orelse continue;
+                const target = mem.ptr(header.data + i * @sizeOf(usize)) orelse continue;
+                const name = self.ue.readName(target + Unreal.object.name) orelse continue;
                 const text = self.ue.nameOf(target, &buf) orelse continue;
                 try shapes.append(a, .{ .component = c, .name = name });
                 try list.append(a, .{ .name = try a.dupe(u8, text), .mesh = mesh });
@@ -91,7 +91,7 @@ pub const Morphs = struct {
         var p: [32]u8 align(16) = @splat(0);
         const c = self.off.curve;
         if (c.size > p.len) return 0;
-        @memcpy(p[c.params[0]..][0..8], std.mem.asBytes(&name));
+        self.ue.putName(p[c.params[0]..], name);
         self.loop.call(anim_instance, c.function, p[0..c.size]);
         return std.mem.bytesToValue(f32, p[c.params[1]..][0..4]);
     }
@@ -103,7 +103,7 @@ pub const Morphs = struct {
         var p: [32]u8 align(16) = @splat(0);
         const c = self.off.set;
         if (c.size > p.len) return;
-        @memcpy(p[c.params[0]..][0..8], std.mem.asBytes(&shape.name));
+        self.ue.putName(p[c.params[0]..], shape.name);
         std.mem.writeInt(u32, p[c.params[1]..][0..4], @bitCast(value orelse 0), .little);
         p[c.params[2]] = @intFromBool(value == null);
         self.loop.call(shape.component, c.function, p[0..c.size]);

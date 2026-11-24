@@ -12,6 +12,9 @@ pub const Names = names_.Names;
 pub const FName = names_.FName;
 pub const Objects = objects_.Objects;
 pub const object = objects_.object;
+pub const TArray = Mem.TArray;
+
+const P = Mem.ptr_size;
 
 const Unreal = @This();
 
@@ -20,6 +23,9 @@ names: Names,
 objects: Objects,
 layout: Layout,
 core: Core = .{},
+/// An FName's size: its index and number, and in games built with case preserving names the
+/// index it's shown with between them.
+name_size: usize = @sizeOf(FName),
 
 /// Offsets that vary between versions.
 pub const Layout = struct {
@@ -35,7 +41,7 @@ pub const Layout = struct {
     field_next: usize,
     ffield_next: usize = 0,
     ffield_name: usize = 0,
-    ffield_class: usize = 0x8,
+    ffield_class: usize = P,
     /// FProperty or UProperty.
     array_dim: usize,
     element_size: usize,
@@ -66,6 +72,9 @@ pub fn find(mem: *const Mem, data: []const []const usize, missing: *[]const u8) 
     // The first object is always CoreUObject's package
     var buf: [256]u8 = undefined;
     const first = objects.get(0) orelse return error.UnusualObjects;
+    // Its number's 0, so a second index the same as the first is the one it's shown with
+    const words = mem.read([2]u32, first + object.name) orelse return error.UnusualObjects;
+    if (words[0] != 0 and words[1] == words[0]) self.name_size = @sizeOf(FName) + 4;
     if (!std.mem.eql(u8, self.nameOf(first, &buf) orelse "", "/Script/CoreUObject")) {
         missing.* = "/Script/CoreUObject as the first object, so objects aren't laid out the usual way";
         return error.UnusualObjects;
@@ -74,13 +83,45 @@ pub fn find(mem: *const Mem, data: []const []const usize, missing: *[]const u8) 
     return self;
 }
 
+/// Where UObject keeps its outer, after its name.
+pub fn outerAt(self: *const Unreal) usize {
+    return std.mem.alignForward(usize, object.name + self.name_size, P);
+}
+
+/// Where UObject ends, and UField's Next starts.
+pub fn objectSize(self: *const Unreal) usize {
+    return self.outerAt() + P;
+}
+
 pub fn nameOf(self: *const Unreal, obj: usize, buf: []u8) ?[]const u8 {
     return self.fname(obj + object.name, buf);
 }
 
+/// The FName at `at`.
+pub fn readName(self: *const Unreal, at: usize) ?FName {
+    var bytes: [@sizeOf(FName) + 4]u8 = undefined;
+    if (!self.mem.bytes(at, bytes[0..self.name_size])) return null;
+    return self.nameFrom(&bytes);
+}
+
+/// The FName in `bytes`, like a UFunction's params.
+pub fn nameFrom(self: *const Unreal, bytes: []const u8) FName {
+    return .{
+        .index = std.mem.readInt(u32, bytes[0..4], .little),
+        .number = std.mem.readInt(u32, bytes[self.name_size - 4 ..][0..4], .little),
+    };
+}
+
+/// `name` into `out`, `name_size` of it. It's shown with its own index.
+pub fn putName(self: *const Unreal, out: []u8, name: FName) void {
+    std.mem.writeInt(u32, out[0..4], name.index, .little);
+    if (self.name_size > @sizeOf(FName)) std.mem.writeInt(u32, out[4..8], name.index, .little);
+    std.mem.writeInt(u32, out[self.name_size - 4 ..][0..4], name.number, .little);
+}
+
 /// The text of the FName at `at`, with its number.
 pub fn fname(self: *const Unreal, at: usize, buf: []u8) ?[]const u8 {
-    const name = self.mem.read(FName, at) orelse return null;
+    const name = self.readName(at) orelse return null;
     const text = self.names.text(name.index, buf) orelse return null;
     if (name.number == 0) return text;
     const suffix = std.fmt.bufPrint(buf[text.len..], "_{d}", .{name.number - 1}) catch return text;
@@ -92,7 +133,7 @@ pub fn classOf(self: *const Unreal, obj: usize) ?usize {
 }
 
 pub fn outerOf(self: *const Unreal, obj: usize) ?usize {
-    return self.mem.ptr(obj + object.outer);
+    return self.mem.ptr(obj + self.outerAt());
 }
 
 pub fn classNameOf(self: *const Unreal, obj: usize, buf: []u8) ?[]const u8 {
@@ -146,11 +187,11 @@ fn findLayout(self: *Unreal, missing: *[]const u8) Problem!Layout {
         return error.MissingCore;
     };
     const mem = self.mem;
-    var layout: Layout = .{ .super = 0, .children = 0, .child_properties = null, .struct_size = 0, .field_next = 0x28, .array_dim = 0, .element_size = 0, .offset = 0, .property_end = 0, .doubles = false };
+    var layout: Layout = .{ .super = 0, .children = 0, .child_properties = null, .struct_size = 0, .field_next = self.objectSize(), .array_dim = 0, .element_size = 0, .offset = 0, .property_end = 0, .doubles = false };
 
     // Class's super is Struct, whose super is Field
     layout.super = for (0..16) |k| {
-        const o = 0x28 + k * 8;
+        const o = self.objectSize() + k * P;
         if (mem.ptr(core.class + o) == core.@"struct" and mem.ptr(core.@"struct" + o) == core.field) break o;
     } else return self.unusual(missing, "UStruct's SuperStruct");
 
@@ -159,7 +200,7 @@ fn findLayout(self: *Unreal, missing: *[]const u8) Problem!Layout {
     layout.child_properties = null;
     layout.children = 0;
     for (1..8) |k| {
-        const o = layout.super + k * 8;
+        const o = layout.super + k * P;
         const p = mem.ptr(core.vector + o) orelse continue;
         if (self.objects.isObject(p)) {
             if (self.nameIs(p, "X") or self.nameIs(p, "Z")) {
@@ -169,7 +210,9 @@ fn findLayout(self: *Unreal, missing: *[]const u8) Problem!Layout {
             }
             continue;
         }
-        for ([_]usize{ 0x28, 0x20, 0x30, 0x18 }) |n| {
+        // Half as far in 32-bit games, since everything before it is pointers
+        for ([_]usize{ 0x28, 0x20, 0x30, 0x18 }) |n64| {
+            const n = n64 * P / 8;
             if (self.fnameIs(p + n, "X")) {
                 layout.child_properties = o;
                 layout.ffield_name = n;
@@ -182,22 +225,22 @@ fn findLayout(self: *Unreal, missing: *[]const u8) Problem!Layout {
     if (x == 0) return self.unusual(missing, "Vector's X");
     if (layout.child_properties) |cp| {
         // Children comes just before ChildProperties
-        layout.children = cp - 8;
-        layout.field_next = 0x28;
+        layout.children = cp - P;
+        layout.field_next = self.objectSize();
         layout.ffield_next = for (0..6) |k| {
-            const o = 0x18 + k * 8;
+            const o = 3 * P + k * P;
             if (o == layout.ffield_name) continue;
             const y = mem.ptr(x + o) orelse continue;
             if (self.fnameIs(y + layout.ffield_name, "Y")) break o;
         } else return self.unusual(missing, "FField's Next");
-        layout.ffield_class = 0x8;
+        layout.ffield_class = P;
         const class = mem.ptr(x + layout.ffield_class) orelse return self.unusual(missing, "FField's class");
         var buf: [256]u8 = undefined;
         if (!std.mem.endsWith(u8, self.fname(class, &buf) orelse "", "Property")) return self.unusual(missing, "FField's class");
     } else {
-        // 0x28 in stock engines, further in games that added to UObject
+        // Right after UObject in stock engines, further in games that added to it
         layout.field_next = for (0..6) |k| {
-            const o = 0x28 + k * 8;
+            const o = self.objectSize() + k * P;
             const next = mem.ptr(x + o) orelse continue;
             if (self.nameIs(next, "Y")) break o;
         } else return self.unusual(missing, "UField's Next");
@@ -207,7 +250,7 @@ fn findLayout(self: *Unreal, missing: *[]const u8) Problem!Layout {
     x = self.fieldNamed(core.vector, "X") orelse return self.unusual(missing, "Vector's X");
     const y = self.fieldNamed(core.vector, "Y") orelse return self.unusual(missing, "Vector's Y");
     const z = self.fieldNamed(core.vector, "Z") orelse return self.unusual(missing, "Vector's Z");
-    const start = if (layout.child_properties != null) layout.ffield_name + 8 else layout.field_next + 8;
+    const start = if (layout.child_properties != null) layout.ffield_name + self.name_size else layout.field_next + P;
     var size: i32 = 0;
     layout.offset = for (0..24) |k| {
         const o = start + k * 4;
@@ -229,7 +272,7 @@ fn findLayout(self: *Unreal, missing: *[]const u8) Problem!Layout {
 
     // Vector is 3 numbers, Vector2D 2
     layout.struct_size = for (0..12) |k| {
-        const o = layout.children + 8 + k * 4;
+        const o = layout.children + P + k * 4;
         if (mem.read(i32, core.vector + o) == 3 * size and mem.read(i32, core.vector2d + o) == 2 * size) break o;
     } else return self.unusual(missing, "UStruct's size");
 
@@ -238,7 +281,7 @@ fn findLayout(self: *Unreal, missing: *[]const u8) Problem!Layout {
     const r = self.fieldNamed(core.transform, "Rotation") orelse return self.unusual(missing, "Transform's Rotation");
     layout.property_end = for (0..20) |k| {
         const o = layout.offset + 4 + k * 4;
-        if (o % 8 != 0) continue;
+        if (o % P != 0) continue;
         if (mem.ptr(r + o) == core.quat) break o;
     } else return self.unusual(missing, "where a struct property's struct is");
     return layout;

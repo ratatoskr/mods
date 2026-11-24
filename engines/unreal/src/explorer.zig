@@ -12,6 +12,7 @@ const std = @import("std");
 const sdk = @import("wraith_sdk");
 
 const Unreal = @import("ue/Unreal.zig");
+const TArray = Unreal.TArray;
 const World = @import("ue/World.zig");
 const objects_ = @import("ue/objects.zig");
 const Loop = @import("loop.zig").Loop;
@@ -391,10 +392,10 @@ pub const Explorer = struct {
         var w: Walk = .{ .count = self.ue.objects.count(), .world = world };
         // The world's levels, streaming ones too, whose outers are worlds of their own
         if (self.found.world_levels) |off| {
-            const arr = self.ue.mem.read([2]usize, world + off) orelse .{ 0, 0 };
-            const n: usize = @min(@as(u32, @truncate(arr[1])), 512);
+            const arr = self.ue.mem.read(TArray, world + off) orelse std.mem.zeroes(TArray);
+            const n: usize = @intCast(std.math.clamp(arr.num, 0, 512));
             for (0..n) |i| {
-                const level = self.ue.mem.ptr(arr[0] + i * 8) orelse continue;
+                const level = self.ue.mem.ptr(arr.data + i * @sizeOf(usize)) orelse continue;
                 w.levels.put(gpa, level, {}) catch {};
             }
         }
@@ -415,7 +416,7 @@ pub const Explorer = struct {
             if (obj == 0) continue;
             if (plain(u32, obj + object.flags) & template_flags != 0) continue;
             const class = plain(usize, obj + object.class);
-            const outer = plain(usize, obj + object.outer);
+            const outer = plain(usize, obj + self.ue.outerAt());
             const raw: Raw = .{ .object = obj, .outer = outer, .class = class };
             switch (self.sortOf(class)) {
                 .actor => if (w.levels.contains(outer) and w.actors.items.len < max_actors) w.actors.append(gpa, raw) catch {},
@@ -786,7 +787,7 @@ pub const Explorer = struct {
                 prop.value = .{ .flag = byte & prop.mask != 0 };
             } else if (std.mem.eql(u8, kind_name, "ByteProperty") or std.mem.eql(u8, kind_name, "EnumProperty")) {
                 const is_enum_prop = kind_name[0] == 'E';
-                const enumeration = if (is_enum_prop) ue.mem.ptr(field + ue.layout.property_end + 8) else p.type;
+                const enumeration = if (is_enum_prop) ue.mem.ptr(field + ue.layout.property_end + @sizeOf(usize)) else p.type;
                 const v = r.ex.readNumber(at, switch (size) {
                     1 => .u8,
                     2 => .u16,
@@ -832,11 +833,11 @@ pub const Explorer = struct {
                 }
             } else if (std.mem.eql(u8, kind_name, "ArrayProperty")) {
                 prop.kind = .array;
-                const arr = ue.mem.read([2]usize, at) orelse return;
-                const count: u32 = @truncate(arr[1]);
+                const arr = ue.mem.read(TArray, at) orelse return;
+                const count: u32 = @bitCast(arr.num);
                 prop.label = std.fmt.allocPrint(r.a, "{d} items", .{count}) catch "";
                 r.props.append(r.a, prop) catch return;
-                if (depth < max_depth and count > 0 and count < 1 << 24) r.elements(field, arr[0], @min(count, max_elements), depth + 1);
+                if (depth < max_depth and count > 0 and count < 1 << 24) r.elements(field, arr.data, @min(count, max_elements), depth + 1);
                 return;
             } else if (std.mem.eql(u8, kind_name, "TextProperty")) {
                 prop.label = "(text)";
@@ -1006,13 +1007,13 @@ pub const Explorer = struct {
     /// An enum's names and values, as fields.
     fn enumFields(self: *Explorer, a: std.mem.Allocator, enumeration: usize) []const Field {
         const off = self.enumNamesAt(enumeration) orelse return &.{};
-        const arr = self.ue.mem.read([2]usize, enumeration + off) orelse return &.{};
-        const n: usize = @min(@as(u32, @truncate(arr[1])), 1024);
+        const arr = self.ue.mem.read(TArray, enumeration + off) orelse return &.{};
+        const n: usize = @intCast(std.math.clamp(arr.num, 0, 1024));
         const out = a.alloc(Field, n) catch return &.{};
         var buf: [256]u8 = undefined;
         for (out, 0..) |*f, i| {
-            const value = self.ue.mem.read(i64, arr[0] + i * 16 + 8) orelse 0;
-            f.* = .{ .name = a.dupe(u8, shortEnum(self.ue.fname(arr[0] + i * 16, &buf) orelse "?")) catch "?", .type = "", .offset = @truncate(value), .size = 0 };
+            const value = self.ue.mem.read(i64, arr.data + i * self.enumPair() + self.enumValueAt()) orelse 0;
+            f.* = .{ .name = a.dupe(u8, shortEnum(self.ue.fname(arr.data + i * self.enumPair(), &buf) orelse "?")) catch "?", .type = "", .offset = @truncate(value), .size = 0 };
         }
         return out;
     }
@@ -1046,12 +1047,12 @@ pub const Explorer = struct {
 
     /// An FString: its UTF-16 and length, up to 255 characters.
     fn readString(self: *const Explorer, a: std.mem.Allocator, at: usize) []const u8 {
-        const arr = self.ue.mem.read([2]usize, at) orelse return "";
-        const num: i32 = @bitCast(@as(u32, @truncate(arr[1])));
-        if (arr[0] == 0 or num <= 1) return "";
+        const arr = self.ue.mem.read(TArray, at) orelse return "";
+        const num = arr.num;
+        if (arr.data == 0 or num <= 1) return "";
         const n: usize = @min(@as(usize, @intCast(num - 1)), 255);
         var units: [255]u16 = undefined;
-        if (!self.ue.mem.bytes(arr[0], std.mem.sliceAsBytes(units[0..n]))) return "";
+        if (!self.ue.mem.bytes(arr.data, std.mem.sliceAsBytes(units[0..n]))) return "";
         return std.unicode.utf16LeToUtf8Alloc(a, units[0..n]) catch "";
     }
 
@@ -1065,14 +1066,23 @@ pub const Explorer = struct {
 
     fn enumLabel(self: *Explorer, a: std.mem.Allocator, enumeration: usize, value: i64) []const u8 {
         const off = self.enumNamesAt(enumeration) orelse return "";
-        const arr = self.ue.mem.read([2]usize, enumeration + off) orelse return "";
-        const n: usize = @min(@as(u32, @truncate(arr[1])), 1024);
+        const arr = self.ue.mem.read(TArray, enumeration + off) orelse return "";
+        const n: usize = @intCast(std.math.clamp(arr.num, 0, 1024));
         var buf: [256]u8 = undefined;
         for (0..n) |i| {
-            if (self.ue.mem.read(i64, arr[0] + i * 16 + 8) != value) continue;
-            return a.dupe(u8, shortEnum(self.ue.fname(arr[0] + i * 16, &buf) orelse "")) catch "";
+            if (self.ue.mem.read(i64, arr.data + i * self.enumPair() + self.enumValueAt()) != value) continue;
+            return a.dupe(u8, shortEnum(self.ue.fname(arr.data + i * self.enumPair(), &buf) orelse "")) catch "";
         }
         return "";
+    }
+
+    /// Where a value is in one of UEnum's name and value pairs, after the name.
+    fn enumValueAt(self: *const Explorer) usize {
+        return std.mem.alignForward(usize, self.ue.name_size, 8);
+    }
+
+    fn enumPair(self: *const Explorer) usize {
+        return self.enumValueAt() + 8;
     }
 
     /// Where UEnum keeps `Names`, its pairs of name and value, worked out the first time: a
@@ -1081,17 +1091,15 @@ pub const Explorer = struct {
         if (self.enum_names_tried) return self.enum_names;
         self.enum_names_tried = true;
         const ue = self.ue;
-        const after_field = ue.layout.field_next + 8;
+        const after_field = ue.layout.field_next + @sizeOf(usize);
         var buf: [256]u8 = undefined;
         var o: usize = after_field;
-        while (o < after_field + 0x60) : (o += 8) {
-            const arr = ue.mem.read([2]usize, enumeration + o) orelse continue;
-            const num: u32 = @truncate(arr[1]);
-            const max: u32 = @truncate(arr[1] >> 32);
-            if (num == 0 or num > max or max > 100_000) continue;
-            const text = ue.fname(arr[0], &buf) orelse continue;
+        while (o < after_field + 0x60) : (o += @alignOf(TArray)) {
+            const arr = ue.mem.read(TArray, enumeration + o) orelse continue;
+            if (arr.num <= 0 or arr.num > arr.max or arr.max > 100_000) continue;
+            const text = ue.fname(arr.data, &buf) orelse continue;
             if (text.len == 0) continue;
-            const value = ue.mem.read(i64, arr[0] + 8) orelse continue;
+            const value = ue.mem.read(i64, arr.data + self.enumValueAt()) orelse continue;
             if (value < -1_000_000 or value > 1_000_000) continue;
             self.enum_names = o;
             return o;

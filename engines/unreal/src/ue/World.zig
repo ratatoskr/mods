@@ -162,7 +162,7 @@ pub fn paused(self: *const World) bool {
 pub fn playerController(self: *const World) ?usize {
     const instance = self.at(self.engine, self.off.game_instance) orelse return null;
     const players = self.at(instance, self.off.local_players) orelse return null;
-    const count = self.ue.mem.read(i32, instance + self.off.local_players + 8) orelse return null;
+    const count = self.ue.mem.read(i32, instance + self.off.local_players + @offsetOf(Unreal.TArray, "num")) orelse return null;
     if (count < 1) return null;
     const player = self.ue.mem.ptr(players) orelse return null;
     return self.at(player, self.off.player_controller);

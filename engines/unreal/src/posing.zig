@@ -358,16 +358,16 @@ pub const Posing = struct {
         if (c.size > p.len) return .{ .index = 0, .number = 0 };
         std.mem.writeInt(i32, p[c.params[0]..][0..4], index, .little);
         self.loop.call(component, c.function, p[0..c.size]);
-        return std.mem.bytesToValue(FName, p[c.params[1]..][0..8]);
+        return self.ue.nameFrom(p[c.params[1]..]);
     }
 
     fn parentBone(self: *Posing, component: usize, name: FName) FName {
         var p: [32]u8 align(16) = @splat(0);
         const c = self.off.parent_bone;
         if (c.size > p.len) return .{ .index = 0, .number = 0 };
-        @memcpy(p[c.params[0]..][0..8], std.mem.asBytes(&name));
+        self.ue.putName(p[c.params[0]..], name);
         self.loop.call(component, c.function, p[0..c.size]);
-        return std.mem.bytesToValue(FName, p[c.params[1]..][0..8]);
+        return self.ue.nameFrom(p[c.params[1]..]);
     }
 
     /// Holds the meshes being posed while posing's open, and lets them go as it closes, a few

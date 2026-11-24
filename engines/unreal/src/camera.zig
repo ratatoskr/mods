@@ -134,9 +134,9 @@ pub const Camera = struct {
         if (manager == self.manager) return;
         var params: [64]u8 align(16) = @splat(0);
         if (self.off.add_size > params.len) return;
-        std.mem.writeInt(usize, params[self.off.add_class..][0..8], self.off.modifier_class, .little);
+        std.mem.writeInt(usize, params[self.off.add_class..][0..@sizeOf(usize)], self.off.modifier_class, .little);
         self.loop.call(manager, self.off.add, params[0..self.off.add_size]);
-        const modifier = std.mem.readInt(usize, params[self.off.add_returns..][0..8], .little);
+        const modifier = std.mem.readInt(usize, params[self.off.add_returns..][0..@sizeOf(usize)], .little);
         self.manager = manager;
         self.modifier = modifier;
         if (modifier == 0) {
@@ -155,7 +155,7 @@ pub const Camera = struct {
         if (!self.world.ue.objects.isObject(self.manager) or !self.world.ue.objects.isObject(self.modifier)) return;
         var params: [32]u8 align(16) = @splat(0);
         if (self.off.remove_size > params.len) return;
-        std.mem.writeInt(usize, params[self.off.remove_param..][0..8], self.modifier, .little);
+        std.mem.writeInt(usize, params[self.off.remove_param..][0..@sizeOf(usize)], self.modifier, .little);
         self.loop.call(self.manager, remove, params[0..self.off.remove_size]);
     }
 

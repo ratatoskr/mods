@@ -145,10 +145,11 @@ pub const Plugin = struct {
 
         var version_buf: [64]u8 = undefined;
         const l = ue.layout;
-        log.info("{s}: {d} objects, names in {s}, properties as {s}, {s} vectors (found in {d}ms)", .{
+        log.info("{s}: {d} objects, names in {s}{s}, properties as {s}, {s} vectors (found in {d}ms)", .{
             engineVersion(&version_buf) orelse if (l.doubles) "UE5" else "UE4",
             ue.objects.count(),
             if (ue.names.kind == .pool) "a pool (4.23+)" else "an array (before 4.23)",
+            if (ue.name_size > @sizeOf(Unreal.FName)) ", case preserving" else "",
             if (l.child_properties != null) "FField (4.25+)" else "UProperty (before 4.25)",
             if (l.doubles) "double" else "float",
             took,
@@ -236,11 +237,11 @@ fn dataSections(a: std.mem.Allocator, out: *std.ArrayList([]const usize)) !void 
     var it = try sdk.Module.main().sections();
     while (it.next()) |s| {
         if (!s.writable or s.executable or !s.readable) continue;
-        const start = std.mem.alignForward(usize, s.start, 8);
+        const start = std.mem.alignForward(usize, s.start, @sizeOf(usize));
         const end = s.start + s.len;
-        if (end <= start + 8) continue;
+        if (end <= start + @sizeOf(usize)) continue;
         const words: [*]const usize = @ptrFromInt(start);
-        try out.append(a, words[0 .. (end - start) / 8]);
+        try out.append(a, words[0 .. (end - start) / @sizeOf(usize)]);
     }
 }
 

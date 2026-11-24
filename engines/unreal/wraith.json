@@ -8,6 +8,5 @@
   "summary": "The free camera, posing, game speed, pause and the console in Unreal Engine 4 and 5 games, with plugins' ticks on Unreal's game thread.",
   "author": "Asgard",
   "descriptionFile": "README.md",
-  "gameEngine": { "id": "unreal" },
-  "arches": ["x64"]
+  "gameEngine": { "id": "unreal" }
 }

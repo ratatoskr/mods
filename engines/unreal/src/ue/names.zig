@@ -6,13 +6,15 @@ const std = @import("std");
 
 const Mem = @import("Mem.zig");
 
+const P = Mem.ptr_size;
+
 pub const Names = struct {
     mem: *const Mem,
     kind: Kind,
     /// The pool's `Blocks`, or the array's `Chunks`.
     table: usize,
     /// For the array, where an entry's text starts.
-    text_at: usize = 0x10,
+    text_at: usize = 2 * P,
 
     pub const Kind = enum { pool, array };
 
@@ -27,8 +29,8 @@ pub const Names = struct {
         for (words, 0..) |v, i| {
             if (v % 2 != 0 or !mem.readable(v, 16)) continue;
             const at = @intFromPtr(&words[i]);
-            if (i > 0 and isPool(mem, words, i)) return .{ .mem = mem, .kind = .pool, .table = at };
-            if (v % 8 != 0) continue;
+            if (i >= 8 / P and isPool(mem, words, i)) return .{ .mem = mem, .kind = .pool, .table = at };
+            if (v % P != 0) continue;
             // The array's in the data in some games, a pointer to it in others
             if (arrayText(mem, v)) |t| return .{ .mem = mem, .kind = .array, .table = at, .text_at = t };
             if (mem.ptr(v)) |chunk0| if (arrayText(mem, chunk0)) |t| return .{ .mem = mem, .kind = .array, .table = v, .text_at = t };
@@ -41,8 +43,8 @@ pub const Names = struct {
         const block0 = words[i];
         if (!entryIs(mem, block0, "None")) return false;
         if (!entryIs(mem, block0 + 6, "ByteProperty")) return false;
-        // Just before Blocks, how many there are beyond the first
-        const current: u32 = @truncate(words[i - 1]);
+        // Before Blocks, after a pointer-sized lock, how many there are beyond the first
+        const current = @as(*const u32, @ptrFromInt(@intFromPtr(&words[i]) - 8)).*;
         if (current >= 8192) return false;
         for (1..@min(current, 4) + 1) |b| {
             if (i + b >= words.len or !mem.readable(words[i + b], 8)) return false;
@@ -64,8 +66,10 @@ pub const Names = struct {
         if (!mem.bytes(chunk0, std.mem.asBytes(&first))) return null;
         const none = first[0];
         const byte = first[1];
-        if (none % 8 != 0 or byte % 8 != 0 or !mem.readable(none, 0x18) or !mem.readable(byte, 0x18)) return null;
-        for ([_]usize{ 0x10, 0xC }) |t| {
+        if (none % P != 0 or byte % P != 0 or !mem.readable(none, 0x18) or !mem.readable(byte, 0x18)) return null;
+        // After the index and hash link, either way round
+        const at = if (P == 8) [_]usize{ 0x10, 0xC } else [_]usize{0x8};
+        for (at) |t| {
             if (cstrIs(mem, none + t, "None") and cstrIs(mem, byte + t, "ByteProperty")) return t;
         }
         return null;
@@ -86,7 +90,7 @@ pub const Names = struct {
     }
 
     fn poolText(self: *const Names, index: u32, buf: []u8) ?[]const u8 {
-        const block = self.mem.ptr(self.table + (index >> pool_block_bits) * 8) orelse return null;
+        const block = self.mem.ptr(self.table + (index >> pool_block_bits) * P) orelse return null;
         const entry = block + (index & 0xFFFF) * 2;
         const header = self.mem.read(u16, entry) orelse return null;
         const len: usize = header >> 6;
@@ -100,8 +104,8 @@ pub const Names = struct {
     }
 
     fn arrayEntryText(self: *const Names, index: u32, buf: []u8) ?[]const u8 {
-        const chunk = self.mem.ptr(self.table + (index / array_chunk) * 8) orelse return null;
-        const entry = self.mem.ptr(chunk + (index % array_chunk) * 8) orelse return null;
+        const chunk = self.mem.ptr(self.table + (index / array_chunk) * P) orelse return null;
+        const entry = self.mem.ptr(chunk + (index % array_chunk) * P) orelse return null;
         const flags = self.mem.read(i32, entry) orelse return null;
         const at = entry + self.text_at;
         if (flags & 1 == 0) {

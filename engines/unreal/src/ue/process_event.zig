@@ -3,10 +3,14 @@
 //! `FUNC_HasOutParms`, at the offset reflection says `FunctionFlags` is.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
 const Unreal = @import("Unreal.zig");
+const P = @import("Mem.zig").ptr_size;
 
-pub const ProcessEventFn = fn (object: usize, function: usize, params: ?*anyopaque) callconv(.c) void;
+/// A UObject method, so `thiscall` in 32-bit games.
+const method: std.lang.CallingConvention = if (builtin.cpu.arch == .x86) .{ .x86_thiscall = .{} } else .c;
+pub const ProcessEventFn = fn (object: usize, function: usize, params: ?*anyopaque) callconv(method) void;
 
 const func_native = 0x400;
 const func_has_out_parms = 0x400000;
@@ -20,7 +24,7 @@ pub fn find(ue: *const Unreal) ?usize {
     const vtable = ue.mem.ptr(package) orelse return null;
     var code: [0x800]u8 = undefined;
     for (0..max_slots) |i| {
-        var f = ue.mem.read(usize, vtable + i * 8) orelse return null;
+        var f = ue.mem.read(usize, vtable + i * P) orelse return null;
         // Some builds go through a jump first
         if (ue.mem.read(u8, f) == 0xE9) {
             const rel = ue.mem.read(i32, f + 1) orelse continue;
@@ -48,15 +52,20 @@ pub fn isProcessEvent(code: []const u8, flags_at: usize) bool {
     return native and (testsFlag(code, flags_at, func_has_out_parms) or testsRegister(code, func_has_out_parms));
 }
 
-/// `[reg+flags_at]` with a 32-bit displacement, however it's used.
+/// `[reg+flags_at]`, however it's used. A 32-bit displacement, or 8-bit in 32-bit games, where
+/// UFunction's flags can be close enough.
 fn flagReads(code: []const u8, flags_at: usize) usize {
+    const wide = flags_at > 0x7F;
+    const len: usize = if (wide) 4 else 1;
+    const mod: u8 = if (wide) 0x80 else 0x40;
     var n: usize = 0;
     var i: usize = 1;
-    while (i + 4 <= code.len) : (i += 1) {
-        if (std.mem.readInt(u32, code[i..][0..4], .little) != flags_at) continue;
+    while (i + len <= code.len) : (i += 1) {
+        const disp: usize = if (wide) std.mem.readInt(u32, code[i..][0..4], .little) else code[i];
+        if (disp != flags_at) continue;
         // The ModRM before it, or a SIB byte between them
-        const direct = code[i - 1] & 0xC0 == 0x80 and code[i - 1] & 7 != 4;
-        const sib = i >= 2 and code[i - 2] & 0xC0 == 0x80 and code[i - 2] & 7 == 4;
+        const direct = code[i - 1] & 0xC0 == mod and code[i - 1] & 7 != 4;
+        const sib = i >= 2 and code[i - 2] & 0xC0 == mod and code[i - 2] & 7 == 4;
         if (direct or sib) n += 1;
     }
     return n;
@@ -83,24 +92,26 @@ pub fn testsFlag(code: []const u8, flags_at: usize, flag: u32) bool {
     const byte_at = flags_at + @ctz(flag) / 8;
     const byte_flag: u8 = @truncate(flag >> @intCast(@ctz(flag) / 8 * 8));
     var i: usize = 0;
-    while (i + 7 <= code.len) : (i += 1) {
+    while (i + 4 <= code.len) : (i += 1) {
         const op = code[i];
         if (op != 0xF7 and op != 0xF6) continue;
         const modrm = code[i + 1];
-        // mod 10 is a 32-bit displacement, reg 000 is test
-        if (modrm & 0xF8 != 0x80) continue;
+        // reg 000 is test, mod 10 a 32-bit displacement and 01 an 8-bit one
+        if (modrm & 0x38 != 0) continue;
+        const disp_len: usize = switch (modrm & 0xC0) {
+            0x80 => 4,
+            0x40 => 1,
+            else => continue,
+        };
         var at = i + 2;
         if (modrm & 7 == 4) at += 1;
-        if (op == 0xF7) {
-            if (at + 8 > code.len) continue;
-            const disp = std.mem.readInt(u32, code[at..][0..4], .little);
-            const imm = std.mem.readInt(u32, code[at + 4 ..][0..4], .little);
-            if (disp == flags_at and imm == flag) return true;
-        } else {
-            if (at + 5 > code.len) continue;
-            const disp = std.mem.readInt(u32, code[at..][0..4], .little);
-            if (disp == byte_at and code[at + 4] == byte_flag) return true;
-        }
+        const imm_len: usize = if (op == 0xF7) 4 else 1;
+        if (at + disp_len + imm_len > code.len) continue;
+        // Signed, so a byte over 0x7F is behind the register, not flags far in
+        const disp: isize = if (disp_len == 4) std.mem.readInt(i32, code[at..][0..4], .little) else @as(i8, @bitCast(code[at]));
+        const imm: u32 = if (imm_len == 4) std.mem.readInt(u32, code[at + disp_len ..][0..4], .little) else code[at + disp_len];
+        if (op == 0xF7 and disp == @as(isize, @intCast(flags_at)) and imm == flag) return true;
+        if (op == 0xF6 and disp == @as(isize, @intCast(byte_at)) and imm == byte_flag) return true;
     }
     return false;
 }
@@ -125,4 +136,13 @@ test "flag tests, as dword and byte" {
     // Another offset or flag isn't it
     try testing.expect(!testsFlag(&.{ 0xF7, 0x87, 0xB8, 0, 0, 0, 0x00, 0x04, 0, 0 }, 0xB0, 0x400));
     try testing.expect(!testsFlag(&.{ 0xF6, 0x87, 0xB1, 0, 0, 0, 0x08 }, 0xB0, 0x400));
+}
+
+test "flags near enough for an 8-bit displacement, like in 32-bit games" {
+    const testing = std.testing;
+    // mov eax, [esi+0x58]; test dword [esi+0x58], 0x400; mov ecx, [esi+0x58]; test byte [esi+0x5A], 0x40
+    const code = [_]u8{ 0x8B, 0x46, 0x58, 0xF7, 0x46, 0x58, 0x00, 0x04, 0, 0, 0x8B, 0x4E, 0x58, 0xF6, 0x46, 0x5A, 0x40 };
+    try testing.expect(isProcessEvent(&code, 0x58));
+    // [esi-0x50] isn't 0xB0 in
+    try testing.expect(!testsFlag(&.{ 0xF7, 0x46, 0xB0, 0x00, 0x04, 0, 0 }, 0xB0, 0x400));
 }
