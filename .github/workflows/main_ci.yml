@@ -11,7 +11,7 @@ on:
 
 # Every package builds with this. There's no build.zig.zon at the top to read it from
 env:
-  ZIG_VERSION: 0.18.0-dev.1272+2ff397f75
+  ZIG_VERSION: 0.18.0-dev.1273+1ba843088
 
 permissions:
   contents: read
