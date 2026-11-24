@@ -16,10 +16,12 @@ const TArray = Unreal.TArray;
 const World = @import("ue/World.zig");
 const objects_ = @import("ue/objects.zig");
 const Loop = @import("loop.zig").Loop;
+const camera = @import("camera.zig");
 
 const ui = sdk.ui;
 const W = sdk.api.wraith;
 const Vec3 = sdk.math.Vec3;
+const Mat4 = sdk.math.Mat4;
 const gpa = std.heap.smp_allocator;
 const log = sdk.log.scoped(.unreal);
 const object = objects_.object;
@@ -59,6 +61,8 @@ const max_params = 1024;
 
 pub const TransformPart = enum { location, rotation, scale };
 
+pub const gizmo_tools = [_][:0]const u8{ "No gizmo", "Move", "Rotate", "Scale" };
+
 /// A bool property's byte and bit.
 const Bit = struct { offset: usize, mask: u8 };
 
@@ -83,6 +87,9 @@ const Found = struct {
     set_location: ?Call,
     set_rotation: ?Call,
     set_scale: ?Call,
+    /// SceneComponent's, since static ones won't move
+    mobility: ?usize,
+    set_mobility: ?Call,
 };
 
 pub const Node = struct {
@@ -251,8 +258,16 @@ pub const Explorer = struct {
     actions: sdk.workbench.Queue(Action) = .{},
     /// An instance the tick found, for the Scene panel to pick
     found_instance: sdk.atomic.Value(usize) = .init(0),
+    /// Handles on the picked actor. Wraith draws them, and every call's fine from any thread
+    gizmo: ?sdk.overlay.Gizmo = null,
+    /// Which of `gizmo_tools`, set from the panel
+    gizmo_tool: sdk.atomic.Value(u8) = .init(1),
+    /// The actor the panel's on, so the gizmo never shows on one picked before
+    gizmo_actor: sdk.atomic.Value(usize) = .init(0),
 
     // Game thread from here down
+    /// The gizmo's been told to show, and not to hide since
+    gizmo_shown: bool = false,
     walk: ?Walk = null,
     unpublished_tree: ?Tree = null,
     unpublished_classes: ?ClassList = null,
@@ -285,6 +300,8 @@ pub const Explorer = struct {
     held_floats: [4]f64 = undefined,
     held_number: f64 = 0,
     held_integer: i64 = 0,
+    gizmo_choice: usize = 1,
+    gizmo_world: bool = false,
 
     /// Not on the game thread, since finding the classes walks every object. Panels and all, or
     /// nothing if this Unreal's missing what it needs.
@@ -297,10 +314,15 @@ pub const Explorer = struct {
             self.scene_panel = null;
             return err;
         };
+        // No gizmo without the overlay, but the panels are still fine
+        self.gizmo = sdk.overlay.addGizmo() catch null;
+        if (self.gizmo) |g| g.setTool(.move);
     }
 
     /// Waits for a draw in flight. Call it before the game thread's ticks stop for good.
     pub fn stop(self: *Explorer) void {
+        if (self.gizmo) |g| g.remove();
+        self.gizmo = null;
         if (self.scene_panel) |p| p.remove();
         if (self.classes_panel) |p| p.remove();
         self.scene_panel = null;
@@ -347,6 +369,8 @@ pub const Explorer = struct {
             .set_location = withSecond(ue, callOf(ue, actor, "K2_SetActorLocation", "NewLocation"), "bTeleport"),
             .set_rotation = withSecond(ue, callOf(ue, actor, "K2_SetActorRotation", "NewRotation"), "bTeleportPhysics"),
             .set_scale = callOf(ue, actor, "SetActorScale3D", "NewScale3D"),
+            .mobility = ue.offsetOf(scene, "Mobility"),
+            .set_mobility = callOf(ue, scene, "SetMobility", "NewMobility"),
         };
     }
 
@@ -355,6 +379,7 @@ pub const Explorer = struct {
     /// Game thread, once a tick.
     pub fn tick(self: *Explorer) void {
         for (self.actions.drain()) |a| self.apply(a);
+        self.tickGizmo();
         const scene_open = if (self.scene_panel) |p| p.isOpen() else false;
         const classes_open = if (self.classes_panel) |p| p.isOpen() else false;
         if (!scene_open and !classes_open) return;
@@ -631,20 +656,7 @@ pub const Explorer = struct {
                 self.details_due = 0;
                 self.tree_due = 0;
             },
-            .set_transform => |s| if (self.alive(s.object)) {
-                const c = switch (s.part) {
-                    .location => self.found.set_location,
-                    .rotation => self.found.set_rotation,
-                    .scale => self.found.set_scale,
-                } orelse return;
-                var params: [max_params]u8 align(16) = @splat(0);
-                if (c.size > params.len) return;
-                self.writeVector(&params, c.param, s.value);
-                // Straight there, rather than swept or pushed by physics
-                if (c.second) |o| params[o] = 1;
-                self.loop.call(s.object, c.function, params[0..c.size]);
-                self.details_due = 0;
-            },
+            .set_transform => |s| if (self.alive(s.object)) self.setTransform(s.object, s.part, s.value),
             .call => |s| if (self.alive(s.object) and self.alive(s.function)) {
                 var params: [0]u8 = .{};
                 self.loop.call(s.object, s.function, &params);
@@ -662,6 +674,67 @@ pub const Explorer = struct {
                 self.class_due = true;
             },
         }
+    }
+
+    fn setTransform(self: *Explorer, actor: usize, part: TransformPart, value: [3]f64) void {
+        const c = switch (part) {
+            .location => self.found.set_location,
+            .rotation => self.found.set_rotation,
+            .scale => self.found.set_scale,
+        } orelse return;
+        var params: [max_params]u8 align(16) = @splat(0);
+        if (c.size > params.len) return;
+        self.makeMovable(actor);
+        self.writeVector(&params, c.param, value);
+        // Straight there, rather than swept or pushed by physics
+        if (c.second) |o| params[o] = 1;
+        self.loop.call(actor, c.function, params[0..c.size]);
+        self.details_due = 0;
+    }
+
+    /// Shows the gizmo on the picked actor while Scene's open with a tool picked, moves the actor
+    /// where it's dragged, and keeps it placed where the actor is.
+    fn tickGizmo(self: *Explorer) void {
+        const g = self.gizmo orelse return;
+        const tool = self.gizmo_tool.load(.monotonic);
+        const actor = self.gizmo_actor.load(.monotonic);
+        if (tool == 0 or !self.sceneOpen() or !self.isActor(actor)) {
+            if (self.gizmo_shown) g.hide();
+            self.gizmo_shown = false;
+            return;
+        }
+        if (!self.gizmo_shown) g.show();
+        self.gizmo_shown = true;
+        // Only what the tool changes, so moving it never nudges its rotation or scale
+        if (g.moved()) |m| {
+            const part, const value = partOf(m, tool);
+            self.setTransform(actor, part, value);
+        }
+        g.place(matrixOf(self.transformOf(actor) orelse return));
+    }
+
+    /// Only actors have the functions it's read and moved with, not levels.
+    fn isActor(self: *Explorer, obj: usize) bool {
+        if (!self.alive(obj)) return false;
+        const class = self.ue.classOf(obj) orelse return false;
+        return self.sortOf(class) == .actor;
+    }
+
+    /// Unreal won't move a static or stationary actor, so its root's made movable first, as the
+    /// editor does. What's attached to it follows.
+    fn makeMovable(self: *Explorer, actor: usize) void {
+        const movable = 2;
+        const root_at = self.found.root_component orelse return;
+        const mobility_at = self.found.mobility orelse return;
+        const c = self.found.set_mobility orelse return;
+        const root = self.ue.mem.ptr(actor + root_at) orelse return;
+        if ((self.ue.mem.read(u8, root + mobility_at) orelse return) == movable) return;
+        var params: [16]u8 align(16) = @splat(0);
+        if (c.size > params.len) return;
+        params[c.param] = movable;
+        self.loop.call(root, c.function, params[0..c.size]);
+        var buf: [256]u8 = undefined;
+        log.info("Made {s} movable, so it can be moved", .{self.ue.nameOf(actor, &buf) orelse "it"});
     }
 
     /// An actor's location, rotation and scale, through its own functions.
@@ -1110,12 +1183,21 @@ pub const Explorer = struct {
 
     // The Workbench's thread
 
+    /// Any thread.
+    fn sceneOpen(self: *const Explorer) bool {
+        return if (self.scene_panel) |p| p.isOpen() else false;
+    }
+
+    // The Workbench's thread
+
     fn drawScene(self: *Explorer) void {
         const jumped = self.found_instance.swap(0, .acq_rel);
         if (jumped != 0) {
             self.picked = jumped;
             self.picked_node = jumped;
+            if (self.gizmo) |g| g.show();
         }
+        self.gizmo_actor.store(self.picked_node, .monotonic);
         if (self.split.first("tree")) |part| {
             defer part.end();
             self.drawTree();
@@ -1189,6 +1271,8 @@ pub const Explorer = struct {
         self.picked_node = node;
         self.picked_function = 0;
         self.actions.push(.{ .select = obj });
+        // In front again, even over posing's
+        if (self.gizmo) |g| g.show();
     }
 
     fn treeCommands(self: *Explorer, tree: *const Tree) void {
@@ -1261,6 +1345,22 @@ pub const Explorer = struct {
             self.dragTransform(d, "Location", .location, tr[0], 1);
             self.dragTransform(d, "Rotation", .rotation, tr[1], 0.5);
             self.dragTransform(d, "Scale", .scale, tr[2], 0.01);
+            ui.setNextItemWidth(120);
+            if (ui.combo("##gizmo", &self.gizmo_choice, &gizmo_tools)) {
+                self.gizmo_tool.store(@intCast(self.gizmo_choice), .monotonic);
+                if (self.gizmo) |g| if (self.gizmo_choice != 0) {
+                    g.setTool(switch (self.gizmo_choice) {
+                        1 => .move,
+                        2 => .rotate,
+                        else => .scale,
+                    });
+                    g.show();
+                };
+            }
+            ui.tooltip("Handles on it in the game. Open the overlay to drag them", .{});
+            ui.sameLine();
+            if (ui.checkbox("World axes", &self.gizmo_world)) if (self.gizmo) |g| g.setWorldAxes(self.gizmo_world);
+            ui.tooltip("Along the world's axes rather than its own", .{});
         };
         self.drawComponents(d);
         for (d.sections, 0..) |s, i| {
@@ -1574,6 +1674,31 @@ pub const Explorer = struct {
         if (menu.item(.{ .label = "Refresh", .tooltip = "Asks Unreal again now" })) self.actions.push(.refresh);
     }
 };
+
+/// An actor's location, rotator and scale as a world matrix, the way the free camera sees it.
+fn matrixOf(t: [3][3]f64) Mat4 {
+    const rot = camera.quatOf(.{ @floatCast(t[1][0]), @floatCast(t[1][1]), @floatCast(t[1][2]) });
+    return .transform(vec(t[0]), rot, vec(t[2]));
+}
+
+fn vec(v: [3]f64) Vec3 {
+    return .{ .x = @floatCast(v[0]), .y = @floatCast(v[1]), .z = @floatCast(v[2]) };
+}
+
+/// The part of a world matrix the gizmo's `tool` changes, as Unreal sets it.
+fn partOf(m: Mat4, tool: u8) struct { TransformPart, [3]f64 } {
+    return switch (tool) {
+        1 => blk: {
+            const t = m.getTranslation();
+            break :blk .{ .location, .{ t.x, t.y, t.z } };
+        },
+        2 => blk: {
+            const r = camera.rotatorOf(m.rotation());
+            break :blk .{ .rotation, .{ r[0], r[1], r[2] } };
+        },
+        else => .{ .scale, .{ m.row(0).xyz().length(), m.row(1).xyz().length(), m.row(2).xyz().length() } },
+    };
+}
 
 fn plain(comptime T: type, at: usize) T {
     return @as(*align(1) const T, @ptrFromInt(at)).*;

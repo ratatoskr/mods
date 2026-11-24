@@ -199,14 +199,6 @@ const max_copy_depth = 256;
 const FieldInfo = struct { name: []const u8, type: []const u8, offset: usize };
 const TypeInfo = struct { kind: Kind, size: u8 };
 
-/// Where the picked one is in the world, each tick, for the gizmo.
-const Placement = struct {
-    target: Target,
-    world: Mat4,
-    /// Its parent's, or none's
-    parent: Mat4,
-};
-
 pub const gizmo_tools = [_][:0]const u8{ "No gizmo", "Move", "Rotate", "Scale" };
 
 /// A tree being walked, a slice a tick.
@@ -229,25 +221,20 @@ pub const Explorer = struct {
     transform_type: usize = 0,
     component_type: usize = 0,
     tick_sub: ?sdk.frame.FrameSubscription = null,
-    frame_sub: ?sdk.frame.FrameSubscription = null,
     panel: ?sdk.workbench.Panel = null,
 
     tree: sdk.workbench.Latest(Tree) = .{},
     details: sdk.workbench.Latest(Details) = .{},
-    placement: sdk.workbench.Latest(Placement) = .{},
     copied: sdk.workbench.Latest(Copied) = .{},
     actions: sdk.workbench.Queue(Action) = .{},
+    /// Handles on the picked one. Wraith draws them, and every call's fine from any thread
+    gizmo: ?sdk.overlay.Gizmo = null,
     /// Which of `gizmo_tools`, set from the panel
     gizmo_tool: sdk.atomic.Value(u8) = .init(1),
-    gizmo_world: sdk.atomic.Value(bool) = .init(false),
-    /// The picked one's native, so the gizmo never shows on one picked before
-    picked_native: sdk.atomic.Value(usize) = .init(0),
-
-    // The render thread
-    dragging: bool = false,
-    gizmo_matrix: Mat4 = .identity,
 
     // Game thread from here down
+    /// The gizmo's been told to show, and not to hide since
+    gizmo_shown: bool = false,
     walk: ?Walk = null,
     /// Walked, but a reader had the last one
     unpublished_tree: ?Tree = null,
@@ -269,6 +256,7 @@ pub const Explorer = struct {
     // Workbench thread from here down
     filter: [128:0]u8 = @splat(0),
     gizmo_choice: usize = 1,
+    gizmo_world: bool = false,
     split: ui.Split = .{ .direction = .down, .ratio = 0.5 },
     picked: Target = .{},
     /// What's being edited, so a drag or a text box keeps its own value till it's let go
@@ -295,25 +283,24 @@ pub const Explorer = struct {
         self.transform_type = try managed.typeObject("UnityEngine.Transform");
         self.component_type = try managed.typeObject("UnityEngine.Component");
         self.tick_sub = try sdk.frame.onTick(self, tick);
-        // No gizmo without the overlay's frames, but the panel's still fine
-        self.frame_sub = sdk.frame.onFrame(self, drawGizmo) catch null;
         self.panel = sdk.workbench.addPanel(self, draw, .{ .title = "Scene", .engine = true }) catch |err| {
             self.tick_sub.?.unsubscribe();
             self.tick_sub = null;
-            if (self.frame_sub) |s| s.unsubscribe();
-            self.frame_sub = null;
             return err;
         };
+        // No gizmo without the overlay, but the panel's still fine
+        self.gizmo = sdk.overlay.addGizmo() catch null;
+        if (self.gizmo) |g| g.setTool(.move);
     }
 
     /// Waits for a tick or draw in flight, so it's fine to free what they use after.
     pub fn stop(self: *Explorer) void {
         if (self.panel) |p| p.remove();
         if (self.tick_sub) |s| s.unsubscribe();
-        if (self.frame_sub) |s| s.unsubscribe();
+        if (self.gizmo) |g| g.remove();
         self.panel = null;
         self.tick_sub = null;
-        self.frame_sub = null;
+        self.gizmo = null;
         if (self.walk) |*w| self.endWalk(w);
         self.walk = null;
         self.unhold();
@@ -325,7 +312,6 @@ pub const Explorer = struct {
         self.types_arena.deinit();
         self.tree.deinit();
         self.details.deinit();
-        self.placement.deinit();
         self.actions.deinit();
     }
 
@@ -340,7 +326,7 @@ pub const Explorer = struct {
         if (self.unpublished_copy) |c| {
             if (self.copied.publish(c)) self.unpublished_copy = null;
         }
-        self.publishPlacement();
+        self.tickGizmo();
         const panel = self.panel orelse return;
         if (!panel.isOpen()) return;
         const now = sdk.timing.now();
@@ -361,19 +347,35 @@ pub const Explorer = struct {
         }
     }
 
-    /// The picked one's place, every tick while there's a gizmo, so it keeps up with it moving.
-    fn publishPlacement(self: *Explorer) void {
-        if (self.gizmo_tool.load(.monotonic) == 0) return;
-        const t = self.selected orelse return;
-        const transform: *Object = @ptrFromInt(t.transform);
+    /// Shows the gizmo on the picked one while Scene's open with a tool picked, moves it where it's
+    /// dragged, and keeps it placed where it is.
+    fn tickGizmo(self: *Explorer) void {
+        const g = self.gizmo orelse return;
+        const picked = self.selected;
+        const transform: ?*Object = if (picked) |t| @ptrFromInt(t.transform) else null;
         // Held, so a plain read's fine
-        if (self.scene.nativeOf(transform) != t.native) return;
-        var p: Placement = .{ .target = t, .world = .identity, .parent = .identity };
-        self.engine.local_to_world(transform, &p.world);
-        if (self.calls.parent(transform)) |parent| self.engine.local_to_world(parent, &p.parent);
-        // A reader having the last one just means it's a tick behind
-        _ = self.placement.next();
-        _ = self.placement.publish(p);
+        const live = if (picked) |t| self.scene.nativeOf(transform.?) == t.native else false;
+        if (self.gizmo_tool.load(.monotonic) == 0 or !self.panelOpen() or !live) {
+            if (self.gizmo_shown) g.hide();
+            self.gizmo_shown = false;
+            return;
+        }
+        if (!self.gizmo_shown) g.show();
+        self.gizmo_shown = true;
+        var world: Mat4 = .identity;
+        var parent: Mat4 = .identity;
+        if (self.calls.parent(transform.?)) |p| self.engine.local_to_world(p, &parent);
+        if (g.moved()) |m| {
+            // Unity sets transforms by their parents', so take the parent's off
+            if (parent.inverse()) |from_parent| self.apply(.{ .set_transform = .{ .target = picked.?, .local = .of(m.mul(from_parent)) } });
+        }
+        self.engine.local_to_world(transform.?, &world);
+        g.place(world);
+    }
+
+    /// Any thread.
+    fn panelOpen(self: *const Explorer) bool {
+        return if (self.panel) |p| p.isOpen() else false;
     }
 
     fn startWalk(self: *Explorer) void {
@@ -665,52 +667,6 @@ pub const Explorer = struct {
         return info;
     }
 
-    // The render thread
-
-    /// Handles on the picked one, over the game. Only draggable while the overlay has the mouse, so
-    /// clicks go to the game otherwise.
-    fn drawGizmo(self: *Explorer) void {
-        const tool = self.gizmo_tool.load(.monotonic);
-        if (tool == 0 or !sdk.overlay.available()) {
-            self.dragging = false;
-            return;
-        }
-        const v = sdk.frame.view() orelse return;
-        const reading = self.placement.read() orelse return;
-        defer reading.end();
-        const p = reading.value.*;
-        if (p.target.native != self.picked_native.load(.monotonic)) return;
-        const takes_mouse = if (sdk.wraith.root()) |w| w.ui().inputTaken(.mouse) else false;
-
-        const gizmo = ui.gizmo;
-        gizmo.beginFrame();
-        // Its own, apart from posing's
-        const id = gizmo.id("unity scene");
-        defer id.end();
-        const view = ui.mainViewport();
-        gizmo.setDrawList(ui.getBackgroundDrawList());
-        gizmo.setRect(view.pos, view.size);
-        gizmo.setOrthographic(false);
-        gizmo.enable(takes_mouse);
-        // Back on for the next one drawn, since it's shared
-        defer gizmo.enable(true);
-        if (!self.dragging) self.gizmo_matrix = p.world;
-        const operation: gizmo.Operation = switch (tool) {
-            1 => .translate,
-            2 => .rotate,
-            else => .scale,
-        };
-        _ = gizmo.manipulate(&v.view, &v.projection, operation, if (self.gizmo_world.load(.monotonic)) .world else .local, &self.gizmo_matrix, .{});
-        if (!gizmo.isUsing()) {
-            self.dragging = false;
-            return;
-        }
-        self.dragging = true;
-        // Unity sets transforms by their parents', so take the parent's off
-        const from_parent = p.parent.inverse() orelse return;
-        self.actions.push(.{ .set_transform = .{ .target = p.target, .local = .of(self.gizmo_matrix.mul(from_parent)) } });
-    }
-
     // The Workbench's thread
 
     fn draw(self: *Explorer) void {
@@ -782,8 +738,9 @@ pub const Explorer = struct {
 
     fn pick(self: *Explorer, t: Target) void {
         self.picked = t;
-        self.picked_native.store(t.native, .monotonic);
         self.actions.push(.{ .select = t });
+        // In front again, even over posing's
+        if (self.gizmo) |g| g.show();
     }
 
     fn treeCommands(self: *Explorer, tree: *const Tree) void {
@@ -838,11 +795,20 @@ pub const Explorer = struct {
             self.dragLocal(d, "Rotation", .rotation, d.rotation, 0.5);
             self.dragLocal(d, "Scale", .scale, d.scale, 0.01);
             ui.setNextItemWidth(120);
-            if (ui.combo("##gizmo", &self.gizmo_choice, &gizmo_tools)) self.gizmo_tool.store(@intCast(self.gizmo_choice), .monotonic);
+            if (ui.combo("##gizmo", &self.gizmo_choice, &gizmo_tools)) {
+                self.gizmo_tool.store(@intCast(self.gizmo_choice), .monotonic);
+                if (self.gizmo) |g| if (self.gizmo_choice != 0) {
+                    g.setTool(switch (self.gizmo_choice) {
+                        1 => .move,
+                        2 => .rotate,
+                        else => .scale,
+                    });
+                    g.show();
+                };
+            }
             ui.tooltip("Handles on it in the game. Open the overlay to drag them", .{});
             ui.sameLine();
-            var world = self.gizmo_world.load(.monotonic);
-            if (ui.checkbox("World axes", &world)) self.gizmo_world.store(world, .monotonic);
+            if (ui.checkbox("World axes", &self.gizmo_world)) if (self.gizmo) |g| g.setWorldAxes(self.gizmo_world);
             ui.tooltip("Along the world's axes rather than its own", .{});
         }
         for (d.components, 0..) |*comp, i| {
