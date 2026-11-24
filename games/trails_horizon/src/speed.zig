@@ -1,6 +1,7 @@
 //! Game speed through the game's own time scale, the one High Speed Mode uses, so Wraith's speed
-//! goes on top of it. The world's time changes, while play time, the frame rate, the menus and HUD
-//! and the game's camera carry on at their own pace, so a paused world can still be looked around.
+//! goes on top of it. The world's time changes, and stops at 0, while play time, the frame rate, the
+//! menus and HUD and the game's camera carry on at their own pace, so a paused world can still be
+//! looked around.
 
 const sdk = @import("wraith_sdk");
 const schema = @import("schema");
@@ -15,10 +16,6 @@ const InGameHook = sdk.hooks.FnHook(Application.Fns.updateInGame);
 const UiHook = sdk.hooks.FnHook(UiManager.Fns.update);
 const CameraHook = sdk.hooks.FnHook(CameraManager.Fns.update);
 
-/// A pause, as far as the world's concerned, a minute of it moving the world on by 6 milliseconds.
-/// Not 0, so the menus and camera can have their time back by dividing by it.
-const paused = 0.0001;
-
 pub const Speed = struct {
     /// Ours, as f32 bits, from Wraith on any thread.
     ours: sdk.atomic.Value(u32) = .init(@bitCast(@as(f32, 1))),
@@ -29,6 +26,9 @@ pub const Speed = struct {
     camera: CameraHook = undefined,
     /// In the game's update while playing, the only one ours scales. Game thread only.
     updating: bool = false,
+    /// The frame's time as the menus and camera would have it without ours, High Speed Mode and
+    /// all. Game thread only, while `updating`.
+    own_pace: f32 = 0,
 
     pub fn start(self: *Speed, game: sdk.api.wraith.Game) !void {
         self.scale = try sdk.hooks.createFnWith(HighSpeed.Fns.scale, try HighSpeed.addresses.scale(), scaleDetour, self, .{ .enabled = true });
@@ -46,10 +46,12 @@ pub const Speed = struct {
 
     fn factor(self: *const Speed) f32 {
         const ours: f32 = @bitCast(self.ours.load(.acquire));
-        return @max(ours, paused);
+        return @max(ours, 0);
     }
 
     fn inGameDetour(self: *Speed, hook: InGameHook, app: *Application, dt: f32) void {
+        // What the game scales `dt` to, before ours
+        self.own_pace = if (app.high_speed) |h| dt * self.scale.original()(h) else dt;
         self.updating = true;
         defer self.updating = false;
         hook.original()(app, dt);
@@ -77,6 +79,6 @@ pub const Speed = struct {
 
     /// `dt` without ours, for what keeps going while the world's slowed or paused.
     fn ownPace(self: *const Speed, dt: f32) f32 {
-        return if (self.updating) dt / self.factor() else dt;
+        return if (self.updating) self.own_pace else dt;
     }
 };
