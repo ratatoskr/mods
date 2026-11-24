@@ -1,10 +1,38 @@
-[Instance("48 8B 35 ?? ?? ?? ?? 75", Rip), Tweak("Script Variables")]
+// ed9::script::Manager, which runs the game's scripts.
+[Instance("48 8B 35 ?? ?? ?? ?? 75", Rip), Tweak("Story")]
 struct GameScriptManager {
-    [0x12110] 
+    // GetGlobalWork and SetGlobalWork's 256 values
+    [0x12110, Flatten]
     ScriptVariables variables;
 }
 
 struct ScriptVariables {
-    [0x68] 
-    u16 sp;
+    // L.G.C. alignment
+    [0x38]
+    ScriptInt law;
+
+    [0x3C]
+    ScriptInt gray;
+
+    [0x40]
+    ScriptInt chaos;
+
+    [0x44]
+    ScriptInt connect;
+
+    [0x68, Label("SP")]
+    ScriptInt sp;
+}
+
+// A script value. The game only reads `value` when `kind` says it's a number, so set that too if
+// it's still nothing.
+bitfield ScriptInt : u32 {
+    [Bit(0)] u32 value : 30;
+    [Bit(30)] ScriptKind kind : 2;
+}
+
+enum ScriptKind : u8 {
+    nothing,
+    number,
+    decimal,
 }

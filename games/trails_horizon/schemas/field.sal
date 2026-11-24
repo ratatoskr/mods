@@ -1,0 +1,129 @@
+// ed9::fieldmap::Manager, the field and who's on it.
+[Instance("48 89 05 ?? ?? ?? ?? 48 8B C8 E8 ?? ?? ?? ?? E8", Rip)]
+struct FieldManager {
+    // Each route's party, 11 of them, like Van's, Rean's, Kevin's and Grim Garten's
+    [0x600]
+    Party* parties;
+
+    // Which party's playing
+    [0x608]
+    u32 current_party;
+
+    // ApplyPartyCharas, putting the party's characters on the field after it changes. `now`
+    // does it straight away, else on the field's next update, like a script's party command.
+    [Sig("48 83 EC ?? 45 84 C0 74 ?? E8 ?? ?? ?? ?? 48 8B 0D")]
+    void applyParty(u32 flags, bool now);
+}
+
+// ed9::fieldmap::Party, one route's members in order, the ones at the front first.
+[Size(0x218)]
+struct Party {
+    [0x200]
+    PartySlot* slots;
+
+    [0x208]
+    u32 count;
+
+    [0x210]
+    u32 leader;
+
+    // How many attack or support, up to 8. The rest are in reserve.
+    [0x214]
+    u32 front;
+
+    // Joins at the back, or wherever `flags` puts them. False if they're in it already.
+    [Sig("40 55 57 41 56 48 83 EC ?? 45 8B F0 8B EA 48 8B F9")]
+    bool add(u32 chrid, u32 flags);
+
+    // Joins at `index`, or where `add` would put them for -1. Someone already in it moves there and
+    // keeps their flags. Fails for guests' flags.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 0F 84 ?? ?? ?? ?? 44 8B 86", Rip)]
+    bool insert(u32 chrid, u32 index, u32 flags);
+
+    [Sig("48 89 5C 24 ?? 57 48 83 EC ?? 33 DB 48 8B F9 8B 89")]
+    bool remove(u32 chrid);
+
+    // Where they are, or -1
+    [Sig("E8 ?? ?? ?? ?? 8B F8 45 85 F6 78 ?? 48 8B CE E8", Rip)]
+    i32 indexOf(u32 chrid);
+
+    // Makes them the leader if they're one of the 4 attacking, else whoever is
+    [Sig("48 83 EC ?? 44 8B 91 ?? ?? ?? ?? 33 C0 4C 8B C9")]
+    void setLeader(u32 chrid);
+
+    // How many attack or support, up to 8. Moves the rest along to fit.
+    [Sig("E8 ?? ?? ?? ?? 84 C0 75 ?? 48 8D 15 ?? ?? ?? ?? 44 8B C7", Rip)]
+    bool setFrontCount(u32 count);
+
+    // Locks them to reserve, out of the battle lineup, or unlocks them. Moves them to fit.
+    [Sig("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 33 FF 48 8B F1")]
+    bool lockToReserve(u32 chrid, bool on);
+}
+
+struct PartySlot {
+    u32 chrid;
+    PartyFlags flags;
+}
+
+// A member's flags, named like the old Cheat Engine table's party list. The first 4 in the lineup
+// attack, the rest up to `front` support, and anyone past that's in reserve.
+bitfield PartyFlags : u32 {
+    // Guests and extras can't be moved or swapped
+    [Bit(0)] PartyJoin join : 2;
+    // Not known. A script command clears it with `extra`
+    [Bit(2)] u32 unknown_4 : 1;
+    [Bit(3)] u32 equip_locked : 1;
+    // Set and cleared by a script command, but nothing in Party reads it
+    [Bit(4)] u32 unknown_10 : 1;
+    // Has to be one of the 4 attacking
+    [Bit(5)] u32 forced_attacker : 1;
+    // Where they're locked to
+    [Bit(6)] PartyLock lock : 2;
+    // Joined as an extra, like `join`'s. Can't be moved or swapped
+    [Bit(8)] u32 extra : 1;
+    [Bit(9)] u32 unknown_200 : 1;
+    // Checked with `equip_locked` before the party menu swaps them
+    [Bit(10)] u32 unknown_400 : 1;
+    [Bit(11)] u32 rest : 21;
+}
+
+enum PartyJoin : u8 {
+    normal,
+    guest,
+    extra,
+}
+
+enum PartyLock : u8 {
+    none,
+    // Kept out of the lineup
+    reserve,
+    // Kept in the lineup, attacking or supporting
+    lineup,
+}
+
+// ed9::minigame::FIOSneaking, sneaking past lasers as FIO.
+struct FioSneaking {
+    // A laser's seen FIO
+    [Sig("40 53 56 41 56 48 83 EC ?? 48 63 41 ?? 4C 8B F1")]
+    void laserHit();
+}
+
+// Fishing, reeling a fish in once it's hooked.
+struct Fishing {
+    // Up to 100, when it's caught. A hit adds to it, a miss drops it back
+    [0x328]
+    f32 meter;
+
+    // Reels on a button press. Lands where the ring is, a miss, great or excellent, then adds
+    // to the meter, and catches the fish once it's past 100
+    [Sig("48 8B C4 48 89 58 ?? 57 48 81 EC ?? ?? ?? ?? 0F 29 70 ?? 44 0F 29 40")]
+    void reel();
+}
+
+// Where the line's landed, with the fish that can bite there.
+struct FishingSpot {
+    // Rolls which fish bites, from how likely each is here, and how big it is. Gives its id, which
+    // is also its item's
+    [Sig("E8 ?? ?? ?? ?? 44 8B E0 89 86 ?? ?? ?? ?? 8B D0", Rip)]
+    u32 pickFish(f32* size);
+}

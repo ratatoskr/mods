@@ -1,12 +1,27 @@
+// ed9::savedata::Manager, everything that goes in a save.
 [Instance("48 8B 0D ?? ?? ?? ?? 3D", Rip), Tweak("Money & points")]
 struct GameStateManager {
-    [0x297970] 
+    // Every character's level, HP, EP and the rest, by roster slot
+    [0x196EC0, Hidden]
+    Status[100] roster;
+
+    // How many of each item you have, by item id
+    [0x1BB4C0, Hidden]
+    InventorySlot[4096] inventory;
+
+    [0x297970]
     Sepith sepith;
 
     [0x297990, Range(0, 9999999)]
     u32 mira;
 
-    [0x2979A0] 
+    [0x297994, Label("G-Tokens"), Range(0, 9999999)]
+    u32 g_tokens;
+
+    [0x297998]
+    u32 medals;
+
+    [0x2979A0]
     u32 gourmet_points;
 
     [0x2979A8, ReadOnly]
@@ -15,12 +30,21 @@ struct GameStateManager {
     [Sig("E8 ?? ?? ?? ?? 41 8B 47 ?? 41 89 86", Rip)]
     bool giveMira(u32 amount);
 
-    [Sig("E8 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? F3 0F 10 36", Rip)] 
+    // SubMira
+    [Sig("E8 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ?? F3 0F 10 36", Rip)]
     u32 spendMira(u32 amount);
 
-    [Sig("E8 ?? ?? ?? ?? 8B 03 89 44 24", Rip)] 
+    // AddItem, for items, Sepith and the rest. Items stop at their `max_count`.
+    [Sig("E8 ?? ?? ?? ?? 8B 03 89 44 24", Rip)]
     bool spawnItem(u32 itemId, u32 quantity);
-    
+
+    // SubItem
+    [Sig("E8 ?? ?? ?? ?? 48 8B FD 48 8B 56 ?? 48 8B 6C 24", Rip)]
+    bool subItem(u32 itemId, u32 quantity);
+
+    // The first time a dish is made, which adds its gourmet points
+    [Sig("E8 ?? ?? ?? ?? BA ?? ?? ?? ?? 49 8B 8C 24 ?? ?? ?? ?? E8", Rip)]
+    bool learnRecipe(u32 recipe);
 }
 
 struct Sepith {
@@ -32,4 +56,10 @@ struct Sepith {
     u32 space;
     u32 mirage;
     u32 mass_crystal;
+}
+
+[Size(4)]
+struct InventorySlot {
+    u16 count;
+    u8 flags;
 }

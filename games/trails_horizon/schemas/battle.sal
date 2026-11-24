@@ -1,0 +1,10 @@
+// ed9::battle::ResultMenu, the screen after a battle that hands out experience.
+struct ResultMenu {
+    // CalcGetExp, how much a character gets
+    [Sig("E8 ?? ?? ?? ?? 89 44 24 ?? BA ?? ?? ?? ?? 48 8B 0D", Rip)]
+    i32 calcGetExp(usize chara, usize label);
+
+    // CalcGetHollowCoreExp, how much a character's hollow core gets
+    [Sig("40 53 55 48 83 EC ?? 48 8B DA 48 8B E9 48 85 D2")]
+    i32 calcGetHollowCoreExp(usize chara);
+}

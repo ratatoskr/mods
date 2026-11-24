@@ -5,6 +5,7 @@ const std = @import("std");
 const sdk = @import("wraith_sdk");
 const W = sdk.api.wraith;
 const schema = @import("schema");
+const common = @import("tweaks/common.zig");
 
 const Chara = schema.Chara;
 const ModelInstance = schema.ModelInstance;
@@ -63,7 +64,8 @@ pub const Posing = struct {
         }
 
         var label: [48]u8 = undefined;
-        const name = std.fmt.bufPrint(&label, "{d}: {s}", .{ chara.chrid, std.mem.sliceTo(&chara.name, 0) }) catch &chara.name;
+        const own = std.mem.sliceTo(&chara.name, 0);
+        const name = common.nameOf(chara.chrid) orelse if (own.len > 0) own else std.fmt.bufPrint(&label, "{d}", .{chara.chrid}) catch "?";
         self.service.pose(.{ .id = @intFromPtr(chara), .name = name, .bones = bones[0..count], .to_world = .identity }, &matrices[0]);
         for (nodes[0..count], matrices[0..count]) |n, m| n.world = m;
     }

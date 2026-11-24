@@ -29,6 +29,8 @@ pub const Speed = struct {
     /// The frame's time as the menus and camera would have it without ours, High Speed Mode and
     /// all. Game thread only, while `updating`.
     own_pace: f32 = 0,
+    /// Wraith's ticks, which the game's update drives so plugins' `onTick` runs on its thread.
+    ticks: ?sdk.frame.TickDriver = null,
 
     pub fn start(self: *Speed, game: sdk.api.wraith.Game) !void {
         self.scale = try sdk.hooks.createFnWith(HighSpeed.Fns.scale, try HighSpeed.addresses.scale(), scaleDetour, self, .{ .enabled = true });
@@ -50,6 +52,7 @@ pub const Speed = struct {
     }
 
     fn inGameDetour(self: *Speed, hook: InGameHook, app: *Application, dt: f32) void {
+        if (self.ticks) |t| t.tick();
         // What the game scales `dt` to, before ours
         self.own_pace = if (app.high_speed) |h| dt * self.scale.original()(h) else dt;
         self.updating = true;

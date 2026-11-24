@@ -1,7 +1,52 @@
 [Instance("48 8B 0D ?? ?? ?? ?? BF", Rip)]
 struct DataTableManager {
+    [0x10]
+    NameTableHolder* names;
+
     [0x38]
     ItemTableHolder* items;
+
+    // t_minigame_fishing
+    [0x128]
+    FishingTableHolder* fishing;
+}
+
+struct NameTableHolder {
+    [0x8]
+    NameTable* table;
+}
+
+// ed9::datatable::NameTable, t_name.tbl. Its rows sit in `data`, where its section says.
+struct NameTable {
+    [0x10]
+    usize data;
+
+    [0x20]
+    TableSection* sections;
+
+    [0x28]
+    u32 section;
+}
+
+// Where one of a table file's sections keeps its rows.
+[Size(0x50)]
+struct TableSection {
+    [0x44]
+    u32 offset;
+
+    [0x48]
+    u32 stride;
+
+    [0x4C]
+    u32 count;
+}
+
+struct NameRow {
+    [0x0]
+    u16 chrid;
+
+    [0x8]
+    cstring name;
 }
 
 struct ItemTableHolder {
@@ -27,6 +72,46 @@ struct Item {
     [0x0]
     u32 id;
 
+    [0x18]
+    u8 kind;
+
+    // The most you can carry
+    [0xC8]
+    u32 max_count;
+
     [0xD8]
     cstring name;
+}
+struct FishingTableHolder {
+    [0x8]
+    FishingTable* table;
+}
+
+// t_minigame_fishing, laid out like t_name. Its first section's FishInfo, every fish there is.
+struct FishingTable {
+    [0x10]
+    usize data;
+
+    [0x20]
+    TableSection* sections;
+
+    [0x28]
+    u32 fish_section;
+}
+
+// A FishInfo row. Its id is its item's, which has its name.
+struct FishRow {
+    [0x0]
+    u16 id;
+
+    // Like `fish_001`, for its page in the notes. Empty for ones that aren't in them
+    [0x8]
+    cstring key;
+
+    // Its size, in cm, rolled between these
+    [0x88]
+    f32 max_size;
+
+    [0x8C]
+    f32 min_size;
 }
