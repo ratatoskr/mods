@@ -3,8 +3,8 @@
     .version = "0.0.1",
     .dependencies = .{
         .wraith = .{
-            .url = "git+https://github.com/ratatoskr/wraith#45a097e9e4b472df179f00e5e01a9b8943790a83",
-            .hash = "wraith-0.0.0-sZo_9w5sXQAWM5vW5Zbg0vkwkLQVae7P-KXCAg8zdtcU",
+            .url = "git+https://github.com/ratatoskr/wraith#adde50b19a89f7791c9d5fcfba857732531060f6",
+            .hash = "wraith-0.0.0-sZo_97dtXQD_4aNUcP5ZYE_L8qtaeGuQjYsUwYq9y3Wy",
         },
         .ffxivclientstructs = .{
             .url = "git+https://github.com/aers/ffxivclientstructs#f76f33bdc572d69992ef771ea5a4cd26a8035a6a",
