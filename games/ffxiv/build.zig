@@ -9,6 +9,8 @@ pub fn build(b: *std.Build) void {
         .optimize = b.standardOptimizeOption(.{}),
     });
     plugin.install(b);
+    // It ships ClientStructs' schemas, so its license goes with them
+    b.installFile("THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.md");
 
     // ClientStructs' types as schemas/clientstructs, through tools/ClientStructsSal. Needs the .NET SDK.
     const client_structs = b.dependency("ffxivclientstructs", .{});
