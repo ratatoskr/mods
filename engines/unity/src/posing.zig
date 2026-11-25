@@ -8,7 +8,7 @@
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
-const schema = @import("schema");
+const schema = @import("schema").Unity;
 
 const engine_ = @import("engine.zig");
 const Engine = engine_.Engine;
@@ -227,10 +227,10 @@ var zone_pick: sdk.timing.Zone = .init("Posing: finding characters");
 
 /// What a frame works on, kept off Unity's main thread's stack.
 const Scratch = struct {
-    bones: [max_bones]W.PosingBone,
+    bones: [max_bones]W.Posing.Bone,
     matrices: [max_bones]Mat4,
     input: [max_bones]Mat4,
-    shapes: [max_shapes]W.PosingShape,
+    shapes: [max_shapes]W.Posing.Shape,
     weights: [max_shapes]f32,
     weights_in: [max_shapes]f32,
 };

@@ -6,7 +6,7 @@
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
-const schema = @import("schema");
+const schema = @import("schema").Unity;
 
 const Engine = @import("engine.zig").Engine;
 const Camera = @import("camera.zig").Camera;

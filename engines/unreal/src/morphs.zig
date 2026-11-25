@@ -66,7 +66,7 @@ pub const Morphs = struct {
 
     /// Every morph target on `components`' meshes, with a name and mesh for posing, up to
     /// `max_shapes`.
-    pub fn collect(self: *Morphs, a: std.mem.Allocator, components: []const usize, shapes: *std.ArrayList(Shape), list: *std.ArrayList(W.PosingShape)) !void {
+    pub fn collect(self: *Morphs, a: std.mem.Allocator, components: []const usize, shapes: *std.ArrayList(Shape), list: *std.ArrayList(W.Posing.Shape)) !void {
         const mem = self.ue.mem;
         var buf: [256]u8 = undefined;
         for (components) |c| {

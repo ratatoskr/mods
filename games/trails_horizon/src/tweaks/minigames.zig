@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
-const schema = @import("schema");
+const schema = @import("schema").TrailsHorizon;
 const common = @import("common.zig");
 
 const W = sdk.api.wraith;
@@ -126,7 +126,7 @@ const PickFish = struct {
         };
         var arena: std.heap.ArenaAllocator = .init(self.ctx.allocator);
         defer arena.deinit();
-        var choices: std.ArrayList(W.TweakChoice) = .empty;
+        var choices: std.ArrayList(W.Tweaks.Choice) = .empty;
         for (0..rows.count) |i| {
             const row = rows.at(i);
             const name = common.itemName(row.id) orelse continue;
@@ -135,7 +135,7 @@ const PickFish = struct {
         self.add(choices.items) catch |err| log.warn("Couldn't list the fish: {t}", .{err});
     }
 
-    fn add(self: *PickFish, choices: []const W.TweakChoice) !void {
+    fn add(self: *PickFish, choices: []const W.Tweaks.Choice) !void {
         try self.ctx.wraith.tweaks().addIn(sections.fishing, .{
             .id = "fishing_pick",
             .title = "Pick the fish",
@@ -143,10 +143,10 @@ const PickFish = struct {
                 .{ .name = "fish", .type = .u32, .label = "Fish", .choices = choices },
                 .{ .name = "biggest", .type = .bool, .label = "Biggest it gets", .toggle = true },
             },
-        }, W.TweakHandler.init(self, handle));
+        }, W.Tweaks.Handler.init(self, handle));
     }
 
-    fn handle(self: *PickFish, event: W.TweakEvent) !void {
+    fn handle(self: *PickFish, event: W.Tweaks.Event) !void {
         switch (event.kind) {
             .changed => {
                 if (std.mem.eql(u8, event.field, "fish")) self.fish.store(std.math.lossyCast(u32, event.value), .release);

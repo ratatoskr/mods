@@ -22,7 +22,7 @@ const Meshes = @import("meshes.zig").Meshes;
 const Hdr = @import("hdr.zig").Hdr;
 const Explorer = @import("explorer.zig").Explorer;
 const Service = @import("service.zig").Service;
-const schema = @import("schema");
+const schema = @import("schema").Unreal;
 
 pub const std_options: std.Options = .{ .logFn = sdk.logFn };
 pub const panic = sdk.panic;
@@ -216,7 +216,7 @@ pub const Plugin = struct {
         defer out.deinit();
         const counts = try dump.write(ue, &out.writer);
 
-        const info = self.ctx.wraith.game().info();
+        const info = self.ctx.wraith.game().gameInfo();
         const local = try sdk.platform.fs.localAppDataDirAlloc(a);
         defer a.free(local);
         const name = try std.fmt.allocPrint(a, "{s}.txt", .{info.id});

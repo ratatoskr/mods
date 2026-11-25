@@ -4,7 +4,7 @@
 const std = @import("std");
 const sdk = @import("wraith_sdk");
 const W = sdk.api.wraith;
-const schema = @import("schema");
+const schema = @import("schema").TrailsHorizon;
 
 const CameraManager = schema.CameraManager;
 const Apply = CameraManager.Fns.applyCamera;
@@ -16,7 +16,7 @@ pub const Camera = struct {
 
     pub fn start(self: *Camera) !void {
         self.tools = if (sdk.wraith.root()) |w| w.camera() else null;
-        if (self.tools) |t| t.world(.{ .up = .pos_y, .look = .neg_z, .left_handed = false, .metre = 1 });
+        if (self.tools) |t| t.setWorld(.{ .up = .pos_y, .look = .neg_z, .left_handed = false, .metre = 1 });
         self.apply = try sdk.hooks.createFnWith(Apply, try CameraManager.addresses.applyCamera(), applyCamera, self, .{ .enabled = true });
     }
 
@@ -28,7 +28,7 @@ pub const Camera = struct {
     }
 
     fn steer(tools: W.FreeCamera, camera: *schema.Camera) void {
-        var view: W.CamState = .{
+        var view: W.FreeCamera.State = .{
             .position = camera.eye,
             .aim = .target,
             .target = camera.target,

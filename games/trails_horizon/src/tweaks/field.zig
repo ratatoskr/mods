@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
-const schema = @import("schema");
+const schema = @import("schema").TrailsHorizon;
 const common = @import("common.zig");
 
 const sections = common.sections;

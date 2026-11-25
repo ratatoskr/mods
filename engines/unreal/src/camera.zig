@@ -7,7 +7,7 @@
 const std = @import("std");
 const sdk = @import("wraith_sdk");
 const W = sdk.api.wraith;
-const schema = @import("schema");
+const schema = @import("schema").Unreal;
 
 const Unreal = @import("ue/Unreal.zig");
 const World = @import("ue/World.zig");
@@ -123,7 +123,7 @@ pub const Camera = struct {
         self.loop = loop;
         self.off = off;
         self.tools = if (sdk.wraith.root()) |w| w.camera() else null;
-        if (self.tools) |t| t.world(.{ .up = .pos_z, .look = .pos_x, .left_handed = true, .metre = metre });
+        if (self.tools) |t| t.setWorld(.{ .up = .pos_z, .look = .pos_x, .left_handed = true, .metre = metre });
     }
 
     /// Game thread, once a tick. Each new camera manager, like after a level load, gets ours.
@@ -174,14 +174,14 @@ pub const Camera = struct {
     }
 
     const NoTools = struct {
-        fn camera(_: NoTools, _: *W.CamState) void {}
+        fn camera(_: NoTools, _: *W.FreeCamera.State) void {}
     };
 };
 
 /// `tools` is the free camera, or a stand-in. Gives back the camera as it'll be shown.
 fn steerWith(tools: anytype, io: Io, off: Offsets, params: usize) ?Pose {
     const game = io.readPose(params + off.in_location, params + off.in_rotation, params + off.in_fov) orelse return null;
-    var state: W.CamState = .{
+    var state: W.FreeCamera.State = .{
         .position = game.position,
         .aim = .rotation,
         .target = .{},
@@ -355,7 +355,7 @@ const FakeTools = struct {
     on: bool = false,
     seen: Vec3 = .{},
 
-    pub fn camera(self: *FakeTools, state: *W.CamState) void {
+    pub fn camera(self: *FakeTools, state: *W.FreeCamera.State) void {
         self.seen = state.position;
         if (!self.on) return;
         state.position = .{ .x = 9 };

@@ -4,7 +4,7 @@
 const std = @import("std");
 const sdk = @import("wraith_sdk");
 const W = sdk.api.wraith;
-const schema = @import("schema");
+const schema = @import("schema").TrailsHorizon;
 const common = @import("tweaks/common.zig");
 
 const Chara = schema.Chara;
@@ -53,7 +53,7 @@ pub const Posing = struct {
         const root = (chara.model orelse return).root orelse return;
 
         var nodes: [max_nodes]*DagNode = undefined;
-        var bones: [max_nodes]W.PosingBone = undefined;
+        var bones: [max_nodes]W.Posing.Bone = undefined;
         var matrices: [max_nodes]Mat4 = undefined;
         var unnamed: [max_nodes][10]u8 = undefined;
         const count = walk(root, &nodes, &bones);
@@ -72,7 +72,7 @@ pub const Posing = struct {
 };
 
 /// The tree under `root` depth first, so parents come before their children. Gives how many.
-fn walk(root: *DagNode, nodes: *[max_nodes]*DagNode, bones: *[max_nodes]W.PosingBone) usize {
+fn walk(root: *DagNode, nodes: *[max_nodes]*DagNode, bones: *[max_nodes]W.Posing.Bone) usize {
     const Next = struct { node: *DagNode, parent: i32 };
     var stack: [max_nodes]Next = undefined;
     stack[0] = .{ .node = root, .parent = -1 };

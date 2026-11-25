@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
-const schema = @import("schema");
+const schema = @import("schema").TrailsHorizon;
 const common = @import("common.zig");
 
 const W = sdk.api.wraith;
@@ -63,7 +63,7 @@ pub const Items = struct {
         };
         var arena: std.heap.ArenaAllocator = .init(self.ctx.allocator);
         defer arena.deinit();
-        const choices = arena.allocator().alloc(W.TweakChoice, items.len) catch return;
+        const choices = arena.allocator().alloc(W.Tweaks.Choice, items.len) catch return;
         for (items, choices) |item, *c| c.* = .{
             .value = @floatFromInt(item.id),
             .label = if (item.name) |name| std.mem.span(name) else "?",
@@ -71,16 +71,16 @@ pub const Items = struct {
         self.add(choices) catch |err| std.log.warn("Couldn't list the items: {t}", .{err});
     }
 
-    fn add(self: *Items, choices: []const W.TweakChoice) !void {
+    fn add(self: *Items, choices: []const W.Tweaks.Choice) !void {
         try self.ctx.wraith.tweaks().addIn(sections.items, .{
             .id = "spawn_item",
             .title = "Spawn item",
             .mode = .action,
             .fields = &.{.{ .name = "item", .type = .u32, .label = "Item", .choices = choices }},
-        }, W.TweakHandler.init(self, spawnItemHandler));
+        }, W.Tweaks.Handler.init(self, spawnItemHandler));
     }
 
-    fn spawnItemHandler(self: *Items, event: W.TweakEvent) !void {
+    fn spawnItemHandler(self: *Items, event: W.Tweaks.Event) !void {
         switch (event.kind) {
             .changed => if (std.mem.eql(u8, event.field, "item")) {
                 self.item = @intFromFloat(event.value);

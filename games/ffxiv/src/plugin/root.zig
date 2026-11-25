@@ -6,11 +6,14 @@ pub const panic = sdk.panic;
 
 const log = sdk.log.scoped(.plugin);
 const schema = @import("schema");
+const sqpack = @import("sqpack");
 const Tick = @import("tick.zig").Tick;
 
 pub const Plugin = struct {
     ctx: *sdk.Context = undefined,
     tick: Tick = .{},
+    /// The game's files, once `openPack` has them.
+    pack: ?sqpack.Pack = null,
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
@@ -22,10 +25,31 @@ pub const Plugin = struct {
         // works, like Group Pose
         ctx.wraith.game().setSpeedControl(false);
         try ctx.spawn(askDalamud, .{self});
+        try ctx.spawn(openPack, .{self});
     }
 
     pub fn stop(self: *Plugin) void {
         self.tick.stop();
+        if (self.pack) |*p| p.close(self.ctx.io, self.ctx.allocator);
+        self.pack = null;
+    }
+
+    /// From the `game` folder the exe's in. On a worker, as it's files.
+    fn openPack(self: *Plugin) !void {
+        const io = self.ctx.io;
+        try sdk.frame.toWorker(io);
+        var path_buf: [1024]u8 = undefined;
+        const exe = sdk.Module.main().path(&path_buf) orelse return error.NoExePath;
+        const game_dir = std.fs.path.dirname(exe) orelse return error.NoExePath;
+        const began = std.Io.Clock.awake.now(io);
+        self.pack = sqpack.Pack.open(io, self.ctx.allocator, game_dir) catch |err| {
+            log.err("Can't open the game's files in {s} ({t})", .{ game_dir, err });
+            return err;
+        };
+        const took = @divTrunc(began.durationTo(std.Io.Clock.awake.now(io)).nanoseconds, std.time.ns_per_ms);
+        var installed: usize = 0;
+        for (self.pack.?.repos) |*r| installed += @intFromBool(r.version().len > 0);
+        log.info("Opened the game's files, version {s} with {d} expansions ({d}ms)", .{ self.pack.?.repos[0].version(), installed -| 1, took });
     }
 
     /// Dalamud runs its C# on .NET's CoreCLR in the game, which Wraith joins once it's started. Asks
@@ -34,7 +58,7 @@ pub const Plugin = struct {
     fn askDalamud(self: *Plugin) !void {
         const managed = self.ctx.wraith.managed();
         try sdk.tasks.wait(managed.running());
-        if (managed.kind() != .coreclr) return;
+        if (managed.runtimeKind() != .coreclr) return;
         const Versioning = schema.Dalamud.Versioning;
         // Found once the C# is running, so this says if it isn't Dalamud's
         _ = Versioning.addresses.scmVersion() catch |err| {

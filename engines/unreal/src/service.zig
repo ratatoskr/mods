@@ -4,7 +4,8 @@
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
-const schema = @import("schema");
+const generated = @import("schema");
+const schema = generated.Unreal;
 
 const Unreal = @import("ue/Unreal.zig");
 const objects_ = @import("ue/objects.zig");
@@ -191,30 +192,30 @@ pub const Service = struct {
         return read(ue, r, base, answers.get()) catch none;
     }
 
-    pub fn location(self: *Service, actor: usize) Error!schema.Vec3 {
+    pub fn location(self: *Service, actor: usize) Error!generated.Wraith.Vec3 {
         return self.vector(actor, "K2_GetActorLocation");
     }
 
-    pub fn setLocation(self: *Service, actor: usize, at: schema.Vec3) Error!void {
+    pub fn setLocation(self: *Service, actor: usize, at: generated.Wraith.Vec3) Error!void {
         return self.setVector(actor, "K2_SetActorLocation", "NewLocation", "bTeleport", at);
     }
 
-    pub fn rotation(self: *Service, actor: usize) Error!schema.Vec3 {
+    pub fn rotation(self: *Service, actor: usize) Error!generated.Wraith.Vec3 {
         return self.vector(actor, "K2_GetActorRotation");
     }
 
-    pub fn setRotation(self: *Service, actor: usize, to: schema.Vec3) Error!void {
+    pub fn setRotation(self: *Service, actor: usize, to: generated.Wraith.Vec3) Error!void {
         return self.setVector(actor, "K2_SetActorRotation", "NewRotation", "bTeleportPhysics", to);
     }
 
-    fn vector(self: *Service, actor: usize, function: []const u8) Error!schema.Vec3 {
+    fn vector(self: *Service, actor: usize, function: []const u8) Error!generated.Wraith.Vec3 {
         const v = try self.call(actor, function, &.{});
         if (v.kind != .floats or v.floats.len < 3) return fail(error.WrongType, "{s} didn't give a vector", .{function});
         return .{ .x = @floatCast(v.floats[0]), .y = @floatCast(v.floats[1]), .z = @floatCast(v.floats[2]) };
     }
 
     /// Through `function`, with `flag` set so it's straight there.
-    fn setVector(self: *Service, actor: usize, function: []const u8, param: []const u8, flag: []const u8, v: schema.Vec3) Error!void {
+    fn setVector(self: *Service, actor: usize, function: []const u8, param: []const u8, flag: []const u8, v: generated.Wraith.Vec3) Error!void {
         const ue = try self.checkObject(actor);
         const class = ue.classOf(actor) orelse 0;
         const func = ue.functionNamed(class, function) orelse return fail(error.NotFound, "{s} has no function {s}", .{ className(ue, actor), function });

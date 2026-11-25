@@ -4,7 +4,7 @@
 const std = @import("std");
 const sdk = @import("wraith_sdk");
 const W = sdk.api.wraith;
-const schema = @import("schema");
+const schema = @import("schema").Unity;
 
 const Engine = @import("engine.zig").Engine;
 const Object = @import("engine.zig").Object;
@@ -33,7 +33,7 @@ pub const Camera = struct {
     pub fn start(self: *Camera, engine: *const Engine) void {
         self.engine = engine;
         self.tools = if (sdk.wraith.root()) |w| w.camera() else null;
-        if (self.tools) |t| t.world(.{ .up = .pos_y, .look = .pos_z, .left_handed = true, .metre = 1 });
+        if (self.tools) |t| t.setWorld(.{ .up = .pos_y, .look = .pos_z, .left_handed = true, .metre = 1 });
     }
 
     /// Main thread, as the main camera's about to render.
@@ -56,7 +56,7 @@ pub const Camera = struct {
             if (now.fov != w.fov) self.game.fov = now.fov;
         } else self.game = now;
 
-        var state: W.CamState = .{
+        var state: W.FreeCamera.State = .{
             .position = self.game.position,
             .aim = .rotation,
             .target = .{},
@@ -182,7 +182,7 @@ const FakeTools = struct {
     /// What the game had, as it came in
     seen: Vec3 = .{},
 
-    pub fn camera(self: *FakeTools, state: *W.CamState) void {
+    pub fn camera(self: *FakeTools, state: *W.FreeCamera.State) void {
         self.seen = state.position;
         if (!self.on) return;
         state.position = self.position;

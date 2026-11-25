@@ -3,7 +3,7 @@
   "id": "ffxiv",
   "kind": "plugin",
   "version": "0.0.0",
-  "apiVersion": 1,
+  "apiVersion": 2,
   "title": "FFXIV",
   "summary": "FFXIV, a Wraith plugin",
   "author": "Asgard",

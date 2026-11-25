@@ -65,13 +65,13 @@ pub const Render = struct {
         if (self.hookSteps(managed)) return else |err| log.info("No player loop to hook ({t}), so it's each camera's render callbacks", .{err});
         if (posing != null) log.warn("Posing needs Unity's player loop, so there's none", .{});
         self.posing = null;
-        if (managed.method("UnityEngine.Camera", "FireOnPreCull", 1)) |at| {
+        if (managed.findMethod("UnityEngine.Camera", "FireOnPreCull", 1)) |at| {
             self.pre_cull = sdk.hooks.createFnWith(PreCull, at, preCull, self, .{ .enabled = true }) catch |err| blk: {
                 log.warn("Can't hook Camera.FireOnPreCull: {t}", .{err});
                 break :blk null;
             };
         } else |_| {}
-        if (managed.method("UnityEngine.Rendering.RenderPipelineManager", "BeginCameraRendering", 2)) |at| {
+        if (managed.findMethod("UnityEngine.Rendering.RenderPipelineManager", "BeginCameraRendering", 2)) |at| {
             self.begin_camera = sdk.hooks.createFnWith(BeginCamera, at, beginCamera, self, .{ .enabled = true }) catch |err| blk: {
                 log.warn("Can't hook RenderPipelineManager.BeginCameraRendering: {t}", .{err});
                 break :blk null;

@@ -3,11 +3,11 @@
     .version = "0.0.0",
     .dependencies = .{
         .wraith = .{
-            .url = "git+https://github.com/ratatoskr/wraith#9d6a0889b5350c1cf8eb6e352cf27eca086a0fd2",
-            .hash = "wraith-0.0.0-sZo_99ikXgC21VjXTU1WgrpvjmYDWEDqU1e0NkBCr1V_",
+            .url = "git+https://github.com/ratatoskr/wraith#942cd455cf6ac12c85dca2fd106dc3f66c466d4b",
+            .hash = "wraith-0.0.0-sZo_9-ybXwBWNvgcOPjnbFKSNDs7PPL16_OLzYYK4Jq9",
         },
     },
-    .minimum_zig_version = "0.18.0-dev.1279+81de6a1c6",
+    .minimum_zig_version = "0.18.0-dev.1295+1fb0e6330",
     .paths = .{""},
     .fingerprint = 0x7be7e2b405df0b09,
 }

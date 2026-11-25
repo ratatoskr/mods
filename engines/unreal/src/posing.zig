@@ -62,7 +62,7 @@ const Skeleton = struct {
     total: u32,
     count: u32,
     name: []const u8,
-    bones: []W.PosingBone,
+    bones: []W.Posing.Bone,
     /// As the game last animated it.
     base: []Mat4,
     edited: bool = false,
@@ -71,7 +71,7 @@ const Skeleton = struct {
     ring: u8 = 0,
     /// Its blend shapes, over it and the meshes that follow it.
     shapes: []morphs_.Shape = &.{},
-    shape_list: []W.PosingShape = &.{},
+    shape_list: []W.Posing.Shape = &.{},
     arena: std.heap.ArenaAllocator,
 };
 
@@ -307,7 +307,7 @@ pub const Posing = struct {
         if (total < 3) return error.NoBones;
         const n: u32 = @min(total, max_bones);
         const fnames = try a.alloc(FName, n);
-        const bones = try a.alloc(W.PosingBone, n);
+        const bones = try a.alloc(W.Posing.Bone, n);
         var buf: [256]u8 = undefined;
         // Parents come before children, so the first ones are a whole skeleton
         for (0..n) |i| {
@@ -321,7 +321,7 @@ pub const Posing = struct {
         }
         const owner = self.ue.outerOf(component) orelse component;
         var shapes: std.ArrayList(morphs_.Shape) = .empty;
-        var list: std.ArrayList(W.PosingShape) = .empty;
+        var list: std.ArrayList(W.Posing.Shape) = .empty;
         if (self.morphs) |*m| {
             // A face is often its own mesh following the body
             var with: [16]usize = undefined;

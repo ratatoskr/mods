@@ -4,7 +4,7 @@
 //! looked around.
 
 const sdk = @import("wraith_sdk");
-const schema = @import("schema");
+const schema = @import("schema").TrailsHorizon;
 
 const HighSpeed = schema.HighSpeed;
 const Application = schema.Application;
