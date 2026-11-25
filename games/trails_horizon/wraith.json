@@ -2,15 +2,23 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "trails_horizon",
   "kind": "plugin",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "apiVersion": 2,
   "title": "Trails Horizon",
   "summary": "The free camera, posing, game speed and pause, and money, item and script tweaks for Trails beyond the Horizon.",
   "author": "Asgard",
   "descriptionFile": "README.md",
-  "arches": ["x64"],
+  "arches": [
+    "x64"
+  ],
   "game": {
-    "exes": ["kai.exe"],
-    "ids": ["steam-3316940", "gog-1501307817", "epic-4636399b6c414feaa48112aa66abf19c"]
+    "exes": [
+      "kai.exe"
+    ],
+    "ids": [
+      "steam-3316940",
+      "gog-1501307817",
+      "epic-4636399b6c414feaa48112aa66abf19c"
+    ]
   }
 }

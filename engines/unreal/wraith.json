@@ -2,11 +2,13 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "unreal",
   "kind": "plugin",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "apiVersion": 2,
   "title": "Unreal",
   "summary": "The free camera, posing, game speed, pause and the console in Unreal Engine 4 and 5 games, with plugins' ticks on Unreal's game thread.",
   "author": "Asgard",
   "descriptionFile": "README.md",
-  "gameEngine": { "id": "unreal" }
+  "gameEngine": {
+    "id": "unreal"
+  }
 }

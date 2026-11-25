@@ -2,11 +2,13 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "unity",
   "kind": "plugin",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "apiVersion": 2,
   "title": "Unity",
   "summary": "The free camera, posing and game speed in Unity games, with plugins' ticks on Unity's main thread.",
   "author": "Asgard",
   "descriptionFile": "README.md",
-  "gameEngine": { "id": "unity" }
+  "gameEngine": {
+    "id": "unity"
+  }
 }
