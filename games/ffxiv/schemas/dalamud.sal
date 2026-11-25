@@ -1,0 +1,10 @@
+// Dalamud's own C#, for when the game's running it. Wraith calls these in the game's CoreCLR,
+// converting strings both ways, so they're called like any other function here.
+
+namespace Dalamud;
+
+[Managed("Dalamud.Utility.Versioning")]
+struct Versioning {
+    // Like `15.0.4.1`
+    [Managed("GetScmVersion")] static string scmVersion();
+}
