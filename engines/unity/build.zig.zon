@@ -1,6 +1,6 @@
 .{
     .name = .unity,
-    .version = "0.0.0",
+    .version = "0.0.9",
     .dependencies = .{
         .wraith = .{
             .url = "git+https://github.com/ratatoskr/wraith#9d6a0889b5350c1cf8eb6e352cf27eca086a0fd2",
