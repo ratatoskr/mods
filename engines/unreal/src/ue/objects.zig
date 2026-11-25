@@ -160,10 +160,11 @@ pub const Objects = struct {
         return @as(*align(1) const usize, @ptrFromInt(at)).*;
     }
 
-    /// Like `isObject` with plain reads, for the game thread every frame. `p` has to be readable,
-    /// like a component the game was animating a moment ago, though it may be gone since.
+    /// Like `isObject`, quick enough for the game thread every frame. `p` can be one kept from an
+    /// earlier frame that's been destroyed and freed since, so its index is read safely. The
+    /// array's the game's and alive, so that's read plainly.
     pub fn isObjectPlain(self: *const Objects, p: usize) bool {
-        const i = @as(*align(1) const i32, @ptrFromInt(p + object.index)).*;
+        const i = self.mem.read(i32, p + object.index) orelse return false;
         const n = @as(*align(1) const i32, @ptrFromInt(self.table + @as(usize, if (self.kind == .chunked) chunked_num else fixed_num))).*;
         if (i < 0 or i >= n) return false;
         return self.getPlain(@intCast(i)) == p;
@@ -291,6 +292,28 @@ const tests = struct {
         const objects = Objects.find(&mem, &data).?;
         try std.testing.expectEqual(0x10000, objects.chunk_len);
         try std.testing.expectEqual(@intFromPtr(&objs[4]), objects.get(0x10000 + 40).?);
+    }
+
+    test "an object that's been freed isn't one, and reading it doesn't fault" {
+        var mem = try Mem.init(std.testing.allocator);
+        defer mem.deinit();
+        var objs: [4]Obj = undefined;
+        var items: [4]Item = undefined;
+        for (&objs, &items, 0..) |*o, *it, i| {
+            o.* = .{ .index = @intCast(i) };
+            it.* = .{ .object = @intFromPtr(o) };
+        }
+        var chunks = [_]usize{@intFromPtr(&items)};
+        var data = chunked(@intFromPtr(&chunks), 0x20000, 4, 2, 1);
+        try mem.refresh();
+        const objects = Objects.find(&mem, &data).?;
+        try std.testing.expect(objects.isObjectPlain(@intFromPtr(&objs[1])));
+
+        // A page of its own, gone once it's freed, like a mesh the game destroyed
+        const page = try std.heap.page_allocator.alignedAlloc(u8, .fromByteUnits(std.heap.page_size_min), std.heap.page_size_min);
+        const gone = @intFromPtr(page.ptr);
+        std.heap.page_allocator.free(page);
+        try std.testing.expect(!objects.isObjectPlain(gone));
     }
 
     test "fixed, with smaller items" {
