@@ -15,8 +15,24 @@ pub const Names = struct {
     table: usize,
     /// For the array, where an entry's text starts.
     text_at: usize = 2 * P,
+    /// For the pool, how much one step of an index is, and where an entry's header is in it.
+    pool: Pool = .stock,
 
     pub const Kind = enum { pool, array };
+
+    /// How a pool's entries are laid out. Stock ones are a 2 byte header then the text, at 2 byte
+    /// steps. Some games end the text with a 0, like FF7 Remake, and some put a 4 byte hash first
+    /// and go in 4 byte steps, like FF7 Rebirth.
+    pub const Pool = struct {
+        step: usize,
+        header_at: usize,
+        /// Where ByteProperty's header is in the first block, after None
+        byte_property: []const usize,
+
+        pub const stock: Pool = .{ .step = 2, .header_at = 0, .byte_property = &.{ 6, 8 } };
+        pub const hashed: Pool = .{ .step = 4, .header_at = 4, .byte_property = &.{16} };
+        const all = [_]Pool{ stock, hashed };
+    };
 
     /// Pool blocks hold 64K entries of 2 byte steps, array chunks 16K entries.
     const pool_block_bits = 16;
@@ -29,7 +45,7 @@ pub const Names = struct {
         for (words, 0..) |v, i| {
             if (v % 2 != 0 or !mem.readable(v, 16)) continue;
             const at = @intFromPtr(&words[i]);
-            if (i >= 8 / P and isPool(mem, words, i)) return .{ .mem = mem, .kind = .pool, .table = at };
+            if (i >= 8 / P) if (poolAt(mem, words, i)) |pool| return .{ .mem = mem, .kind = .pool, .table = at, .pool = pool };
             if (v % P != 0) continue;
             // The array's in the data in some games, a pointer to it in others
             if (arrayText(mem, v)) |t| return .{ .mem = mem, .kind = .array, .table = at, .text_at = t };
@@ -38,18 +54,20 @@ pub const Names = struct {
         return null;
     }
 
-    /// `words[i]` as `Blocks[0]`.
-    fn isPool(mem: *const Mem, words: []const usize, i: usize) bool {
+    /// `words[i]` as `Blocks[0]`, and how its entries are laid out.
+    fn poolAt(mem: *const Mem, words: []const usize, i: usize) ?Pool {
         const block0 = words[i];
-        if (!entryIs(mem, block0, "None")) return false;
-        if (!entryIs(mem, block0 + 6, "ByteProperty")) return false;
+        const pool = pools: for (Pool.all) |p| {
+            if (!entryIs(mem, block0 + p.header_at, "None")) continue;
+            for (p.byte_property) |b| if (entryIs(mem, block0 + b, "ByteProperty")) break :pools p;
+        } else return null;
         // Before Blocks, after a pointer-sized lock, how many there are beyond the first
         const current = @as(*const u32, @ptrFromInt(@intFromPtr(&words[i]) - 8)).*;
-        if (current >= 8192) return false;
+        if (current >= 8192) return null;
         for (1..@min(current, 4) + 1) |b| {
-            if (i + b >= words.len or !mem.readable(words[i + b], 8)) return false;
+            if (i + b >= words.len or !mem.readable(words[i + b], 8)) return null;
         }
-        return true;
+        return pool;
     }
 
     fn entryIs(mem: *const Mem, entry: usize, want: []const u8) bool {
@@ -91,7 +109,7 @@ pub const Names = struct {
 
     fn poolText(self: *const Names, index: u32, buf: []u8) ?[]const u8 {
         const block = self.mem.ptr(self.table + (index >> pool_block_bits) * P) orelse return null;
-        const entry = block + (index & 0xFFFF) * 2;
+        const entry = block + (index & 0xFFFF) * self.pool.step + self.pool.header_at;
         const header = self.mem.read(u16, entry) orelse return null;
         const len: usize = header >> 6;
         if (header & 1 == 0) {
@@ -146,26 +164,33 @@ pub const FName = extern struct {
 };
 
 const tests = struct {
-    /// A pool's first block, with "None", "ByteProperty" and a wide name.
-    fn poolBlock(buf: []align(8) u8) void {
+    const Layout = enum { stock, terminated, hashed };
+
+    /// A pool's first block, with "None", "ByteProperty" and a wide name. `terminated` ends each name
+    /// with a 0, like FF7 Remake's, and `hashed` puts a hash first too, in 4 byte steps, like
+    /// FF7 Rebirth's.
+    fn poolBlock(buf: []align(8) u8, layout: Layout) void {
         @memset(buf, 0);
+        const before: usize = if (layout == .hashed) 4 else 0;
+        const end: usize = if (layout == .stock) 0 else 1;
+        const step: usize = if (layout == .hashed) 4 else 2;
         var at: usize = 0;
         for ([_][]const u8{ "None", "ByteProperty", "Kai" }) |s| {
-            std.mem.writeInt(u16, buf[at..][0..2], @intCast(s.len << 6), .little);
-            @memcpy(buf[at + 2 ..][0..s.len], s);
-            at += std.mem.alignForward(usize, 2 + s.len, 2);
+            std.mem.writeInt(u16, buf[at + before ..][0..2], @intCast(s.len << 6), .little);
+            @memcpy(buf[at + before + 2 ..][0..s.len], s);
+            at += std.mem.alignForward(usize, before + 2 + s.len + end, step);
         }
         // "Füße", wide
         const wide = [_]u16{ 'F', 0xFC, 0xDF, 'e' };
-        std.mem.writeInt(u16, buf[at..][0..2], @intCast((wide.len << 6) | 1), .little);
-        @memcpy(buf[at + 2 ..][0..8], std.mem.sliceAsBytes(&wide));
+        std.mem.writeInt(u16, buf[at + before ..][0..2], @intCast((wide.len << 6) | 1), .little);
+        @memcpy(buf[at + before + 2 ..][0..8], std.mem.sliceAsBytes(&wide));
     }
 
     test "the pool" {
         var mem = try Mem.init(std.testing.allocator);
         defer mem.deinit();
         var block: [64]u8 align(8) = undefined;
-        poolBlock(&block);
+        poolBlock(&block, .stock);
         // Some data, then the pool: lock, current block and cursor, the blocks
         var data = [_]usize{ 7, 0x1234, 0, 0, @intFromPtr(&block), 0, 0 };
         try mem.refresh();
@@ -177,6 +202,40 @@ const tests = struct {
         try std.testing.expectEqualStrings("ByteProperty", names.text(3, &buf).?);
         try std.testing.expectEqualStrings("Kai", names.text(10, &buf).?);
         try std.testing.expectEqualStrings("Füße", names.text(13, &buf).?);
+    }
+
+    test "a pool whose names end in a 0, like FF7 Remake's" {
+        var mem = try Mem.init(std.testing.allocator);
+        defer mem.deinit();
+        var block: [64]u8 align(8) = undefined;
+        poolBlock(&block, .terminated);
+        var data = [_]usize{ 7, 0x1234, 0, 0, @intFromPtr(&block), 0, 0 };
+        try mem.refresh();
+
+        const names = Names.find(&mem, &data).?;
+        try std.testing.expectEqual(.pool, names.kind);
+        var buf: [64]u8 = undefined;
+        // Indexes are 2 byte steps, so ByteProperty's 4 and Kai's 12
+        try std.testing.expectEqualStrings("ByteProperty", names.text(4, &buf).?);
+        try std.testing.expectEqualStrings("Kai", names.text(12, &buf).?);
+    }
+
+    test "a pool with a hash before each name, like FF7 Rebirth's" {
+        var mem = try Mem.init(std.testing.allocator);
+        defer mem.deinit();
+        var block: [96]u8 align(8) = undefined;
+        poolBlock(&block, .hashed);
+        var data = [_]usize{ 7, 0x1234, 0, 0, @intFromPtr(&block), 0, 0 };
+        try mem.refresh();
+
+        const names = Names.find(&mem, &data).?;
+        try std.testing.expectEqual(.pool, names.kind);
+        var buf: [64]u8 = undefined;
+        // 4 byte steps to each hash: ByteProperty's at 12, Kai's at 32 and Füße at 44
+        try std.testing.expectEqualStrings("None", names.text(0, &buf).?);
+        try std.testing.expectEqualStrings("ByteProperty", names.text(3, &buf).?);
+        try std.testing.expectEqualStrings("Kai", names.text(8, &buf).?);
+        try std.testing.expectEqualStrings("Füße", names.text(11, &buf).?);
     }
 
     const Entry = extern struct {
