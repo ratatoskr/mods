@@ -1,0 +1,74 @@
+// A model in the scene
+struct Model {
+    // Where the model is, the parent of its root joints
+    [0x90]
+    Node root;
+
+    [0x1A0]
+    Skeleton* skeleton;
+
+    [0x1A8]
+    usize joint_count;
+
+    // `joint_count` Nodes
+    [0x1C8]
+    usize joints;
+
+    // What is it, type in the top half and a number in the bottom, like 0x10300 for pl0300.
+    [0x2B0]
+    u32 object;
+
+    // Whether the skinning matrices need to be rebuilt
+    [0x2C6]
+    bool skin_dirty;
+
+    // Rebuilds the skinning matrices for the model's joints.
+    [Sig("E8 ?? ?? ?? ?? 4D 8B AC 24 ?? ?? ?? ?? 4D 85 ED", Rip)]
+    void skin(u32 frame);
+}
+
+// A joint, or a model's root.
+[Size(0x110)]
+struct Node {
+    // In the world.
+    [0x0]
+    Mat4 world;
+
+    // Relative to `parent`
+    [0x40]
+    Vec4 position;
+
+    [0x50]
+    Quat rotation;
+
+    [0x60]
+    Vec4 scale;
+
+    [0xA0]
+    Mat4 previousPosition;
+
+    [0xF0]
+    u16 flags;
+
+    [0xF8]
+    Node* parent;
+
+    [0x100]
+    JointNumber number;
+}
+
+// A joint's number, 0 to 0xFFF, a nibble for each level of `Skeleton.lookup`.
+bitfield JointNumber : u16 {
+    u16 low : 4;
+    u16 middle : 4;
+    u16 high : 4;
+}
+
+struct Skeleton {
+    // Joint numbers to joints. A three level table, a level for each of a `JointNumber`'s nibbles
+    // from the top: `high` picks one of the first 16 entries, which says where `middle` picks
+    // from, and that says where `low` picks the joint from. 0xFFFF is none at the first two
+    // levels and 0xFFF none for a joint.
+    [0xA0]
+    u16* lookup;
+}

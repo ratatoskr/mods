@@ -1,0 +1,23 @@
+{
+  "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
+  "id": "granblue_relink",
+  "kind": "plugin",
+  "version": "0.0.0",
+  "apiVersion": 2,
+  "title": "Granblue Fantasy Relink",
+  "summary": "The free camera, posing, and game speed and pause for Granblue Fantasy: Relink.",
+  "author": "Asgard",
+  "descriptionFile": "README.md",
+  "wraith": "0.0.28",
+  "game": {
+    "ids": [
+      "steam-881020"
+    ],
+    "exes": [
+      "granblue_fantasy_relink.exe"
+    ]
+  },
+  "arches": [
+    "x64"
+  ]
+}

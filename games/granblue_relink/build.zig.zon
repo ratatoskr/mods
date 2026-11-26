@@ -1,0 +1,13 @@
+.{
+    .name = .granblue_relink,
+    .version = "0.0.1",
+    .dependencies = .{
+        .wraith = .{
+            .url = "git+https://github.com/ratatoskr/wraith#65bd35d19004c63f5a0e8e107502deff2d4ff901",
+            .hash = "wraith-0.0.0-sZo_9_dqYQAWs3HqLlC63fFXQEOQpgIQdLLp_BIC0XAi",
+        },
+    },
+    .minimum_zig_version = "0.18.0-dev.1298+4a0817482",
+    .paths = .{""},
+    .fingerprint = 0x23faea3d490617f2,
+}

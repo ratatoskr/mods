@@ -1,0 +1,48 @@
+// Links the game camera to the render camera, all cameras go through it.
+struct CameraLink {
+    [0x0]
+    RenderCamera* camera;
+
+    // Points `camera` from `eye` at `target`, tipped by `roll` in radians, and rebuilds its view.
+    [Sig("E8 ?? ?? ?? ?? C5 F8 29 7C 24 ?? 48 8D 4C 24", Rip)]
+    void lookAt(Vec4* eye, Vec4* target, Vec4* up, f32 roll, bool cull, bool keep_previous);
+}
+
+// The renderer's camera structure.
+[Size(0x9F0)]
+struct RenderCamera {
+    [0x0]
+    Mat4 view;
+
+    // Before TAA's jitter
+    [0x40]
+    Mat4 proj;
+
+    [0x9A0]
+    f32 near;
+
+    [0x9A4]
+    f32 far;
+
+    [0x9D0]
+    f32 aspect;
+
+    // Vertical radians
+    [0x9D4]
+    f32 fov;
+
+    // Whether the projection matrix needs to be rebuilt
+    [0x9DE]
+    bool projection_dirty;
+
+    // The array of them
+    [Sig("48 8B 0D ?? ?? ?? ?? 41 89 D0 49 69 D0", Rip)]
+    static RenderCamera* cameras;
+
+    [Sig("39 15 ?? ?? ?? ?? 0F 8E", Rip)]
+    static i32 count;
+
+    // Currently active
+    [Sig("8B 35 ?? ?? ?? ?? 48 8D 05 ?? ?? ?? ?? 48 8B 04", Rip)]
+    static i32 current;
+}

@@ -1,0 +1,30 @@
+// The time manager for slow rate groups.
+[Instance("48 8B 05 ?? ?? ?? ?? 0F 84 ?? ?? ?? ?? C5 F8 28 E1", Rip), Size(0xC0)]
+struct SlowRateManager {
+    [0x58]
+    SlowRateGroup[6] groups;
+
+    [0xB8]
+    f32 frame;
+
+    [Sig("53 C5 FA 10 05 ?? ?? ?? ?? C5 FA 11 05")]
+    static void update();
+
+    [Sig("E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 83 B8")]
+    static u8 update_call;
+}
+
+[Size(0x10)]
+struct SlowRateGroup {
+    // How fast this group goes inside the one before it
+    f32 rate;
+
+    // This group's step only, not the ones inside it
+    f32 scale;
+
+    // `rate` as `update` last saw it
+    f32 last_rate;
+
+    // How far this group's time moved on this frame
+    f32 step;
+}
