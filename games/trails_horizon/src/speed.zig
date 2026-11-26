@@ -17,6 +17,8 @@ const UiHook = sdk.hooks.FnHook(UiManager.Fns.update);
 const CameraHook = sdk.hooks.FnHook(CameraManager.Fns.update);
 
 pub const Speed = struct {
+    /// On the game's speed. Gets 1 as it's lost or let go.
+    lease: ?sdk.Lease = null,
     /// Ours, as f32 bits, from Wraith on any thread.
     ours: sdk.atomic.Value(u32) = .init(@bitCast(@as(f32, 1))),
     scale: ScaleHook = undefined,
@@ -30,7 +32,7 @@ pub const Speed = struct {
     /// all. Game thread only, while `updating`.
     own_pace: f32 = 0,
     /// Wraith's ticks, which the game's update drives so plugins' `onTick` runs on its thread.
-    ticks: ?sdk.threads.TickDriver = null,
+    ticks: ?sdk.Lease = null,
 
     pub fn start(self: *Speed, game: sdk.api.wraith.Game) !void {
         self.scale = try sdk.hooks.createFnWith(HighSpeed.Fns.scale, try HighSpeed.addresses.scale(), scaleDetour, self, .{ .enabled = true });
@@ -38,7 +40,7 @@ pub const Speed = struct {
         self.in_game = try sdk.hooks.createFnWith(Application.Fns.updateInGame, try Application.addresses.updateInGame(), inGameDetour, self, .{ .enabled = true });
         self.ui = try sdk.hooks.createFnWith(UiManager.Fns.update, try UiManager.addresses.update(), uiDetour, self, .{ .enabled = true });
         self.camera = try sdk.hooks.createFnWith(CameraManager.Fns.update, try CameraManager.addresses.update(), cameraDetour, self, .{ .enabled = true });
-        game.provideSpeed(.init(self, changed));
+        self.lease = .{ .object = try game.claimSpeed(.init(self, changed), null) };
     }
 
     fn changed(self: *Speed, speed: f64) bool {
@@ -52,7 +54,7 @@ pub const Speed = struct {
     }
 
     fn inGameDetour(self: *Speed, hook: InGameHook, app: *Application, dt: f32) void {
-        if (self.ticks) |t| t.tick();
+        if (self.ticks != null) sdk.threads.tick();
         // What the game scales `dt` to, before ours
         self.own_pace = if (app.high_speed) |h| dt * self.scale.original()(h) else dt;
         self.updating = true;

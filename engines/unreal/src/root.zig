@@ -35,9 +35,14 @@ pub const Plugin = struct {
     ue: ?Unreal = null,
     world: ?World = null,
     /// Taken in `start`, so nobody's ticks run on the render thread first.
-    ticks: ?sdk.threads.TickDriver = null,
+    ticks: ?sdk.Lease = null,
     loop: Loop = .{},
     speed: Speed = .{},
+    /// The parts of the game it handles, see `sdk.Lease`. A game's own plugin can hold them instead,
+    /// and then what this does for them doesn't count.
+    camera_lease: ?sdk.Lease = null,
+    posing_lease: ?sdk.Lease = null,
+    view_lease: ?sdk.Lease = null,
     console: Console = .{},
     camera: Camera = .{},
     meshes: ?Meshes = null,
@@ -57,10 +62,13 @@ pub const Plugin = struct {
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
-        self.ticks = sdk.threads.driveTicks() catch |err| blk: {
+        self.ticks = sdk.threads.claimTicks(.none) catch |err| blk: {
             log.warn("Wraith won't let Unreal's game thread tick ({t}), so plugins' ticks stay on the render thread", .{err});
             break :blk null;
         };
+        self.camera_lease = sdk.Lease.claimCamera(.onChange(&self.camera, Camera.leaseChanged)) catch null;
+        self.posing_lease = sdk.Lease.claimPosing(.none) catch null;
+        self.view_lease = sdk.display.claimView(.none) catch null;
         _ = try ctx.onDraw(&self.loop, Loop.frame);
         try ctx.addWindow(&self.console);
         try ctx.menuItem("Console", &self.console.window.open);
@@ -100,7 +108,7 @@ pub const Plugin = struct {
     /// Game thread, once a frame.
     fn tick(raw: *anyopaque) void {
         const self: *Plugin = @ptrCast(@alignCast(raw));
-        if (self.ticks) |t| t.tick();
+        if (self.ticks != null) sdk.threads.tick();
         self.speed.apply();
         self.console.tick();
         if (self.camera.tools != null) self.camera.tick();

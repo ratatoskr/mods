@@ -37,7 +37,7 @@ const BeginCamera = fn (usize, ?*Object, ?*anyopaque) callconv(.c) void;
 pub const Render = struct {
     engine: *const Engine = undefined,
     /// Wraith's ticks, which Unity's main thread drives. Null if Wraith wouldn't hand them over.
-    ticks: ?sdk.threads.TickDriver = null,
+    ticks: ?sdk.Lease = null,
     camera: *Camera = undefined,
     posing: ?*Posing = null,
     /// Put on at the start of each frame
@@ -59,7 +59,7 @@ pub const Render = struct {
     picked_frame: i32 = -1,
 
     /// Blocks while the game's runtime looks, so not on the render thread.
-    pub fn start(self: *Render, engine: *const Engine, managed: W.Managed, ticks: ?sdk.threads.TickDriver, camera: *Camera, posing: ?*Posing) !void {
+    pub fn start(self: *Render, engine: *const Engine, managed: W.Managed, ticks: ?sdk.Lease, camera: *Camera, posing: ?*Posing) !void {
         self.engine = engine;
         self.ticks = ticks;
         self.camera = camera;
@@ -172,7 +172,7 @@ pub const Render = struct {
         const frame = e.frame_count();
         if (frame != self.last_frame) {
             self.last_frame = frame;
-            if (self.ticks) |t| t.tick();
+            if (self.ticks != null) sdk.threads.tick();
             // The player loop's step ticks it, when there's one
             if (self.step == null) if (self.scene) |s| s.tick();
         }

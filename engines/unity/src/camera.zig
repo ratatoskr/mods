@@ -144,6 +144,10 @@ pub const Camera = struct {
     main_thread: std.Thread.Id = 0,
     /// Wound down, so nothing's put back on screen.
     done: bool = false,
+    /// Whether it holds the lease on the camera, from Wraith on any thread.
+    held: sdk.atomic.Value(bool) = .init(false),
+    /// Lost it since, so the game's cameras go back on the next frame, from its own thread.
+    let_go: sdk.atomic.Value(bool) = .init(false),
 
     const Listed = struct { native: usize, active: bool, name: scene_.Name };
 
@@ -435,12 +439,24 @@ pub const Camera = struct {
 
     /// Main thread, as the plugin's about to stop: puts the game's camera back as it was, and takes
     /// away the ones the player added. Does nothing anywhere else, where Unity's calls aren't safe.
+    /// From Wraith on any thread, as the lease on the camera comes or goes. Losing it puts the game's
+    /// cameras back on the next frame, and nothing's steered till it's back.
+    pub fn leaseChanged(self: *Camera, held: bool) void {
+        self.held.store(held, .release);
+        if (!held) self.let_go.store(true, .release);
+    }
+
     pub fn windDown(self: *Camera) void {
         if (self.main_thread == 0 or std.Thread.getCurrentId() != self.main_thread) {
             log.info("Not on Unity's main thread, so its cameras are left as they are", .{});
             return;
         }
         self.done = true;
+        self.letGo();
+    }
+
+    /// Puts the game's cameras back as it had them and drops the ones the player added. Main thread.
+    fn letGo(self: *Camera) void {
         if (self.shown) |s| if (self.view) |calls| {
             self.putBack(calls, s);
             self.shown = null;
@@ -458,6 +474,10 @@ pub const Camera = struct {
     /// Main thread, as a camera's about to render.
     pub fn steer(self: *Camera, camera: *Object) void {
         if (self.done) return;
+        if (!self.held.load(.acquire)) {
+            if (self.let_go.swap(false, .acq_rel)) self.letGo();
+            return;
+        }
         self.steerWith(self.tools orelse return, camera);
     }
 

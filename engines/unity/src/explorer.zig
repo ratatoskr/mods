@@ -217,7 +217,7 @@ pub const Explorer = struct {
     scene: *Scene = undefined,
     calls: Calls = undefined,
     tools: ?W.FreeCamera = null,
-    ticks: ?sdk.threads.TickDriver = null,
+    ticks: ?sdk.Lease = null,
     transform_type: usize = 0,
     component_type: usize = 0,
     tick_sub: ?sdk.threads.Subscription = null,
@@ -273,7 +273,7 @@ pub const Explorer = struct {
 
     /// Blocks while the game's runtime looks, so not on the render thread. Panel and all, or
     /// nothing if this Unity's missing what it needs.
-    pub fn start(self: *Explorer, engine: *const Engine, scene: *Scene, managed: W.Managed, tools: ?W.FreeCamera, ticks: ?sdk.threads.TickDriver) !void {
+    pub fn start(self: *Explorer, engine: *const Engine, scene: *Scene, managed: W.Managed, tools: ?W.FreeCamera, ticks: ?sdk.Lease) !void {
         self.* = .{ .engine = engine, .scene = scene, .managed = managed, .tools = tools, .ticks = ticks };
         var missing: []const u8 = "";
         self.calls = engine_.findCalls(Calls, Calls.names, managed, &missing) catch |err| {
@@ -321,7 +321,7 @@ pub const Explorer = struct {
     fn tick(self: *Explorer) void {
         // Ticks on the render thread would call Unity from the wrong thread
         const ticks = self.ticks orelse return;
-        if (!ticks.active()) return;
+        if (!ticks.held()) return;
         for (self.actions.drain()) |a| self.apply(a);
         if (self.unpublished_copy) |c| {
             if (self.copied.publish(c)) self.unpublished_copy = null;

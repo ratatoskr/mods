@@ -21,22 +21,25 @@ var paused_after: i64 = 0;
 /// Ticks from the camera while the game loop's paused.
 pub fn tickIfPaused(now: i64) void {
     const self = started orelse return;
-    const ticks = self.ticks orelse return;
-    if (now - updated_at > paused_after) ticks.tick();
+    if (self.ticks == null) return;
+    if (now - updated_at > paused_after) sdk.threads.tick();
 }
 
 pub const Speed = struct {
+    /// On the game's speed. Gets 1 as it's lost or let go.
+    lease: ?sdk.Lease = null,
+
     /// As f32 bits.
     ours: sdk.atomic.Value(u32) = .init(@bitCast(@as(f32, 1))),
     update: Update = undefined,
     call: sdk.hooks.MidHook = undefined,
-    ticks: ?sdk.threads.TickDriver = null,
+    ticks: ?sdk.Lease = null,
 
     pub fn start(self: *Speed, game: sdk.api.wraith.Game) !void {
         _ = try SlowRateManager.addresses.instance();
         self.update = @ptrFromInt(try SlowRateManager.addresses.update());
         self.call = try sdk.hooks.createMidWith(try SlowRateManager.addresses.update_call(), updateCall, self, .{ .replace = true, .size = 5, .expect = "E8 ?? ?? ?? ??", .enabled = true });
-        game.provideSpeed(.init(self, changed));
+        self.lease = .{ .object = try game.claimSpeed(.init(self, changed), null) };
         paused_after = clock.ticks(paused_ns);
         updated_at = clock.now();
         started = self;
@@ -50,7 +53,7 @@ pub const Speed = struct {
     /// Replaces the game loop's `call update`, as `update` itself can't be hooked.
     fn updateCall(self: *Speed, _: *sdk.api.CpuContext) void {
         updated_at = clock.now();
-        if (self.ticks) |t| t.tick();
+        if (self.ticks != null) sdk.threads.tick();
         const ours: f32 = @max(@as(f32, @bitCast(self.ours.load(.acquire))), 0);
         if (ours == 1) return self.update();
         const manager = (SlowRateManager.instance() catch null) orelse return self.update();

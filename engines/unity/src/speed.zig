@@ -8,6 +8,7 @@ const std = @import("std");
 const sdk = @import("wraith_sdk");
 
 const W = sdk.api.wraith;
+const log = sdk.log.scoped(.unity);
 
 const SetScale = fn (f32) callconv(.c) void;
 const GetScale = fn () callconv(.c) f32;
@@ -18,6 +19,8 @@ const max_scale = 100;
 const unknown = std.math.maxInt(u32);
 
 pub const Speed = struct {
+    /// On the game's speed. Gets 1 as it's lost or let go.
+    lease: ?sdk.Lease = null,
     set_hook: ?sdk.hooks.FnHook(SetScale) = null,
     /// Unity's setter itself, for putting the game's back
     set_at: usize = 0,
@@ -35,10 +38,11 @@ pub const Speed = struct {
         const set_at = try managed.icall("UnityEngine.Time", "set_timeScale");
         self.set_at = set_at;
         const get_at = try managed.icall("UnityEngine.Time", "get_timeScale");
-        self.set_hook = try sdk.hooks.createFnWith(SetScale, set_at, onSet, self, .{ .enabled = true });
+        // On once it holds the speed, which may be straight away
+        self.set_hook = try sdk.hooks.createFnWith(SetScale, set_at, onSet, self, .{ .enabled = false });
         errdefer self.destroyHooks();
-        self.get_hook = try sdk.hooks.createFnWith(GetScale, get_at, onGet, self, .{ .enabled = true });
-        game.provideSpeed(.init(self, changed));
+        self.get_hook = try sdk.hooks.createFnWith(GetScale, get_at, onGet, self, .{ .enabled = false });
+        self.lease = .{ .object = try game.claimSpeed(.init(self, changed), .init(self, leaseChanged)) };
     }
 
     /// Puts the game's own time scale back. Unity's main thread can't, as Wraith skips the plugin's
@@ -47,14 +51,36 @@ pub const Speed = struct {
     /// hook's still in, ours is 1 by then, so it passes the game's straight through.
     pub fn stop(self: *Speed) void {
         if (self.set_hook == null) return;
+        self.putBack();
+        self.destroyHooks();
+    }
+
+    /// From Wraith on any thread, as the lease on the game's speed comes or goes. Without it, the
+    /// game's own time scale goes back and its hooks come out, so another plugin's is the only one.
+    fn leaseChanged(self: *Speed, held: bool) void {
+        if (held) {
+            // The game may have set it while we weren't looking
+            self.game.store(unknown, .release);
+            if (self.set_hook) |h| h.enable() catch |err| log.warn("Can't hook Unity's time scale again: {t}", .{err});
+            if (self.get_hook) |h| h.enable() catch {};
+            self.dirty.store(true, .release);
+            return;
+        }
+        self.putBack();
+        if (self.set_hook) |h| h.disable() catch {};
+        if (self.get_hook) |h| h.disable() catch {};
+    }
+
+    /// The game's own time scale, through Unity's setter. A plain value, so any thread.
+    fn putBack(self: *Speed) void {
         const was = self.ourSpeed();
         self.ours.store(@bitCast(@as(f64, 1)), .release);
+        self.dirty.store(false, .release);
         const g = self.game.load(.acquire);
         if (g != unknown and was != 1) {
             const set: *const SetScale = @ptrFromInt(self.set_at);
             set(@bitCast(g));
         }
-        self.destroyHooks();
     }
 
     fn destroyHooks(self: *Speed) void {

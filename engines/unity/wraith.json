@@ -3,7 +3,7 @@
   "id": "unity",
   "kind": "plugin",
   "version": "0.0.13",
-  "apiVersion": 2,
+  "apiVersion": 3,
   "title": "Unity",
   "summary": "The free camera, posing and game speed in Unity games, with plugins' ticks on Unity's main thread.",
   "author": "Asgard",

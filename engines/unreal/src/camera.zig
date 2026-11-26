@@ -179,6 +179,10 @@ pub const Camera = struct {
     /// Every camera, in Photo mode. Null if Wraith's too old for that.
     list: ?W.ItemList = null,
     asks: Asks = .{},
+    /// Whether it holds the lease on the camera, from Wraith on any thread.
+    held: sdk.atomic.Value(bool) = .init(false),
+    /// Lost it since, so the game's cameras go back on the next frame, from its own thread.
+    let_go: sdk.atomic.Value(bool) = .init(false),
     // Game thread only from here down
     /// The camera manager ours is in, and ours, with their slots in the object array.
     manager: usize = 0,
@@ -296,6 +300,14 @@ pub const Camera = struct {
     /// Game thread, once a tick. Each new camera manager, like after a level load, gets ours, and the
     /// cameras are kept up to date for Photo mode.
     pub fn tick(self: *Camera) void {
+        if (!self.held.load(.acquire)) {
+            // Ours comes out, and goes back in once it's held again
+            if (self.let_go.swap(false, .acq_rel)) {
+                self.leave();
+                self.manager = 0;
+            }
+            return;
+        }
         self.addModifier();
         const list = self.list orelse return;
         self.scanSome();
@@ -445,6 +457,13 @@ pub const Camera = struct {
             try items.append(gpa, .{ .id = l.id, .name = l.name.get(), .detail = l.detail, .current = l.current });
         }
         list.set(items.items);
+    }
+
+    /// From Wraith on any thread, as the lease on the camera comes or goes. Losing it puts the game's
+    /// cameras back on the next frame, and nothing's steered till it's back.
+    pub fn leaseChanged(self: *Camera, held: bool) void {
+        self.held.store(held, .release);
+        if (!held) self.let_go.store(true, .release);
     }
 
     /// Game thread. Takes ours back out of the camera manager, so a reload doesn't pile them up.

@@ -17,6 +17,8 @@ const min_dilation = 0.0001;
 const max_dilation = 20;
 
 pub const Speed = struct {
+    /// On the game's speed. Gets 1 as it's lost or let go.
+    lease: ?sdk.Lease = null,
     world: ?*const World = null,
     /// Ours, as f64 bits, from Wraith on any thread.
     ours: sdk.atomic.Value(u64) = .init(@bitCast(@as(f64, 1))),
@@ -33,10 +35,15 @@ pub const Speed = struct {
     /// Its slot in the object array, to tell it's still there without reading it.
     kept_slot: u32 = 0,
     kept_was: bool = false,
+    /// Whether it holds the lease on the game's speed, from Wraith on any thread.
+    held: sdk.atomic.Value(bool) = .init(false),
+    /// Lost or got since the game thread last looked.
+    let_go: sdk.atomic.Value(bool) = .init(false),
+    regained: sdk.atomic.Value(bool) = .init(false),
 
     pub fn start(self: *Speed, world: *const World, game: sdk.api.wraith.Game) void {
         self.world = world;
-        game.provideSpeed(.init(self, changed));
+        self.lease = if (game.claimSpeed(.init(self, changed), .init(self, leaseChanged))) |l| .{ .object = l } else |_| null;
     }
 
     /// Puts the game's own back. Game thread only, where the world's read plainly.
@@ -59,6 +66,13 @@ pub const Speed = struct {
         if (self.settings != 0 or self.kept != 0) log.warn("The game thread didn't come round, so the game's speed is left as it was", .{});
     }
 
+    /// From Wraith on any thread, as the lease on the game's speed comes or goes. Without it, the
+    /// game's own dilation goes back on the game thread, and it's left be.
+    fn leaseChanged(self: *Speed, held: bool) void {
+        self.held.store(held, .release);
+        if (held) self.regained.store(true, .release) else self.let_go.store(true, .release);
+    }
+
     fn changed(self: *Speed, speed: f64) bool {
         self.ours.store(@bitCast(speed), .release);
         return true;
@@ -66,6 +80,12 @@ pub const Speed = struct {
 
     /// Game thread, once a tick. Each level load brings new world settings, so it checks.
     pub fn apply(self: *Speed) void {
+        if (!self.held.load(.acquire)) {
+            if (self.let_go.swap(false, .acq_rel)) self.leave();
+            return;
+        }
+        // What the game has now, which it may have changed meanwhile, goes under ours
+        if (self.regained.swap(false, .acq_rel)) self.settings = 0;
         const world = self.world orelse return;
         const mem = world.ue.mem;
         const settings = world.settings() orelse return;

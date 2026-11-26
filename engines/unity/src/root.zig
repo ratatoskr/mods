@@ -28,12 +28,17 @@ pub const Plugin = struct {
     /// Set once `engine` is, for other threads.
     ready: sdk.atomic.Value(bool) = .init(false),
     /// Taken in `start`, so nobody's ticks run on the render thread first.
-    ticks: ?sdk.threads.TickDriver = null,
+    ticks: ?sdk.Lease = null,
     camera: Camera = .{},
     render: Render = .{},
     scene: ?Scene = null,
     posing: ?Posing = null,
     speed: Speed = .{},
+    /// The parts of the game it handles, see `sdk.Lease`. A game's own plugin can hold them instead,
+    /// and then what this does for them doesn't count.
+    camera_lease: ?sdk.Lease = null,
+    posing_lease: ?sdk.Lease = null,
+    view_lease: ?sdk.Lease = null,
     /// The Workbench's Scene panel
     explorer: Explorer = .{},
 
@@ -45,11 +50,14 @@ pub const Plugin = struct {
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
-        self.ticks = sdk.threads.driveTicks() catch |err| blk: {
+        self.ticks = sdk.threads.claimTicks(.none) catch |err| blk: {
             log.warn("Wraith won't let Unity's main thread tick ({t}), so plugins' ticks stay on the render thread", .{err});
             break :blk null;
         };
-        if (self.ticks) |t| if (!t.active()) log.info("Another plugin drives ticks, so Unity's main thread doesn't", .{});
+        if (self.ticks) |t| if (!t.held()) log.info("Another plugin has ticks, so Unity's main thread doesn't till it lets them go", .{});
+        self.camera_lease = sdk.Lease.claimCamera(.onChange(&self.camera, Camera.leaseChanged)) catch null;
+        self.posing_lease = sdk.Lease.claimPosing(.none) catch null;
+        self.view_lease = sdk.display.claimView(.none) catch null;
         try ctx.spawn(setUp, .{self});
     }
 
