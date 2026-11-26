@@ -162,11 +162,11 @@ pub const Camera = struct {
         const m = managed orelse return;
         var missing: []const u8 = "";
         self.view = engine_.findCalls(ViewCalls, ViewCalls.names, m, &missing) catch blk: {
-            log.info("Can't tell which camera's on screen or switch, since this Unity's missing {s}", .{missing});
+            log.debug("Can't tell which camera's on screen or switch, since this Unity's missing {s}", .{missing});
             break :blk null;
         };
         self.make = engine_.findCalls(MakeCalls, MakeCalls.names, m, &missing) catch blk: {
-            log.info("Can't add cameras, since this Unity's missing {s}", .{missing});
+            log.debug("Can't add cameras, since this Unity's missing {s}", .{missing});
             break :blk null;
         };
         self.camera_type = m.typeObject("UnityEngine.Camera") catch 0;

@@ -234,10 +234,18 @@ const Volume = struct {
     game_object: u32 = 0,
     native: usize = 0,
     profile: u32 = 0,
+    /// The volume component
+    component: u32 = 0,
     /// Each item's effect and parameter, made as they're first used
     components: [items.len]u32 = @splat(0),
     params: [items.len]u32 = @splat(0),
 };
+
+/// Our volume's priority, unless a game's is higher.
+const start_priority = 10_000;
+
+/// Our volume's GameObject, so it's known in Unity's own tools.
+const volume_name = "Wraith photo mode look";
 
 /// Frames between looks for new canvases while Clean shot's on.
 const rescan_frames = 30;
@@ -259,6 +267,10 @@ pub const Photo = struct {
     /// Under `lock`
     want: Want = .{},
     contributions: std.ArrayList(W.Contribution) = .empty,
+    /// Look, among `contributions`, for taking out if its volume can't be made
+    look_part: ?W.Contribution = null,
+    /// Over `contributions` and `look_part`, since the main thread can take Look out as it stops
+    parts_lock: sdk.sync.RwLock = .{},
     // Main thread only from here down
     lensed: ?Lensed = null,
     volume: ?Volume = null,
@@ -269,6 +281,10 @@ pub const Photo = struct {
     hidden: std.ArrayList(Hidden) = .empty,
     hiding: bool = false,
     frames: u32 = 0,
+    /// Our volume's priority, kept for the next one made
+    priority: f64 = start_priority,
+    /// Whether v2 has the call that tells it to blend again, till it's found it hasn't
+    dispatch: bool = true,
 
     /// Finds what it can. Blocks while the game's runtime looks, so not on the render thread.
     pub fn start(self: *Photo, managed: W.Managed, scene: *Scene, camera: *const Camera) void {
@@ -285,12 +301,13 @@ pub const Photo = struct {
         self.ortho.find(managed);
         self.size.find(managed);
         self.near.find(managed);
-        if (self.calls.volumes()) self.findLook() else log.info("Photo mode has no look, since this Unity has no way to add components", .{});
+        if (self.calls.volumes()) self.findLook();
         self.say();
         const ui_area = (sdk.wraith.root() orelse return).ui();
-        if (self.hasLens()) self.contribute(ui_area, .{ .slot = "photo.inspector", .id = "lens", .kind = "camera", .title = "Lens", .presentation = .foldout, .open = true, .order = 300 }, drawLens);
-        if (self.hasLook()) self.contribute(ui_area, .{ .slot = "photo.inspector", .id = "look", .kind = "camera", .title = "Look", .presentation = .foldout, .open = true, .order = 400 }, drawLook);
-        if (self.calls.canvases()) self.contribute(ui_area, .{ .slot = "photo.toolbar", .id = "clean_shot", .order = 450 }, drawClean);
+        if (self.hasLens()) _ = self.contribute(ui_area, .{ .slot = "photo.inspector", .id = "lens", .kind = "camera", .title = "Lens", .presentation = .foldout, .open = true, .order = 300 }, drawLens);
+        // Without one, Wraith's own says there's none
+        if (self.hasLook()) self.look_part = self.contribute(ui_area, .{ .slot = "photo.inspector", .id = "look", .kind = "camera", .title = "Look", .presentation = .foldout, .open = true, .order = 400 }, drawLook);
+        if (self.calls.canvases()) _ = self.contribute(ui_area, .{ .slot = "photo.toolbar", .id = "clean_shot", .order = 450 }, drawClean);
     }
 
     /// The first pipeline whose volume class is there and has any of the items.
@@ -317,14 +334,14 @@ pub const Photo = struct {
 
     /// What it found, and what's missing, so a game where something doesn't show can be looked into.
     fn say(self: *const Photo) void {
-        if (!self.ortho.has() or !self.size.has()) log.info("Photo mode has no orthographic, since this Unity's camera has no {s}", .{if (!self.ortho.has()) "orthographic" else "orthographicSize"});
-        if (!self.near.has()) log.info("Photo mode has no near clip, since this Unity's camera has no nearClipPlane", .{});
+        if (!self.ortho.has() or !self.size.has()) log.debug("Photo mode has no orthographic, since this Unity's camera has no {s}", .{if (!self.ortho.has()) "orthographic" else "orthographicSize"});
+        if (!self.near.has()) log.debug("Photo mode has no near clip, since this Unity's camera has no nearClipPlane", .{});
         if (self.calls.volumes()) if (self.pipeline) |p| {
             var count: usize = 0;
             for (self.found) |f| count += @intFromBool(f);
-            log.info("Photo mode's look goes through {s}, with {d} of {d} settings", .{ p.name, count, items.len });
-        } else self.sayRendering();
-        if (!self.calls.canvases()) log.info("Photo mode has no clean shot, since this Unity can't turn its canvases off", .{});
+            log.debug("Photo mode's look goes through {s}, with {d} of {d} settings", .{ p.name, count, items.len });
+        } else self.sayRendering() else log.warn("Photo mode has no look. This Unity can't add components to the scene.", .{});
+        if (!self.calls.canvases()) log.debug("Photo mode has no clean shot, since this Unity can't turn its canvases off", .{});
     }
 
     /// Which of the game's assemblies look like they draw, for working out what it uses instead.
@@ -341,7 +358,7 @@ pub const Photo = struct {
             if (list.items.len > 0) list.appendSlice(gpa, ", ") catch break;
             list.appendSlice(gpa, image) catch break;
         }
-        log.info("Photo mode has no look, since this game has no URP, HDRP or Post-Processing v2. Its drawing assemblies: {s}", .{if (list.items.len > 0) list.items else "none"});
+        log.warn("Photo mode has no look. It has no URP, HDRP or Post-Processing v2. Its drawing assemblies: {s}", .{if (list.items.len > 0) list.items else "none"});
     }
 
     fn hasOrtho(self: *const Photo) bool {
@@ -356,14 +373,37 @@ pub const Photo = struct {
         return self.pipeline != null and std.mem.indexOfScalar(bool, &self.found, true) != null;
     }
 
-    fn contribute(self: *Photo, ui_area: W.Ui, placement: W.Slot.Placement, comptime draw: fn (*Photo, W.Slot.Target) void) void {
+    fn contribute(self: *Photo, ui_area: W.Ui, placement: W.Slot.Placement, comptime draw: fn (*Photo, W.Slot.Target) void) ?W.Contribution {
         // An older Wraith has no slots, so there's just nothing to show
-        const c = ui_area.contribute(placement, .init(self, draw)) catch |err| return log.debug("No {s} in Photo mode: {t}", .{ placement.id, err });
-        self.contributions.append(gpa, c) catch c.remove();
+        const c = ui_area.contribute(placement, .init(self, draw)) catch |err| {
+            log.debug("No {s} in Photo mode: {t}", .{ placement.id, err });
+            return null;
+        };
+        self.contributions.append(gpa, c) catch {
+            c.remove();
+            return null;
+        };
+        return c;
+    }
+
+    /// Takes Look out, so Wraith's own says there's none. Waits for a draw under way, so not under `lock`.
+    fn withdrawLook(self: *Photo) void {
+        self.parts_lock.lock();
+        defer self.parts_lock.unlock();
+        const c = self.look_part orelse return;
+        self.look_part = null;
+        for (self.contributions.items, 0..) |other, i| if (std.meta.eql(other, c)) {
+            _ = self.contributions.orderedRemove(i);
+            break;
+        };
+        c.remove();
     }
 
     /// Takes its parts out of Photo mode, waiting for a draw under way.
     pub fn stop(self: *Photo) void {
+        self.parts_lock.lock();
+        defer self.parts_lock.unlock();
+        self.look_part = null;
         for (self.contributions.items) |c| c.remove();
         self.contributions.deinit(gpa);
         self.contributions = .empty;
@@ -386,8 +426,30 @@ pub const Photo = struct {
     pub fn frame(self: *Photo) void {
         const want = self.wanted();
         self.lens(want);
-        if (self.hasLook()) self.look(want);
+        if (self.hasLook()) {
+            // Asked till ours is made, so Unity's answered by then
+            if (self.volume == null) if (self.pipeline) |p| {
+                _ = self.highest(p, 0);
+            };
+            self.look(want);
+        }
         if (self.calls.canvases()) self.clean(want.clean);
+    }
+
+    /// The highest priority of the scene's volumes other than `ours`, or null if Unity's not answered.
+    fn highest(self: *Photo, p: Pipeline, ours: usize) ?f64 {
+        var volumes: std.ArrayList(scene_.Found) = .empty;
+        defer volumes.deinit(gpa);
+        _ = self.scene.objectsOfType(gpa, p.volume, &volumes) catch return null;
+        const m = self.managed;
+        var top: ?f64 = null;
+        for (volumes.items) |f| {
+            const other = @intFromPtr(f.object);
+            if (other == ours) continue;
+            const got = m.getField(other, "priority") catch m.invoke(p.volume, "get_priority", other, &.{}) catch continue;
+            if (got.kind == .number) top = @max(top orelse got.number, got.number);
+        }
+        return top;
     }
 
     /// Everything back as the game had it, and our volume gone. Main thread, as the plugin goes.
@@ -449,11 +511,18 @@ pub const Photo = struct {
             // It's said why, so it isn't tried every frame
             self.makeVolume() catch {
                 self.dropVolume();
+                self.withdrawLook();
                 self.pipeline = null;
                 return;
             };
             self.applied = @splat(null);
         }
+        // Some games' v2 only blends again when told, like Risk of Rain 2's. Others don't have it
+        defer if (self.pipeline.?.which == .ppv2 and self.dispatch) {
+            _ = self.managed.invoke(self.pipeline.?.volume, "DispatchVolumeSettingsChangedEvent", 0, &.{}) catch {
+                self.dispatch = false;
+            };
+        };
         var dof = false;
         for (items, want.look) |item, v| {
             if (v != null and std.mem.eql(u8, item.group, "Depth of field")) dof = true;
@@ -496,7 +565,7 @@ pub const Photo = struct {
         step.* = "finding the camera's volume layer";
         const layer = try self.volumeLayer(p);
         step.* = "making its GameObject";
-        const made = try m.invoke("UnityEngine.GameObject", ".ctor", 0, &.{.{ .kind = .text, .text = "Wraith photo mode look" }});
+        const made = try m.invoke("UnityEngine.GameObject", ".ctor", 0, &.{.{ .kind = .text, .text = volume_name }});
         const go: *Object = @ptrFromInt(made.object);
         self.volume = .{ .game_object = try m.hold(made.object), .native = self.scene.nativeOf(go) };
         // Before the volume, so it's seen on its layer from the start
@@ -504,18 +573,27 @@ pub const Photo = struct {
         _ = try m.invoke("UnityEngine.GameObject", "set_layer", made.object, &.{.{ .kind = .integer, .integer = layer }});
         // Through scene changes, like the camera
         _ = m.invoke("UnityEngine.Object", "DontDestroyOnLoad", 0, &.{.{ .kind = .object, .object = made.object }}) catch {};
+        // Off till it's set up, so the game's pipeline first sees it at its priority
+        step.* = "switching it off";
+        _ = try m.invoke("UnityEngine.GameObject", "SetActive", made.object, &.{.{ .kind = .flag, .flag = false }});
         step.* = "adding the volume";
         const volume = self.calls.add_component.?(go, @ptrFromInt(self.volume_type)) orelse return error.NoVolume;
+        self.volume.?.component = try m.hold(@intFromPtr(volume));
         step.* = "making it global";
         try self.setVolume(p, @intFromPtr(volume), "isGlobal", .{ .kind = .flag, .flag = true });
         // Over the game's own
+        // Above every other, since the highest's applied last and a game's can be high, like Risk of Rain 2's
+        // at 99999. Set while it's off, since that pipeline breaks for good when a live one's priority changes.
         step.* = "setting its priority";
-        try self.setVolume(p, @intFromPtr(volume), "priority", .{ .kind = .number, .number = 10_000 });
+        if (self.highest(p, 0)) |top| self.priority = @max(self.priority, top + 1);
+        try self.setVolume(p, @intFromPtr(volume), "priority", .{ .kind = .number, .number = self.priority });
         step.* = "getting its profile";
         const profile = try m.invoke(p.volume, "get_profile", @intFromPtr(volume), &.{});
         if (profile.object == 0) return error.NoProfile;
         self.volume.?.profile = try m.hold(profile.object);
-        log.info("Photo mode's look is a {s} volume on layer {d}", .{ p.name, layer });
+        step.* = "switching it on";
+        _ = try m.invoke("UnityEngine.GameObject", "SetActive", made.object, &.{.{ .kind = .flag, .flag = true }});
+        log.debug("Photo mode's look is a {s} volume on layer {d}, at priority {d}", .{ p.name, layer, self.priority });
     }
 
     /// A volume's setting through its property, which newer pipelines have over a private field,
@@ -552,7 +630,9 @@ pub const Photo = struct {
         } else |_| {}
         if (v.game_object != 0) m.release(v.game_object);
         if (v.profile != 0) m.release(v.profile);
-        for (v.components) |h| if (h != 0) m.release(h);
+        if (v.component != 0) m.release(v.component);
+        // Items on one effect share its hold
+        for (v.components, 0..) |h, i| if (h != 0 and std.mem.indexOfScalar(u32, v.components[0..i], h) == null) m.release(h);
         for (v.params) |h| if (h != 0) m.release(h);
         self.applied = @splat(null);
     }

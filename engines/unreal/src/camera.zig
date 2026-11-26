@@ -237,7 +237,7 @@ pub const Camera = struct {
         const remove = ue.functionNamed(manager, "RemoveCameraModifier");
         var views_missing: []const u8 = "";
         const views = Views.find(ue, &views_missing) catch blk: {
-            log.info("Photo mode can't see through the level's cameras, since this Unreal's missing {s}", .{views_missing});
+            log.debug("Photo mode can't see through the level's cameras, since this Unreal's missing {s}", .{views_missing});
             break :blk null;
         };
         return .{
@@ -336,7 +336,7 @@ pub const Camera = struct {
         if (modifier == 0) {
             log.warn("The camera manager wouldn't take a camera modifier, so the free camera can't move it", .{});
         } else if (!self.added_modifier) {
-            log.info("The free camera moves the camera through a camera modifier of ours", .{});
+            log.debug("The free camera moves the camera through a camera modifier of ours", .{});
             self.added_modifier = true;
         } else log.debug("A new camera manager, so it gets our camera modifier too", .{});
     }

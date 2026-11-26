@@ -142,11 +142,13 @@ pub const Photo = struct {
         if (self.off.look()) loop.watch(self.off.post.?, self, onPostProcess);
         const ui_area = (sdk.wraith.root() orelse return).ui();
         if (self.off.lens()) self.contribute(ui_area, .{ .slot = "photo.inspector", .id = "lens", .kind = "camera", .title = "Lens", .presentation = .foldout, .open = true, .order = 300 }, drawLens);
+        // Without one, Wraith's own says there's none
         if (self.off.look()) self.contribute(ui_area, .{ .slot = "photo.inspector", .id = "look", .kind = "camera", .title = "Look", .presentation = .foldout, .open = true, .order = 400 }, drawLook);
         if (self.off.clean()) self.contribute(ui_area, .{ .slot = "photo.toolbar", .id = "clean_shot", .order = 450 }, drawClean);
         var found: usize = 0;
         for (self.off.fields) |f| found += @intFromBool(f != null);
-        log.info("Photo mode has {s}lens, {d} of {d} look settings, and {s}clean shot", .{ if (self.off.lens()) "" else "no ", if (self.off.look()) found else 0, items.len, if (self.off.clean()) "" else "no " });
+        if (!self.off.look()) log.warn("Photo mode has no look. {s}", .{noLook(&self.off)});
+        log.debug("Photo mode has {s}lens, {d} of {d} look settings, and {s}clean shot", .{ if (self.off.lens()) "" else "no ", if (self.off.look()) found else 0, items.len, if (self.off.clean()) "" else "no " });
     }
 
     fn contribute(self: *Photo, ui_area: W.Ui, placement: W.Slot.Placement, comptime draw: fn (*Photo, W.Slot.Target) void) void {
@@ -408,6 +410,11 @@ fn applyLook(p: usize, off: *const Offsets, look: []const ?f32, doubles: bool) v
         any = true;
     }
     if (any) writeRaw(f32, p + off.weight, 1);
+}
+
+/// Why there's no look, as a sentence.
+fn noLook(off: *const Offsets) []const u8 {
+    return if (off.post == null) "This Unreal's camera modifiers have no post-process to change." else "None of its post-process settings could be found.";
 }
 
 fn readRaw(comptime T: type, at: usize) T {
