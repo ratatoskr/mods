@@ -4,7 +4,7 @@
   "kind": "plugin",
   "version": "0.0.14",
   "apiVersion": 3,
-  "title": "Unity",
+  "title": "Unity Engine Support",
   "summary": "The free camera, posing and game speed in Unity games, with plugins' ticks on Unity's main thread.",
   "author": "Asgard",
   "descriptionFile": "README.md",
