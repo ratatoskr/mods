@@ -11,10 +11,8 @@ const FieldSymbol = schema.FieldSymbol;
 const FioSneaking = schema.FioSneaking;
 
 pub const Field = struct {
-    const Update = FieldSymbol.Fns.update;
-    const UpdateHook = sdk.hooks.FnHook(Update);
-    const LaserHit = FioSneaking.Fns.laserHit;
-    const LaserHook = sdk.hooks.FnHook(LaserHit);
+    const UpdateHook = sdk.hooks.Hook(FieldSymbol, .update);
+    const LaserHook = sdk.hooks.Hook(FioSneaking, .laserHit);
 
     const noticed = 2;
     const wary = 1;
@@ -23,7 +21,7 @@ pub const Field = struct {
     laser: LaserHook = undefined,
 
     pub fn start(self: *Field, ctx: *sdk.Context) !void {
-        self.update = try sdk.hooks.createFn(Update, try FieldSymbol.addresses.update(), updateDetour, self);
+        self.update = try sdk.hooks.hook(FieldSymbol, .update, updateDetour, self);
         try sdk.tweaks.hook(ctx, .{ .id = "stealth", .title = "Enemies don't notice you", .section = sections.field }, &self.update);
 
         const text = try sdk.Module.main().text();
@@ -33,7 +31,7 @@ pub const Field = struct {
             .{ .at = text.scan("tailing: gauge", "F3 0F 5F FE 0F 28 B4 24 ?? ?? ?? ?? F3 0F 11 BF"), .bytes = &.{ 0xEB, 0x02 }, .expect = "F3 0F 5F FE" },
         });
 
-        self.laser = try sdk.hooks.createFn(LaserHit, try FioSneaking.addresses.laserHit(), laserDetour, self);
+        self.laser = try sdk.hooks.hook(FioSneaking, .laserHit, laserDetour, self);
         try sdk.tweaks.hook(ctx, .{ .id = "fio_lasers", .title = "FIO's lasers don't see her", .section = sections.field }, &self.laser);
     }
 

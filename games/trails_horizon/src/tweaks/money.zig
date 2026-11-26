@@ -12,8 +12,7 @@ const sections = common.sections;
 const GameStateManager = schema.GameStateManager;
 
 pub const Mira = struct {
-    const SpendMira = GameStateManager.Fns.spendMira;
-    const SpendHook = sdk.hooks.FnHook(SpendMira);
+    const SpendHook = sdk.hooks.Hook(GameStateManager, .spendMira);
 
     const GiveMira = struct {
         amount: u32 = 10000,
@@ -23,7 +22,7 @@ pub const Mira = struct {
     spend_mira: SpendHook = undefined,
 
     pub fn start(self: *Mira, ctx: *sdk.Context) !void {
-        self.spend_mira = try sdk.hooks.createFn(SpendMira, try GameStateManager.addresses.spendMira(), spendMiraDetour, self);
+        self.spend_mira = try sdk.hooks.hook(GameStateManager, .spendMira, spendMiraDetour, self);
         try sdk.tweaks.hook(ctx, .{ .id = "free_shopping", .title = "Free shopping", .section = sections.money }, &self.spend_mira);
 
         try sdk.tweaks.action(ctx, .{ .id = "give_mira", .title = "Give Mira", .section = sections.money }, GiveMira, self, giveMira);

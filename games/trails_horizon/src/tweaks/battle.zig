@@ -13,8 +13,7 @@ const GameStateManager = schema.GameStateManager;
 const Status = schema.Status;
 
 pub const Battle = struct {
-    const Change = Status.Fns.change;
-    const ChangeHook = sdk.hooks.FnHook(Change);
+    const ChangeHook = sdk.hooks.Hook(Status, .change);
 
     /// `Status.change` adding to HP
     const add_hp = 8;
@@ -26,7 +25,7 @@ pub const Battle = struct {
     no_dying: Atomic(bool) = .init(false),
 
     pub fn start(self: *Battle, ctx: *sdk.Context) !void {
-        self.change = try sdk.hooks.createFn(Change, try Status.addresses.change(), changeDetour, self);
+        self.change = try sdk.hooks.hook(Status, .change, changeDetour, self);
         try sdk.tweaks.toggle(ctx, .{ .id = "one_hit_kills", .title = "One-hit kills", .section = sections.combat }, struct {}, self, Flag("one_hit"));
         try sdk.tweaks.toggle(ctx, .{ .id = "no_damage", .title = "Party takes no damage", .section = sections.combat }, struct {}, self, Flag("no_damage"));
         try sdk.tweaks.toggle(ctx, .{ .id = "cant_die", .title = "Party can't die", .section = sections.combat }, struct {}, self, Flag("no_dying"));

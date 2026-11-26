@@ -13,12 +13,9 @@ const GameStateManager = schema.GameStateManager;
 const ResultMenu = schema.ResultMenu;
 
 pub const Gains = struct {
-    const Exp = ResultMenu.Fns.calcGetExp;
-    const ExpHook = sdk.hooks.FnHook(Exp);
-    const HoloExp = ResultMenu.Fns.calcGetHollowCoreExp;
-    const HoloHook = sdk.hooks.FnHook(HoloExp);
-    const Recipe = GameStateManager.Fns.learnRecipe;
-    const RecipeHook = sdk.hooks.FnHook(Recipe);
+    const ExpHook = sdk.hooks.Hook(ResultMenu, .calcGetExp);
+    const HoloHook = sdk.hooks.Hook(ResultMenu, .calcGetHollowCoreExp);
+    const RecipeHook = sdk.hooks.Hook(GameStateManager, .learnRecipe);
 
     const Times = struct {
         times: u32 = 10,
@@ -37,9 +34,9 @@ pub const Gains = struct {
     recipe_times: Atomic(u32) = .init(1),
 
     pub fn start(self: *Gains, ctx: *sdk.Context) !void {
-        self.exp = try sdk.hooks.createFn(Exp, try ResultMenu.addresses.calcGetExp(), expDetour, self);
-        self.holo = try sdk.hooks.createFn(HoloExp, try ResultMenu.addresses.calcGetHollowCoreExp(), holoDetour, self);
-        self.recipe = try sdk.hooks.createFn(Recipe, try GameStateManager.addresses.learnRecipe(), recipeDetour, self);
+        self.exp = try sdk.hooks.hook(ResultMenu, .calcGetExp, expDetour, self);
+        self.holo = try sdk.hooks.hook(ResultMenu, .calcGetHollowCoreExp, holoDetour, self);
+        self.recipe = try sdk.hooks.hook(GameStateManager, .learnRecipe, recipeDetour, self);
         try sdk.tweaks.toggle(ctx, .{ .id = "exp_times", .title = "More experience", .section = sections.exp }, Times, self, Multiplier("exp", "exp_times"));
         try sdk.tweaks.toggle(ctx, .{ .id = "holo_exp_times", .title = "More hollow core experience", .section = sections.exp }, Times, self, Multiplier("holo", "holo_times"));
         try sdk.tweaks.toggle(ctx, .{ .id = "gourmet_times", .title = "More gourmet points", .section = sections.exp }, Twice, self, Multiplier("recipe", "recipe_times"));

@@ -12,10 +12,8 @@ const sections = common.sections;
 const GameStateManager = schema.GameStateManager;
 
 pub const Items = struct {
-    const AddItem = GameStateManager.Fns.spawnItem;
-    const AddHook = sdk.hooks.FnHook(AddItem);
-    const SubItem = GameStateManager.Fns.subItem;
-    const SubHook = sdk.hooks.FnHook(SubItem);
+    const AddHook = sdk.hooks.Hook(GameStateManager, .spawnItem);
+    const SubHook = sdk.hooks.Hook(GameStateManager, .subItem);
 
     ctx: *sdk.Context = undefined,
     item: u32 = 0,
@@ -26,9 +24,9 @@ pub const Items = struct {
         self.ctx = ctx;
         try self.add(&.{});
         try ctx.spawn(listItems, .{ self, ctx.io });
-        self.sub_item = try sdk.hooks.createFn(SubItem, try GameStateManager.addresses.subItem(), subItemDetour, self);
+        self.sub_item = try sdk.hooks.hook(GameStateManager, .subItem, subItemDetour, self);
         try sdk.tweaks.hook(ctx, .{ .id = "keep_items", .title = "Items aren't used up", .section = sections.items }, &self.sub_item);
-        self.add_item = try sdk.hooks.createFn(AddItem, try GameStateManager.addresses.spawnItem(), addItemDetour, self);
+        self.add_item = try sdk.hooks.hook(GameStateManager, .spawnItem, addItemDetour, self);
         try sdk.tweaks.hook(ctx, .{ .id = "full_stacks", .title = "Full stacks", .section = sections.items }, &self.add_item);
     }
 

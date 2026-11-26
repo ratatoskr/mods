@@ -80,15 +80,14 @@ fn achievements(ctx: *sdk.Context, text: Text) !void {
 /// Keeps the meter just short of full when reeling, so the next hit lands the fish, like the
 /// Kuro no Kiseki II table's Easy fishing.
 const OneHit = struct {
-    const Reel = schema.Fishing.Fns.reel;
-    const Hook = sdk.hooks.FnHook(Reel);
+    const Hook = sdk.hooks.Hook(schema.Fishing, .reel);
     /// Out of 100. Any hit's more than 1
     const nearly = 99;
 
     hook: Hook = undefined,
 
     fn start(self: *OneHit, ctx: *sdk.Context) !void {
-        self.hook = try sdk.hooks.createFn(Reel, try schema.Fishing.addresses.reel(), detour, self);
+        self.hook = try sdk.hooks.hook(schema.Fishing, .reel, detour, self);
         try sdk.tweaks.hook(ctx, .{ .id = "fishing_one_hit", .title = "Catch in one hit", .section = sections.fishing }, &self.hook);
     }
 
@@ -104,7 +103,7 @@ var one_hit: OneHit = .{};
 /// nothing bites where nothing would.
 const PickFish = struct {
     const Pick = schema.FishingSpot.Fns.pickFish;
-    const Hook = sdk.hooks.FnHook(Pick);
+    const Hook = sdk.hooks.Hook(schema.FishingSpot, .pickFish);
 
     ctx: *sdk.Context = undefined,
     hook: Hook = undefined,
@@ -113,7 +112,7 @@ const PickFish = struct {
 
     fn start(self: *PickFish, ctx: *sdk.Context) !void {
         self.ctx = ctx;
-        self.hook = try sdk.hooks.createFn(Pick, try schema.FishingSpot.addresses.pickFish(), detour, self);
+        self.hook = try sdk.hooks.hook(schema.FishingSpot, .pickFish, detour, self);
         try self.add(&.{});
         try ctx.spawn(listFish, .{ self, ctx.io });
     }
