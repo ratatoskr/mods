@@ -25,9 +25,6 @@ const Mat4 = sdk.math.Mat4;
 const gpa = std.heap.smp_allocator;
 const log = sdk.log.scoped(.unreal);
 
-const max_bones = 512;
-/// The meshes being posed, and their followers.
-const max_held = 128;
 /// Frames held meshes keep ticking once posing closes in a paused world, so they're drawn
 /// without the edits again.
 const release_after = 3;
@@ -96,12 +93,33 @@ const Held = struct {
     frozen: ?struct { rate: f32, tickable: bool } = null,
 };
 
+/// What a frame's posing works in, as big as the biggest skeleton and shape list so far.
 const Scratch = struct {
-    matrices: [max_bones]Mat4,
-    input: [max_bones]Mat4,
-    stale: [max_bones]bool,
-    weights: [morphs_.max_shapes]f32,
-    weights_in: [morphs_.max_shapes]f32,
+    matrices: std.ArrayList(Mat4) = .empty,
+    input: std.ArrayList(Mat4) = .empty,
+    stale: std.ArrayList(bool) = .empty,
+    weights: std.ArrayList(f32) = .empty,
+    weights_in: std.ArrayList(f32) = .empty,
+
+    fn make() !*Scratch {
+        const s = try gpa.create(Scratch);
+        s.* = .{};
+        return s;
+    }
+
+    fn deinit(s: *Scratch) void {
+        s.matrices.deinit(gpa);
+        s.input.deinit(gpa);
+        s.stale.deinit(gpa);
+        s.weights.deinit(gpa);
+        s.weights_in.deinit(gpa);
+    }
+
+    /// `list` at `n` long, or null out of memory.
+    fn room(comptime T: type, list: *std.ArrayList(T), n: usize) ?[]T {
+        list.resize(gpa, n) catch return null;
+        return list.items;
+    }
 };
 
 pub const Posing = struct {
@@ -164,7 +182,7 @@ pub const Posing = struct {
             .world = world,
             .off = off,
             .morphs = morphs,
-            .scratch = try gpa.create(Scratch),
+            .scratch = try Scratch.make(),
         };
     }
 
@@ -174,6 +192,7 @@ pub const Posing = struct {
         self.skeletons.deinit(gpa);
         self.held.deinit(gpa);
         self.followers.deinit(gpa);
+        self.scratch.deinit();
         gpa.destroy(self.scratch);
     }
 
@@ -215,10 +234,13 @@ pub const Posing = struct {
         const n = sk.count;
         const stride = layout.size();
         const s = self.scratch;
+        const input = Scratch.room(Mat4, &s.input, n) orelse return;
+        const matrices = Scratch.room(Mat4, &s.matrices, n) orelse return;
+        const stales = Scratch.room(bool, &s.stale, n) orelse return;
         // Bones the game didn't animate again still have what posing wrote, like ones nothing's
         // skinned to, which Unreal never animates, or all of them when it calls this without
         // animating. They start from as they were last animated instead.
-        for (s.input[0..n], s.stale[0..n], sk.wrote, 0..) |*m, *stale, wrote, i| {
+        for (input, stales, sk.wrote, 0..) |*m, *stale, wrote, i| {
             const at = bones.data + i * stride;
             // Only bones posing's written lately can have its writes in
             const written = std.mem.indexOfNone(u64, &wrote, &.{0}) != null;
@@ -228,12 +250,12 @@ pub const Posing = struct {
                 sk.base[i] = m.*;
             }
         }
-        @memcpy(s.matrices[0..n], s.input[0..n]);
-        self.service.pose(.{ .id = component, .name = sk.name, .bones = sk.bones, .to_world = mesh.to_world }, &s.matrices[0]);
+        @memcpy(matrices, input);
+        self.service.pose(.{ .id = component, .name = sk.name, .bones = sk.bones, .to_world = mesh.to_world }, &matrices[0]);
         sk.edited = false;
         // Unreal passes arrays around, so a bone can have what posing wrote a few frames back
         sk.ring = (sk.ring + 1) % wrote_kept;
-        for (s.matrices[0..n], s.input[0..n], s.stale[0..n], sk.wrote, 0..) |m, in, stale, *wrote, i| {
+        for (matrices, input, stales, sk.wrote, 0..) |m, in, stale, *wrote, i| {
             const at = bones.data + i * stride;
             const changed = !m.approxEql(in, 1e-6);
             // A stale bone has an old edit in, which may be gone now
@@ -252,10 +274,12 @@ pub const Posing = struct {
         if (anim == 0) return;
         const s = self.scratch;
         const n = sk.shapes.len;
-        for (sk.shapes, s.weights_in[0..n]) |sh, *w| w.* = m.weight(anim, sh.name);
-        @memcpy(s.weights[0..n], s.weights_in[0..n]);
-        self.service.shapes(component, sk.shape_list, &s.weights[0]);
-        for (sk.shapes, s.weights[0..n], s.weights_in[0..n]) |*sh, w, in| m.set(sh, if (w != in) w else null);
+        const weights_in = Scratch.room(f32, &s.weights_in, n) orelse return;
+        const weights = Scratch.room(f32, &s.weights, n) orelse return;
+        for (sk.shapes, weights_in) |sh, *w| w.* = m.weight(anim, sh.name);
+        @memcpy(weights, weights_in);
+        self.service.shapes(component, sk.shape_list, &weights[0]);
+        for (sk.shapes, weights, weights_in) |*sh, w, in| m.set(sh, if (w != in) w else null);
     }
 
     /// Every blend shape back to the game's.
@@ -309,7 +333,7 @@ pub const Posing = struct {
         const a = arena.allocator();
         const total = self.meshes.numBones(component) orelse return error.NoBones;
         if (total < 3) return error.NoBones;
-        const n: u32 = @min(total, max_bones);
+        const n: u32 = total;
         const fnames = try a.alloc(FName, n);
         const bones = try a.alloc(W.Posing.Bone, n);
         var buf: [256]u8 = undefined;
@@ -411,7 +435,6 @@ pub const Posing = struct {
         const h = for (self.held.items) |*h| {
             if (h.component == component) break h;
         } else blk: {
-            if (self.held.items.len >= max_held) return;
             self.held.append(gpa, .{
                 .component = component,
                 .slot = slot,
@@ -453,16 +476,14 @@ pub const Posing = struct {
     /// paused world doesn't do.
     fn holdFollowers(self: *Posing) void {
         if (self.followers.items.len == 0) return;
-        var leaders: [max_held]u32 = undefined;
-        var n: usize = 0;
+        var leaders: std.ArrayList(u32) = .empty;
+        defer leaders.deinit(gpa);
         for (self.held.items) |h| {
             if (h.follower or !self.ue.objects.isAt(h.component, h.slot)) continue;
-            leaders[n] = self.ue.mem.live(u32, h.component + Unreal.object.index);
-            n += 1;
+            leaders.append(gpa, self.ue.mem.live(u32, h.component + Unreal.object.index)) catch return;
         }
         for (self.followers.items) |f| {
-            if (self.held.items.len >= max_held) return;
-            if (std.mem.indexOfScalar(u32, leaders[0..n], f.leader) == null) continue;
+            if (std.mem.indexOfScalar(u32, leaders.items, f.leader) == null) continue;
             const known = for (self.held.items) |h| {
                 if (h.component == f.component) break true;
             } else false;

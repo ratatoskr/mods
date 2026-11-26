@@ -195,6 +195,7 @@ pub const Plugin = struct {
         if (Meshes.find(ue, &self.loop, &self.camera, &missing)) |m| {
             self.meshes = m;
             const meshes = &self.meshes.?;
+            meshes.watchLimit();
             self.loop.watch(m.off.post_evaluate, meshes, Meshes.onPostEvaluate);
             self.camera.late = .{ .context = meshes, .func = Meshes.lateCallback };
             if (Posing.find(ue, &self.loop, meshes, world, &missing)) |found| {

@@ -11,10 +11,13 @@ const Bones = @import("ue/Bones.zig").Bones;
 const Loop = @import("loop.zig").Loop;
 const Camera = @import("camera.zig").Camera;
 
+const W = sdk.api.wraith;
 const Mat4 = sdk.math.Mat4;
 const gpa = std.heap.smp_allocator;
+const log = sdk.log.scoped(.unreal);
 
-pub const max_nearest = 32;
+/// Meshes posed at once, the nearest, till the player sets their own. Each costs some every frame.
+pub const default_nearest = 32;
 /// Frames the game animated anything in, after a mesh was last animated, before it's forgotten. A
 /// paused world animates nothing, so its meshes stay.
 const forget_after = 120;
@@ -60,8 +63,13 @@ pub const Meshes = struct {
     /// Counts frames the game animated anything in, which is what meshes are aged by.
     frame: u64 = 1,
     any_animated: bool = false,
-    nearest_buf: [max_nearest]usize = @splat(0),
-    nearest_len: usize = 0,
+    /// How many of the nearest are posed, from the player's setting. Any thread
+    limit: std.atomic.Value(u32) = .init(default_nearest),
+    limit_setting: ?W.Setting = null,
+    nearest_list: std.ArrayList(usize) = .empty,
+    /// `tick`'s and `lateCallback`'s, kept so they don't allocate every tick
+    candidates: std.ArrayList(Candidate) = .empty,
+    live: std.ArrayList(usize) = .empty,
     /// Where the nearest are every frame, rather than now and then, while something needs it.
     precise: bool = false,
     listener: ?Listener = null,
@@ -102,11 +110,40 @@ pub const Meshes = struct {
     }
 
     pub fn deinit(self: *Meshes) void {
+        if (self.limit_setting) |s| s.remove();
         self.map.deinit(gpa);
+        self.nearest_list.deinit(gpa);
+        self.candidates.deinit(gpa);
+        self.live.deinit(gpa);
+    }
+
+    /// Takes `limit` from the player's setting, now and as it changes. Once it's where it stays.
+    pub fn watchLimit(self: *Meshes) void {
+        const w = sdk.wraith.root() orelse return;
+        const setting = w.settings().add(.{
+            .id = "posed_meshes",
+            .name = "Characters posed at once",
+            .help = "The nearest to the camera. More lets you pose a crowd, but each costs a little every frame.",
+            .section = "Posing",
+            .scope = .game,
+            .kind = .number,
+            .has_default = true,
+            .default_value = .{ .number = default_nearest },
+            .min = 1,
+            .max = 512,
+            .step = 1,
+        }, .init(self, limitChanged)) catch |err| return log.warn("No setting for how many are posed, so it's {d}: {t}", .{ default_nearest, err });
+        self.limit_setting = setting;
+        self.limitChanged(setting);
+    }
+
+    fn limitChanged(self: *Meshes, setting: W.Setting) void {
+        const v = setting.get() catch return;
+        self.limit.store(@intFromFloat(@max(1, v.number)), .monotonic);
     }
 
     pub fn nearest(self: *const Meshes) []const usize {
-        return self.nearest_buf[0..self.nearest_len];
+        return self.nearest_list.items;
     }
 
     pub fn get(self: *const Meshes, component: usize) ?*const Mesh {
@@ -152,8 +189,7 @@ pub const Meshes = struct {
         }
         var gone: std.ArrayList(usize) = .empty;
         defer gone.deinit(gpa);
-        var best: [max_nearest]struct { mesh: usize, distance: f32 } = undefined;
-        var n: usize = 0;
+        self.candidates.clearRetainingCapacity();
         var it = self.map.iterator();
         while (it.next()) |kv| {
             const m = kv.value_ptr;
@@ -164,33 +200,36 @@ pub const Meshes = struct {
             if (m.skip or m.located == null) continue;
             // The camera can move while the world's still
             if (self.camera.shown) |c| m.distance = m.to_world.getTranslation().distance(c.position);
-            var i = n;
-            while (i > 0 and best[i - 1].distance > m.distance) : (i -= 1) {
-                if (i < max_nearest) best[i] = best[i - 1];
-            }
-            if (i < max_nearest) {
-                best[i] = .{ .mesh = kv.key_ptr.*, .distance = m.distance };
-                n = @min(n + 1, max_nearest);
-            }
+            self.candidates.append(gpa, .{ .mesh = kv.key_ptr.*, .distance = m.distance }) catch break;
         }
         for (gone.items) |k| _ = self.map.remove(k);
-        for (best[0..n], 0..) |b, i| self.nearest_buf[i] = b.mesh;
-        self.nearest_len = n;
+        std.mem.sort(Candidate, self.candidates.items, {}, Candidate.nearer);
+        const n = @min(self.candidates.items.len, self.limit.load(.monotonic));
+        self.nearest_list.clearRetainingCapacity();
+        self.nearest_list.ensureTotalCapacity(gpa, n) catch return;
+        for (self.candidates.items[0..n]) |c| self.nearest_list.appendAssumeCapacity(c.mesh);
     }
+
+    const Candidate = struct {
+        mesh: usize,
+        distance: f32,
+
+        fn nearer(_: void, a: Candidate, b: Candidate) bool {
+            return a.distance < b.distance;
+        }
+    };
 
     pub fn lateCallback(raw: *anyopaque) void {
         const self: *Meshes = @ptrCast(@alignCast(raw));
         if (self.bones.ready()) return;
         // Only the ones still there, which it reads plainly. The nearest were picked a while back
-        var live: [max_nearest]usize = undefined;
-        var n: usize = 0;
+        self.live.clearRetainingCapacity();
         for (self.nearest()) |c| {
             const m = self.map.getPtr(c) orelse continue;
             if (!self.ue.objects.isAt(c, m.slot)) continue;
-            live[n] = c;
-            n += 1;
+            self.live.append(gpa, c) catch break;
         }
-        const near = live[0..n];
+        const near = self.live.items;
         self.bones.learn(near, if (near.len > 0 and self.bones.arrays == null) self.numBones(near[0]) else null);
     }
 

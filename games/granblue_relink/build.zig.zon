@@ -3,8 +3,8 @@
     .version = "0.0.1",
     .dependencies = .{
         .wraith = .{
-            .url = "git+https://github.com/ratatoskr/wraith#2cfeb45b59a5166c72658b2f166f759c80d4d62f",
-            .hash = "wraith-0.0.0-sZo_91H9YADM8PrSMidJ7-eDRowi_tETfmqPI48AGvTI",
+            .url = "git+https://github.com/ratatoskr/wraith#764e955cbfe9a54be77474f03a0b0550d8b6ca64",
+            .hash = "wraith-0.0.0-sZo_9-6_YQBtaX-L-LLBhjMwGLs_HK5FfjrvNG3tWluk",
         },
     },
     .minimum_zig_version = "0.18.0-dev.1298+4a0817482",

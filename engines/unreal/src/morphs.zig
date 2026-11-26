@@ -12,8 +12,6 @@ const Unreal = @import("ue/Unreal.zig");
 const FName = Unreal.FName;
 const Loop = @import("loop.zig").Loop;
 
-pub const max_shapes = 512;
-
 pub const Offsets = struct {
     /// `SkinnedMeshComponent.SkeletalMesh`, or `SkinnedAsset` from UE5.1.
     skeletal_mesh: usize,
@@ -66,9 +64,9 @@ pub const Morphs = struct {
         };
     }
 
-    /// Every morph target on `components`' meshes, with a name and mesh for posing, up to
-    /// `max_shapes`. Game thread only, with every one of them live, so their meshes and morph
-    /// targets are too, and it's all read plainly.
+    /// Every morph target on `components`' meshes, with a name and mesh for posing. Game thread
+    /// only, with every one of them live, so their meshes and morph targets are too, and it's all
+    /// read plainly.
     pub fn collect(self: *Morphs, a: std.mem.Allocator, components: []const usize, shapes: *std.ArrayList(Shape), list: *std.ArrayList(W.Posing.Shape)) !void {
         const mem = self.ue.mem;
         var buf: [256]u8 = undefined;
@@ -80,7 +78,6 @@ pub const Morphs = struct {
             if (header.data == 0 or header.num <= 0) continue;
             const mesh = try a.dupe(u8, self.ue.nameOfLive(asset, &buf) orelse "?");
             for (0..count) |i| {
-                if (shapes.items.len == max_shapes) return;
                 const target = mem.live(usize, header.data + i * @sizeOf(usize));
                 if (target == 0) continue;
                 const name = self.ue.nameFrom(@as([*]const u8, @ptrFromInt(target + Unreal.object.name))[0..self.ue.name_size]);

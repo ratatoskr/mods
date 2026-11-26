@@ -16,8 +16,9 @@ const UpdateHook = sdk.hooks.FnHook(Update);
 const Modifiers = ModelInstance.Fns.updateModifiers;
 const ModifiersHook = sdk.hooks.FnHook(Modifiers);
 
-/// Kai's models have a couple of hundred nodes, so this leaves plenty of room.
-const max_nodes = 512;
+/// Kai's models have a couple of hundred nodes, so they fit on the stack, and bigger ones go on the heap.
+const stack_bytes = 64 * 1024;
+const gpa = std.heap.smp_allocator;
 
 /// The character whose model this thread is updating. Charas update on worker threads, and the
 /// model runs its modifiers straight after the character's callback.
@@ -52,12 +53,21 @@ pub const Posing = struct {
         if (!self.service.active()) return;
         const root = (chara.model orelse return).root orelse return;
 
-        var nodes: [max_nodes]*DagNode = undefined;
-        var bones: [max_nodes]W.Posing.Bone = undefined;
-        var matrices: [max_nodes]Mat4 = undefined;
-        var unnamed: [max_nodes][10]u8 = undefined;
-        const count = walk(root, &nodes, &bones);
-        for (nodes[0..count], bones[0..count], unnamed[0..count], matrices[0..count]) |n, *b, *buf, *m| {
+        // Worker threads pose at once, so each call has its own
+        var stack: [stack_bytes]u8 align(16) = undefined;
+        var first: std.heap.BufferFirstAllocator = .init(&stack, gpa);
+        const a = first.allocator();
+        var tree: Tree = .{};
+        defer tree.deinit(a);
+        tree.walk(a, root) catch return;
+        const nodes = tree.nodes.items;
+        const bones = tree.bones.items;
+        const count = nodes.len;
+        const matrices = a.alloc(Mat4, count) catch return;
+        defer a.free(matrices);
+        const unnamed = a.alloc([10]u8, count) catch return;
+        defer a.free(unnamed);
+        for (nodes, bones, unnamed, matrices) |n, *b, *buf, *m| {
             // Edits go by name, so ones without get their hash
             if (b.name.len == 0) b.name = std.fmt.bufPrint(buf, "#{x:0>8}", .{n.name_hash}) catch unreachable;
             m.* = n.world;
@@ -66,34 +76,34 @@ pub const Posing = struct {
         var label: [48]u8 = undefined;
         const own = std.mem.sliceTo(&chara.name, 0);
         const name = common.nameOf(chara.chrid) orelse if (own.len > 0) own else std.fmt.bufPrint(&label, "{d}", .{chara.chrid}) catch "?";
-        self.service.pose(.{ .id = @intFromPtr(chara), .name = name, .bones = bones[0..count], .to_world = .identity }, &matrices[0]);
-        for (nodes[0..count], matrices[0..count]) |n, m| n.world = m;
+        self.service.pose(.{ .id = @intFromPtr(chara), .name = name, .bones = bones, .to_world = .identity }, &matrices[0]);
+        for (nodes, matrices) |n, m| n.world = m;
     }
 };
 
-/// The tree under `root` depth first, so parents come before their children. Gives how many.
-fn walk(root: *DagNode, nodes: *[max_nodes]*DagNode, bones: *[max_nodes]W.Posing.Bone) usize {
-    const Next = struct { node: *DagNode, parent: i32 };
-    var stack: [max_nodes]Next = undefined;
-    stack[0] = .{ .node = root, .parent = -1 };
-    var top: usize = 1;
-    var count: usize = 0;
-    while (top > 0 and count < max_nodes) {
-        top -= 1;
-        const at = stack[top];
-        const i = count;
-        nodes[i] = at.node;
-        bones[i] = .{ .name = std.mem.sliceTo(&at.node.name, 0), .parent = at.parent };
-        count += 1;
-        // Siblings go on first so the children come straight after their parent
-        if (at.node != root) if (at.node.sibling) |s| if (top < stack.len) {
-            stack[top] = .{ .node = s, .parent = at.parent };
-            top += 1;
-        };
-        if (at.node.child) |c| if (top < stack.len) {
-            stack[top] = .{ .node = c, .parent = @intCast(i) };
-            top += 1;
-        };
+/// A model's nodes, parents before their children, and each as a bone.
+const Tree = struct {
+    nodes: std.ArrayList(*DagNode) = .empty,
+    bones: std.ArrayList(W.Posing.Bone) = .empty,
+
+    fn deinit(t: *Tree, a: std.mem.Allocator) void {
+        t.bones.deinit(a);
+        t.nodes.deinit(a);
     }
-    return count;
-}
+
+    /// The tree under `root` depth first, so parents come before their children.
+    fn walk(t: *Tree, a: std.mem.Allocator, root: *DagNode) !void {
+        const Next = struct { node: *DagNode, parent: i32 };
+        var stack: std.ArrayList(Next) = .empty;
+        defer stack.deinit(a);
+        try stack.append(a, .{ .node = root, .parent = -1 });
+        while (stack.pop()) |at| {
+            const i = t.nodes.items.len;
+            try t.nodes.append(a, at.node);
+            try t.bones.append(a, .{ .name = std.mem.sliceTo(&at.node.name, 0), .parent = at.parent });
+            // Siblings go on first so the children come straight after their parent
+            if (at.node != root) if (at.node.sibling) |s| try stack.append(a, .{ .node = s, .parent = at.parent });
+            if (at.node.child) |c| try stack.append(a, .{ .node = c, .parent = @intCast(i) });
+        }
+    }
+};

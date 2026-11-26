@@ -113,7 +113,10 @@ pub const Plugin = struct {
             log.warn("No posing, since this Unity's missing {s}: {t}", .{ missing, err });
             break :blk null;
         };
-        if (self.posing) |*p| p.eye_camera = &self.camera;
+        if (self.posing) |*p| {
+            p.eye_camera = &self.camera;
+            p.watchLimits();
+        }
         self.speed.start(managed, self.ctx.wraith.game()) catch |err| log.info("No time scale to change ({t}), so game speed goes by the clocks", .{err});
         self.render.speed = &self.speed;
         self.render.scene = if (self.scene) |*s| s else null;

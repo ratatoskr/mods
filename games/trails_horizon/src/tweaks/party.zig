@@ -19,9 +19,11 @@ const Flags = schema.PartyFlags;
 /// Routes the field keeps a party for
 const party_count = 11;
 const no_one = 0xFFFF;
+/// Far past any real party, so a count read from the game that's garbage can't run off the end
 const max_members = 64;
-const max_roster = 128;
-const max_pending = 16;
+/// Everyone the game has a slot for, so the view always has room
+const max_roster = @typeInfo(@FieldType(GameStateManager, "roster")).array.len;
+const gpa = std.heap.smp_allocator;
 /// Attack, the rest of the lineup supports
 const fighters = 4;
 const drag_kind = "trails_party_member";
@@ -100,8 +102,8 @@ pub const Party = struct {
     lock: sdk.sync.RwLock = .{},
     /// Under `lock`
     view: View = .{},
-    pending: [max_pending]Change = undefined,
-    pending_len: usize = 0,
+    /// Under `lock`. What the window's asked for since the last tick
+    pending: std.ArrayList(Change) = .empty,
     /// Under `lock`. The route the window shows, or `no_one` for the one that's playing
     route: u32 = no_one,
     /// Render thread only
@@ -121,26 +123,28 @@ pub const Party = struct {
     pub fn stop(self: *Party) void {
         if (self.tick_sub) |s| s.unsubscribe();
         self.tick_sub = null;
+        self.pending.deinit(gpa);
+        self.pending = .empty;
     }
 
     // The game thread
 
     fn tick(self: *Party) void {
-        var changes: [max_pending]Change = undefined;
         var wanted: u32 = no_one;
-        const n = blk: {
+        // Taken whole, so the window can ask for more meanwhile
+        var changes = blk: {
             self.lock.lock();
             defer self.lock.unlock();
-            const n = self.pending_len;
-            @memcpy(changes[0..n], self.pending[0..n]);
-            self.pending_len = 0;
             wanted = self.route;
-            break :blk n;
+            const taken = self.pending;
+            self.pending = .empty;
+            break :blk taken;
         };
+        defer changes.deinit(gpa);
         const field = (FieldManager.instance() catch null) orelse return self.publish(.{});
         const parties: [*]schema.Party = @ptrCast(field.parties orelse return self.publish(.{}));
         var refresh = false;
-        for (changes[0..n]) |c| {
+        for (changes.items) |c| {
             if (c.route >= party_count) continue;
             if (!apply(&parties[c.route], c)) log.warn("The game wouldn't change the party ({t})", .{c.what});
             if (c.route == field.current_party) refresh = true;
@@ -261,9 +265,7 @@ pub const Party = struct {
     fn request(self: *Party, route: u32, what: @FieldType(Change, "what")) void {
         self.lock.lock();
         defer self.lock.unlock();
-        if (self.pending_len == max_pending) return;
-        self.pending[self.pending_len] = .{ .route = route, .what = what };
-        self.pending_len += 1;
+        self.pending.append(gpa, .{ .route = route, .what = what }) catch log.warn("Out of memory, so the party wasn't changed", .{});
     }
 
     pub fn draw(self: *Party) void {

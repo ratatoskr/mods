@@ -14,11 +14,11 @@ const Skin = Model.Fns.skin;
 const SkinHook = sdk.hooks.FnHook(Skin);
 const clock = @import("clock.zig");
 
-const max_joints = 1024;
-/// A body and its parts together.
-const max_character = 2048;
-const max_models = 2048;
-const max_changes = 32768;
+/// More joints than a model can be numbered, so a count read from the game that's garbage is skipped
+const max_joints = 0xFFFF;
+/// Changes kept past what's live before they're laid out again, as models come and go
+const stale_changes = 4096;
+const gpa = std.heap.smp_allocator;
 const numbers = 0x1000;
 const no_joint = 0xFFF;
 const no_branch = 0xFFFF;
@@ -57,31 +57,30 @@ pub const Posing = struct {
     /// Models skin on worker threads.
     lock: sdk.sync.Mutex = .{},
 
-    // One model's joints, by the game's index
-    parent_of: [max_joints]i32 = undefined,
-    placed: [max_joints]bool = undefined,
+    // One model's joints, by the game's index. Each as long as the most joints a model's had
+    parent_of: []i32 = &.{},
+    placed: []bool = &.{},
     /// Parents first.
-    order: [max_joints]u16 = undefined,
-    in_character: [max_joints]u32 = undefined,
+    order: []u16 = &.{},
+    in_character: []u32 = &.{},
     /// `in_character` for the body, which walking its parts overwrites.
-    body_place: [max_joints]u32 = undefined,
-    saved: [max_joints]Mat4 = undefined,
+    body_place: []u32 = &.{},
+    saved: []Mat4 = &.{},
 
-    // The character's skeleton, parents first
-    bones: [max_character]W.Posing.Bone = undefined,
-    names: [max_character][20]u8 = undefined,
-    own: [max_character]Mat4 = undefined,
-    posed: [max_character]Mat4 = undefined,
+    // The character's skeleton, parents first. Each as long as the biggest character so far, grown
+    // before any's added, since each bone's name is in `names`
+    bones: []W.Posing.Bone = &.{},
+    names: [][20]u8 = &.{},
+    own: []Mat4 = &.{},
+    posed: []Mat4 = &.{},
     by_number: [numbers]i32 = @splat(-1),
     /// Slots in `known` of the body's parts.
-    members: [max_character]u32 = undefined,
+    members: std.ArrayList(u32) = .empty,
 
-    known: [max_models]Known = undefined,
-    known_len: usize = 0,
-    changes: [max_changes]Mat4 = undefined,
+    known: std.ArrayList(Known) = .empty,
+    changes: std.ArrayList(Mat4) = .empty,
     /// Each change's joint in the body's skeleton.
-    places: [max_changes]u32 = undefined,
-    changes_len: usize = 0,
+    places: std.ArrayList(u32) = .empty,
     searches: u32 = 0,
     search_frame: u32 = 0,
     /// Skins left to rebuild after posing closes, so a paused game drops the pose.
@@ -104,7 +103,7 @@ pub const Posing = struct {
         self.lock.lock() catch return hook.original()(model, frame);
         defer self.lock.unlock();
         const count = model.joint_count;
-        if (count == 0 or count > max_joints or model.joints == 0) return hook.original()(model, frame);
+        if (count == 0 or count > max_joints or model.joints == 0 or !self.fitJoints(count)) return hook.original()(model, frame);
         const now = clock.frame.load(.monotonic);
         const known = self.know(@intFromPtr(model), now, count) orelse return hook.original()(model, frame);
         if (now != self.search_frame) {
@@ -124,7 +123,7 @@ pub const Posing = struct {
         const joints: [*]Node = @ptrFromInt(model.joints);
         for (0..count) |j| {
             self.saved[j] = joints[j].world;
-            const change = self.changes[known.first_change + j];
+            const change = self.changes.items[known.first_change + j];
             if (!change.approxEql(.identity, moved_tolerance)) joints[j].world = self.saved[j].mul(change);
         }
         model.skin_dirty = true;
@@ -136,6 +135,12 @@ pub const Posing = struct {
     fn skinCharacter(self: *Posing, hook: SkinHook, model: *Model, frame: u32, now: u32) void {
         const id = @intFromPtr(model);
         const joints: [*]Node = @ptrFromInt(model.joints);
+        // Room for the body and every part that could join it, before any names go in
+        var most: usize = model.joint_count;
+        for (self.known.items) |*k| {
+            if (k.parent == id and isRecent(k.seen, now)) most += @as(*Model, @ptrFromInt(k.model)).joint_count;
+        }
+        if (!self.fitCharacter(most)) return hook.original()(model, frame);
         const count = self.walk(joints, model.joint_count);
         var n: usize = 0;
         for (self.order[0..count]) |j| {
@@ -146,16 +151,18 @@ pub const Posing = struct {
             self.by_number[number] = @intCast(n - 1);
         }
 
-        var member_count: usize = 0;
-        for (self.known[0..self.known_len], 0..) |*k, slot| {
-            if (k.parent != id or !isRecent(k.seen, now) or member_count == self.members.len) continue;
+        self.members.clearRetainingCapacity();
+        for (self.known.items, 0..) |*k, slot| {
+            if (k.parent != id or !isRecent(k.seen, now)) continue;
             const before = n;
             if (!self.addMember(k, &n)) {
                 n = before;
                 continue;
             }
-            self.members[member_count] = @intCast(slot);
-            member_count += 1;
+            self.members.append(gpa, @intCast(slot)) catch {
+                n = before;
+                break;
+            };
         }
 
         @memcpy(self.posed[0..n], self.own[0..n]);
@@ -163,7 +170,7 @@ pub const Posing = struct {
         const name = objectName(&label, model);
         self.service.pose(.{ .id = id, .name = name, .bones = self.bones[0..n], .to_world = .identity }, &self.posed[0]);
 
-        for (self.members[0..member_count]) |slot| self.keepChanges(&self.known[slot]);
+        for (self.members.items) |slot| self.keepChanges(&self.known.items[slot]);
         for (0..count) |j| self.by_number[numberOf(&joints[j])] = -1;
 
         for (0..count) |j| {
@@ -176,12 +183,13 @@ pub const Posing = struct {
         for (0..count) |j| joints[j].world = self.saved[j];
     }
 
-    /// Adds a part's joints, its copies of the body's as the body's own. False if there's no room.
+    /// Adds a part's joints, its copies of the body's as the body's own. False out of memory.
     fn addMember(self: *Posing, known: *Known, n: *usize) bool {
         const model: *Model = @ptrFromInt(known.model);
         const joints: [*]Node = @ptrFromInt(model.joints);
+        if (model.joint_count > max_joints or !self.fitJoints(model.joint_count)) return false;
         const count = self.walk(joints, model.joint_count);
-        if (n.* + count > max_character) return false;
+        if (n.* + count > self.bones.len) return false;
         const on = self.by_number[known.at];
         // Two of the same, like weapons, stay apart by where they hang
         var label: [16]u8 = undefined;
@@ -202,15 +210,25 @@ pub const Posing = struct {
         }
         // Same slot each frame, so a part skinned before its body still has last frame's
         if (known.change_count != count) {
-            if (self.changes_len + count > max_changes) {
-                for (self.known[0..self.known_len]) |*k| k.change_count = 0;
-                self.changes_len = 0;
+            // Laid out again once most of it's left by models that changed or went
+            var live: usize = 0;
+            for (self.known.items) |*k| live += k.change_count;
+            if (self.changes.items.len > live * 2 + stale_changes) {
+                for (self.known.items) |*k| k.change_count = 0;
+                self.changes.clearRetainingCapacity();
+                self.places.clearRetainingCapacity();
             }
-            known.first_change = self.changes_len;
+            const at = self.changes.items.len;
+            self.changes.resize(gpa, at + count) catch return false;
+            self.places.resize(gpa, at + count) catch {
+                self.changes.shrinkRetainingCapacity(at);
+                return false;
+            };
+            @memset(self.changes.items[at..], .identity);
+            known.first_change = at;
             known.change_count = count;
-            self.changes_len += count;
         }
-        @memcpy(self.places[known.first_change..][0..count], self.in_character[0..count]);
+        @memcpy(self.places.items[known.first_change..][0..count], self.in_character[0..count]);
         return true;
     }
 
@@ -219,9 +237,9 @@ pub const Posing = struct {
         const model: *Model = @ptrFromInt(known.model);
         const joints: [*]Node = @ptrFromInt(model.joints);
         for (0..model.joint_count) |j| {
-            const at = self.places[known.first_change + j];
+            const at = self.places.items[known.first_change + j];
             const back = joints[j].world.inverse() orelse Mat4.identity;
-            self.changes[known.first_change + j] = back.mul(self.posed[at]);
+            self.changes.items[known.first_change + j] = back.mul(self.posed[at]);
         }
     }
 
@@ -262,7 +280,7 @@ pub const Posing = struct {
         const joints: [*]Node = @ptrFromInt(model.joints);
         const first_joint = model.joints;
         const end = first_joint + model.joint_count * @sizeOf(Node);
-        for (self.known[0..self.known_len]) |*other| {
+        for (self.known.items) |*other| {
             if (!couldHold(other, known, frame)) continue;
             const body: *Model = @ptrFromInt(other.model);
             for (0..model.joint_count) |j| {
@@ -275,7 +293,7 @@ pub const Posing = struct {
                 return;
             }
         }
-        for (self.known[0..self.known_len]) |*other| {
+        for (self.known.items) |*other| {
             if (!couldHold(other, known, frame)) continue;
             const body: *Model = @ptrFromInt(other.model);
             const body_joints: [*]Node = @ptrFromInt(body.joints);
@@ -289,14 +307,13 @@ pub const Posing = struct {
 
     fn know(self: *Posing, model: usize, frame: u32, joints: usize) ?*Known {
         const k = self.find(model) orelse blk: {
-            for (self.known[0..self.known_len]) |*e| if (frame -% e.seen > search_again) {
+            for (self.known.items) |*e| if (frame -% e.seen > search_again) {
                 e.* = .{ .model = model, .next_search = frame };
                 break :blk e;
             };
-            if (self.known_len == max_models) return null;
-            self.known[self.known_len] = .{ .model = model, .next_search = frame };
-            self.known_len += 1;
-            break :blk &self.known[self.known_len - 1];
+            const e = self.known.addOne(gpa) catch return null;
+            e.* = .{ .model = model, .next_search = frame };
+            break :blk e;
         };
         k.seen = frame;
         k.joints = joints;
@@ -304,15 +321,28 @@ pub const Posing = struct {
     }
 
     fn find(self: *Posing, model: usize) ?*Known {
-        for (self.known[0..self.known_len]) |*e| if (e.model == model) return e;
+        for (self.known.items) |*e| if (e.model == model) return e;
         return null;
     }
 
     fn forget(self: *Posing) void {
         self.lock.lock() catch return;
         defer self.lock.unlock();
-        self.known_len = 0;
-        self.changes_len = 0;
+        self.known.clearRetainingCapacity();
+        self.changes.clearRetainingCapacity();
+        self.places.clearRetainingCapacity();
+    }
+
+    /// Room for a model of `count` joints. False out of memory.
+    fn fitJoints(self: *Posing, count: usize) bool {
+        return grow(i32, &self.parent_of, count) and grow(bool, &self.placed, count) and grow(u16, &self.order, count) and
+            grow(u32, &self.in_character, count) and grow(u32, &self.body_place, count) and grow(Mat4, &self.saved, count);
+    }
+
+    /// Room for a character of up to `count` bones. False out of memory.
+    fn fitCharacter(self: *Posing, count: usize) bool {
+        return grow(W.Posing.Bone, &self.bones, count) and grow([20]u8, &self.names, count) and
+            grow(Mat4, &self.own, count) and grow(Mat4, &self.posed, count);
     }
 
     /// Orders `joints` parents first into `order`, with `parent_of`.
@@ -352,6 +382,13 @@ pub const Posing = struct {
         return n;
     }
 };
+
+/// `list` at least `n` long. False out of memory, leaving it as it was.
+fn grow(comptime T: type, list: *[]T, n: usize) bool {
+    if (list.len >= n) return true;
+    list.* = gpa.realloc(list.*, n) catch return false;
+    return true;
+}
 
 /// Like pl0300, or the address for models without one.
 fn objectName(buf: []u8, model: *const Model) []const u8 {

@@ -24,17 +24,13 @@ const Mat4 = sdk.math.Mat4;
 const gpa = std.heap.smp_allocator;
 const log = sdk.log.scoped(.unity);
 
-/// Posing's own limits
-const max_bones = 512;
-const max_actors = 32;
-/// Meshes looked at a pick, nearest first
-const max_meshes = 128;
+/// Characters posed at once, the nearest, till the player sets their own. Each is read and written
+/// through Unity every frame
+const default_actors = 32;
+/// Meshes looked at a pick, nearest first, likewise
+const default_meshes = 128;
 /// How far up from a bone it looks for the rest of its skeleton
 const max_climb = 64;
-/// Of one character, like a body, its face and its lashes
-const max_renderers = 16;
-/// Blend shapes of one character, over all its meshes
-const max_shapes = 512;
 /// Unity's weights go to 100, posing's to 1
 const unity_weight = 100;
 const word = @sizeOf(usize);
@@ -179,17 +175,62 @@ const Actor = struct {
     native: usize = 0,
     name: Name = .{},
     count: u32 = 0,
-    /// Parents before children, the root first
-    nodes: [max_bones]*Object = undefined,
-    natives: [max_bones]usize = undefined,
-    parents: [max_bones]i32 = undefined,
-    names: [max_bones]Name = undefined,
-    node_holds: [max_bones]u32 = undefined,
-    renderers: [max_renderers]Renderer = undefined,
+    /// Parents before children, the root first. Each grows to fit, and keeps its room when the slot's reused
+    nodes: []*Object = &.{},
+    natives: []usize = &.{},
+    parents: []i32 = &.{},
+    names: []Name = &.{},
+    node_holds: []u32 = &.{},
+    /// Like a body, its face and its lashes
+    renderers: []Renderer = &.{},
     renderer_count: u32 = 0,
     /// Over all its renderers, each one's in a row
-    shape_names: [max_shapes]Name = undefined,
+    shape_names: []Name = &.{},
     shape_count: u32 = 0,
+
+    /// Room for another bone. False out of memory.
+    fn roomForBone(a: *Actor) bool {
+        if (a.count < boneRoom(a)) return true;
+        const n = @max(64, a.count * 2);
+        return grow(*Object, &a.nodes, n) and grow(usize, &a.natives, n) and grow(i32, &a.parents, n) and
+            grow(Name, &a.names, n) and grow(u32, &a.node_holds, n);
+    }
+
+    fn boneRoom(a: *const Actor) usize {
+        return @min(a.nodes.len, a.natives.len, a.parents.len, a.names.len, a.node_holds.len);
+    }
+
+    fn roomForRenderer(a: *Actor) bool {
+        return a.renderer_count < a.renderers.len or grow(Renderer, &a.renderers, @max(4, a.renderer_count * 2));
+    }
+
+    fn roomForShape(a: *Actor) bool {
+        return a.shape_count < a.shape_names.len or grow(Name, &a.shape_names, @max(64, a.shape_count * 2));
+    }
+
+    /// Out of its slot, keeping its room for the next.
+    fn clear(a: *Actor) void {
+        a.* = .{
+            .nodes = a.nodes,
+            .natives = a.natives,
+            .parents = a.parents,
+            .names = a.names,
+            .node_holds = a.node_holds,
+            .renderers = a.renderers,
+            .shape_names = a.shape_names,
+        };
+    }
+
+    fn free(a: *Actor) void {
+        gpa.free(a.nodes);
+        gpa.free(a.natives);
+        gpa.free(a.parents);
+        gpa.free(a.names);
+        gpa.free(a.node_holds);
+        gpa.free(a.renderers);
+        gpa.free(a.shape_names);
+        a.* = .{};
+    }
 
     fn root(a: *const Actor) *Object {
         return a.nodes[0];
@@ -225,14 +266,41 @@ var zone_hand: sdk.timing.Zone = .init("Posing: handing over");
 var zone_write: sdk.timing.Zone = .init("Posing: writing back");
 var zone_pick: sdk.timing.Zone = .init("Posing: finding characters");
 
-/// What a frame works on, kept off Unity's main thread's stack.
+/// `list` at least `n` long, keeping what's in it. False out of memory, leaving it as it was.
+fn grow(comptime T: type, list: *[]T, n: usize) bool {
+    if (list.len >= n) return true;
+    list.* = gpa.realloc(list.*, n) catch return false;
+    return true;
+}
+
+/// What a frame works on, kept off Unity's main thread's stack, as big as the biggest character so far.
 const Scratch = struct {
-    bones: [max_bones]W.Posing.Bone,
-    matrices: [max_bones]Mat4,
-    input: [max_bones]Mat4,
-    shapes: [max_shapes]W.Posing.Shape,
-    weights: [max_shapes]f32,
-    weights_in: [max_shapes]f32,
+    bones: []W.Posing.Bone = &.{},
+    matrices: []Mat4 = &.{},
+    input: []Mat4 = &.{},
+    /// Where each bone goes as dead ones come out
+    to: []i32 = &.{},
+    shapes: []W.Posing.Shape = &.{},
+    weights: []f32 = &.{},
+    weights_in: []f32 = &.{},
+
+    fn fitBones(sc: *Scratch, n: usize) bool {
+        return grow(W.Posing.Bone, &sc.bones, n) and grow(Mat4, &sc.matrices, n) and grow(Mat4, &sc.input, n);
+    }
+
+    fn fitShapes(sc: *Scratch, n: usize) bool {
+        return grow(W.Posing.Shape, &sc.shapes, n) and grow(f32, &sc.weights, n) and grow(f32, &sc.weights_in, n);
+    }
+
+    fn deinit(sc: *Scratch) void {
+        gpa.free(sc.bones);
+        gpa.free(sc.matrices);
+        gpa.free(sc.input);
+        gpa.free(sc.to);
+        gpa.free(sc.shapes);
+        gpa.free(sc.weights);
+        gpa.free(sc.weights_in);
+    }
 };
 
 pub const Posing = struct {
@@ -244,7 +312,12 @@ pub const Posing = struct {
     scene: *Scene,
     managed: W.Managed,
     scratch: *Scratch,
-    actors: *[max_actors]Actor,
+    /// As many as the player's setting, resized as it picks
+    actors: []Actor,
+    /// From the player's settings. Any thread
+    actor_limit: std.atomic.Value(u32) = .init(default_actors),
+    mesh_limit: std.atomic.Value(u32) = .init(default_meshes),
+    limit_settings: [2]?W.Setting = .{ null, null },
     /// The camera on screen, which nearest is measured from. The main camera without one
     eye_camera: ?*const @import("camera.zig").Camera = null,
     // Main thread only from here down
@@ -264,6 +337,7 @@ pub const Posing = struct {
         if (shape_calls == null) log.info("No posing blend shapes, since this Unity's missing {s}", .{shape_missing});
         const scratch = try gpa.create(Scratch);
         errdefer gpa.destroy(scratch);
+        scratch.* = .{};
         return .{
             .service = service,
             .calls = calls,
@@ -273,7 +347,7 @@ pub const Posing = struct {
             .managed = managed,
             .scratch = scratch,
             .actors = blk: {
-                const actors = try gpa.create([max_actors]Actor);
+                const actors = try gpa.alloc(Actor, default_actors);
                 for (actors) |*a| a.* = .{};
                 break :blk actors;
             },
@@ -281,11 +355,16 @@ pub const Posing = struct {
     }
 
     pub fn deinit(self: *Posing) void {
-        for (self.actors) |*a| if (a.used) self.drop(a);
+        for (self.actors) |*a| {
+            if (a.used) self.drop(a);
+            a.free();
+        }
         self.tracked.deinit(gpa);
         self.shapes_tracked.deinit(gpa);
+        self.scratch.deinit();
         gpa.destroy(self.scratch);
-        gpa.destroy(self.actors);
+        for (self.limit_settings) |s| if (s) |setting| setting.remove();
+        gpa.free(self.actors);
     }
 
     /// Main thread, once everything's animated and before it's drawn.
@@ -331,7 +410,7 @@ pub const Posing = struct {
         // Each mesh's bones, and what's at the top of them
         var meshes: std.ArrayList(Mesh) = .empty;
         defer for (meshes.items) |m| for (m.holds) |h| self.release(h);
-        for (found[0..@min(found.len, max_meshes)]) |f| {
+        for (found[0..@min(found.len, self.mesh_limit.load(.monotonic))]) |f| {
             var m = (self.meshOf(a, f) catch continue) orelse continue;
             m.distance = f.position.distance(eye);
             meshes.append(a, m) catch {
@@ -345,7 +424,8 @@ pub const Posing = struct {
                 return x.distance < y.distance;
             }
         }.nearer);
-        const chosen = groups[0..@min(groups.len, max_actors)];
+        self.fitActors();
+        const chosen = groups[0..@min(groups.len, self.actors.len)];
 
         // Let go of the ones that aren't near any more
         for (self.actors) |*actor| {
@@ -367,6 +447,64 @@ pub const Posing = struct {
         }
     }
 
+    /// Takes the limits from the player's settings, now and as they change. Once it's where it stays.
+    pub fn watchLimits(self: *Posing) void {
+        const w = sdk.wraith.root() orelse return;
+        const defs = [_]struct { []const u8, []const u8, []const u8, u32, f64 }{
+            .{ "posed_characters", "Characters posed at once", "The nearest to the camera. More lets you pose a crowd, but each is read and written through Unity every frame.", default_actors, 256 },
+            .{ "posing_meshes", "Meshes looked at for characters", "The nearest, when looking for who to pose. More finds characters further away in a busy scene, but takes longer each time.", default_meshes, 4096 },
+        };
+        for (defs, &self.limit_settings, 0..) |d, *slot, i| {
+            const changed: W.Setting.Changed = if (i == 0) .init(self, actorsChanged) else .init(self, meshesChanged);
+            const setting = w.settings().add(.{
+                .id = d[0],
+                .name = d[1],
+                .help = d[2],
+                .section = "Posing",
+                .scope = .game,
+                .kind = .number,
+                .has_default = true,
+                .default_value = .{ .number = @floatFromInt(d[3]) },
+                .min = 1,
+                .max = d[4],
+                .step = 1,
+            }, changed) catch |err| {
+                log.warn("No setting for {s}, so it's {d}: {t}", .{ d[1], d[3], err });
+                continue;
+            };
+            slot.* = setting;
+            if (i == 0) self.actorsChanged(setting) else self.meshesChanged(setting);
+        }
+    }
+
+    fn actorsChanged(self: *Posing, setting: W.Setting) void {
+        const v = setting.get() catch return;
+        self.actor_limit.store(@intFromFloat(@max(1, v.number)), .monotonic);
+    }
+
+    fn meshesChanged(self: *Posing, setting: W.Setting) void {
+        const v = setting.get() catch return;
+        self.mesh_limit.store(@intFromFloat(@max(1, v.number)), .monotonic);
+    }
+
+    /// As many slots as the setting says. Fewer lets go of the ones past it. Main thread.
+    fn fitActors(self: *Posing) void {
+        const want = self.actor_limit.load(.monotonic);
+        if (want == self.actors.len) return;
+        for (self.actors[@min(want, self.actors.len)..]) |*a| {
+            if (a.used) self.drop(a);
+            a.free();
+        }
+        const old = self.actors.len;
+        self.actors = gpa.realloc(self.actors, want) catch {
+            // Out of memory: keeps what it has, with the dropped ones empty
+            return;
+        };
+        if (want > old) for (self.actors[old..]) |*a| {
+            a.* = .{};
+        };
+    }
+
     /// A transform and what's above it, by native, for telling what's under what.
     fn above(self: *Posing, a: std.mem.Allocator, node: *Object, native: usize) ![]usize {
         var out: std.ArrayList(usize) = .empty;
@@ -384,7 +522,7 @@ pub const Posing = struct {
         if (!self.alive(f.object, f.native)) return null;
         // On the stack, where the garbage collector sees it, till they're held
         const array = self.calls.bones(f.object) orelse return null;
-        const n = @min(std.mem.bytesToValue(usize, @as([*]const u8, @ptrFromInt(@intFromPtr(array) + array_length))[0..word]), max_bones);
+        const n = std.mem.bytesToValue(usize, @as([*]const u8, @ptrFromInt(@intFromPtr(array) + array_length))[0..word]);
         if (n < 3) return null;
         // Other asks can set the collector off, so it's held till the bones are
         const hold = self.managed.hold(@intFromPtr(array)) catch 0;
@@ -446,7 +584,9 @@ pub const Posing = struct {
     }
     /// The skeleton under `root`, from all its meshes' bones and what's between them, parents first.
     fn build(self: *Posing, slot: *Actor, root: *Object, native: usize, meshes: []const *const Mesh) void {
-        slot.* = .{ .used = true, .native = native };
+        slot.clear();
+        slot.used = true;
+        slot.native = native;
         _ = self.add(slot, root, native, -1);
         const model = self.modelOf(root, meshes[0].transform);
         slot.name = self.scene.nameOf(model, self.scene.nativeOf(model));
@@ -455,7 +595,7 @@ pub const Posing = struct {
         };
         if (self.shape_calls == null) return;
         for (meshes) |m| {
-            if (slot.renderer_count == max_renderers) break;
+            if (!slot.roomForRenderer()) break;
             slot.renderers[slot.renderer_count] = .{
                 .object = m.renderer,
                 .native = m.renderer_native,
@@ -498,7 +638,7 @@ pub const Posing = struct {
             r.count = 0;
             const m = mesh orelse continue;
             const n: u32 = @intCast(@max(r.mesh_count, 0));
-            while (r.count < n and a.shape_count < max_shapes) : (r.count += 1) {
+            while (r.count < n and a.roomForShape()) : (r.count += 1) {
                 const s = sc.name(m, @intCast(r.count));
                 a.shape_names[a.shape_count] = if (s) |text| .init(scene_.readString(@intFromPtr(text), &buf)) else .{};
                 a.shape_count += 1;
@@ -521,7 +661,7 @@ pub const Posing = struct {
                 if (sc.get_weight(r.object, key.index) == kv.value.wrote) sc.set_weight(r.object, key.index, kv.value.game);
             }
         };
-        if (!active or a.shape_count == 0) return;
+        if (!active or a.shape_count == 0 or !s.fitShapes(a.shape_count)) return;
 
         for (a.renderers[0..a.renderer_count]) |r| for (0..r.count) |j| {
             const i = r.first + j;
@@ -588,7 +728,7 @@ pub const Posing = struct {
     }
 
     fn add(self: *Posing, slot: *Actor, node: *Object, native: usize, parent: i32) ?u32 {
-        if (slot.count == max_bones) return null;
+        if (!slot.roomForBone()) return null;
         const i = slot.count;
         slot.nodes[i] = node;
         slot.natives[i] = native;
@@ -600,7 +740,8 @@ pub const Posing = struct {
     }
     /// Bones the game's destroyed, like effects on a hand, come out, along with what was under them.
     fn dropDead(self: *Posing, a: *Actor) void {
-        var to: [max_bones]i32 = undefined;
+        if (!grow(i32, &self.scratch.to, a.count)) return;
+        const to = self.scratch.to;
         var n: u32 = 0;
         for (0..a.count) |i| {
             const p = a.parents[i];
@@ -649,7 +790,7 @@ pub const Posing = struct {
             const back = kv.value.restored(now);
             if (!std.meta.eql(back, now)) back.write(c, t);
         };
-        if (!active) return;
+        if (!active or !s.fitBones(count)) return;
 
         {
             const z = zone_read.begin();
@@ -689,7 +830,7 @@ pub const Posing = struct {
     fn drop(self: *Posing, a: *Actor) void {
         for (a.node_holds[0..a.count]) |h| self.release(h);
         for (a.renderers[0..a.renderer_count]) |r| self.release(r.hold);
-        a.* = .{};
+        a.clear();
     }
 
     fn release(self: *Posing, hold: u32) void {
@@ -906,7 +1047,7 @@ test "characters are found from their meshes' bones, a body and its hair as one"
     var calls: Calls = undefined;
     calls.parent = FakeUnity.parent;
     calls.bones = FakeUnity.bones;
-    var actors: [max_actors]Actor = @splat(.{});
+    var actors: [default_actors]Actor = @splat(.{});
     var posing: Posing = .{ .service = undefined, .calls = calls, .shape_calls = null, .engine = &engine, .scene = &scene, .managed = .{}, .scratch = undefined, .actors = &actors };
 
     var found = [_]scene_.Found{
@@ -979,7 +1120,7 @@ test "a body and a glow on the same bones, with two tops under a root that isn't
     var calls: Calls = undefined;
     calls.parent = FakeUnity.parent;
     calls.bones = FakeUnity.bones;
-    var actors: [max_actors]Actor = @splat(.{});
+    var actors: [default_actors]Actor = @splat(.{});
     var posing: Posing = .{ .service = undefined, .calls = calls, .shape_calls = null, .engine = &engine, .scene = &scene, .managed = .{}, .scratch = undefined, .actors = &actors };
 
     var found = [_]scene_.Found{
