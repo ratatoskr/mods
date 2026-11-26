@@ -1,0 +1,20 @@
+//! `BacklightColor`, made from EXDSchema by tools/excel-sheets. Don't edit it.
+//! Its column shown for a link to it is `Color`.
+
+const std = @import("std");
+const excel = @import("excel");
+const sheets = @import("root.zig");
+
+const BacklightColor = @This();
+
+pub const sheet_name = "BacklightColor";
+pub const kind: excel.Header.Kind = .rows;
+pub const columns_hash: u32 = 0xdbf43666;
+pub const Sheet = excel.Typed(BacklightColor);
+
+row: excel.Row,
+
+/// An RGB color, 0xRRGGBB.
+pub fn color(self: @This()) u32 {
+    return self.row.at(u32, 0);
+}

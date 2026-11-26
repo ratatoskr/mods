@@ -43,7 +43,8 @@ pub fn read(io: std.Io, gpa: std.mem.Allocator, dat: File, offset: u64) ![]u8 {
         .model => try model(head, data, &out),
         else => unreachable,
     }
-    if (out.end != out.buf.len) return error.Corrupt;
+    // Some textures' headers give more room than they unpack to, so it's what they do unpack to
+    if (out.end != out.buf.len) out.buf = try gpa.realloc(out.buf, out.end);
     return out.buf;
 }
 

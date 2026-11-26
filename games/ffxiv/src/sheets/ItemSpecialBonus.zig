@@ -1,0 +1,23 @@
+//! `ItemSpecialBonus`, made from EXDSchema by tools/excel-sheets. Don't edit it.
+//! Its column shown for a link to it is `Name`.
+
+const std = @import("std");
+const excel = @import("excel");
+const sheets = @import("root.zig");
+
+const ItemSpecialBonus = @This();
+
+pub const sheet_name = "ItemSpecialBonus";
+pub const kind: excel.Header.Kind = .rows;
+pub const columns_hash: u32 = 0x9db0e48f;
+pub const Sheet = excel.Typed(ItemSpecialBonus);
+
+row: excel.Row,
+
+pub fn name(self: @This()) []const u8 {
+    return self.row.stringAt(0);
+}
+
+pub fn requirementText(self: @This()) []const u8 {
+    return self.row.stringAt(4);
+}

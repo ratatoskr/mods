@@ -14,6 +14,10 @@
             .url = "https://github.com/ebiggers/libdeflate/archive/refs/tags/v1.26.tar.gz",
             .hash = "N-V-__8AAEaRCwCsYb_rSsH72Pb6DNFQLSjdRzTFOVsJWcoB",
         },
+        .exdschema = .{
+            .url = "git+https://github.com/xivdev/EXDSchema#a1e24a0c72058353f30f23beb996792cdb926868",
+            .hash = "N-V-__8AAJByEQCJZPF-1jYJrU9_6yZsHQh5AA6kJT_rjcsC",
+        },
     },
     .minimum_zig_version = "0.18.0-dev.1295+1fb0e6330",
     .paths = .{""},

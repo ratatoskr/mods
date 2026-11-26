@@ -1,0 +1,63 @@
+//! `CharaCardDecoration`, made from EXDSchema by tools/excel-sheets. Don't edit it.
+//! Its column shown for a link to it is `Name`.
+
+const std = @import("std");
+const excel = @import("excel");
+const sheets = @import("root.zig");
+
+const CharaCardDecoration = @This();
+
+pub const sheet_name = "CharaCardDecoration";
+pub const kind: excel.Header.Kind = .rows;
+pub const columns_hash: u32 = 0x8c5423fe;
+pub const Sheet = excel.Typed(CharaCardDecoration);
+
+row: excel.Row,
+
+pub fn name(self: @This()) []const u8 {
+    return self.row.stringAt(0);
+}
+
+/// An icon's id, like 132122 for `ui/icon/132000/132122.tex`.
+pub fn image(self: @This()) i32 {
+    return self.row.at(i32, 4);
+}
+
+/// Links to `BannerCondition`.
+pub fn unlockCondition(self: @This()) excel.Link(sheets.BannerCondition) {
+    return .of(self.row.at(u16, 8));
+}
+
+pub fn unknown_70_1(self: @This()) u16 {
+    return self.row.at(u16, 10);
+}
+
+pub fn unknown_70_2(self: @This()) u16 {
+    return self.row.at(u16, 12);
+}
+
+pub fn unknown3(self: @This()) u16 {
+    return self.row.at(u16, 14);
+}
+
+pub fn sortKey(self: @This()) u16 {
+    return self.row.at(u16, 16);
+}
+
+/// 1 = Backing, 2 = Pattern Overlay, 3 = Portrait Frame, 4 = Plate Frame, 5 = Accent
+pub fn component(self: @This()) u8 {
+    return self.row.at(u8, 18);
+}
+
+pub fn subtype(self: @This()) u8 {
+    return self.row.at(u8, 19);
+}
+
+pub fn unknown1(self: @This()) u8 {
+    return self.row.at(u8, 20);
+}
+
+/// Links to `CharaCardDesignCategory`.
+pub fn category(self: @This()) excel.Link(sheets.CharaCardDesignCategory) {
+    return .of(self.row.at(u8, 21));
+}

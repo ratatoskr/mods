@@ -1,0 +1,20 @@
+//! `GFateClimbing2Content`, made from EXDSchema by tools/excel-sheets. Don't edit it.
+//! Its column shown for a link to it is `PublicContentTextData`.
+
+const std = @import("std");
+const excel = @import("excel");
+const sheets = @import("root.zig");
+
+const GFateClimbing2Content = @This();
+
+pub const sheet_name = "GFateClimbing2Content";
+pub const kind: excel.Header.Kind = .rows;
+pub const columns_hash: u32 = 0xdbf43666;
+pub const Sheet = excel.Typed(GFateClimbing2Content);
+
+row: excel.Row,
+
+/// Links to `PublicContentTextData`.
+pub fn publicContentTextData(self: @This()) excel.Link(sheets.PublicContentTextData) {
+    return .of(self.row.at(u32, 0));
+}

@@ -49,6 +49,11 @@ test "reads each kind of file" {
     try t.expect(pack.exists("EXD/root.exl"));
     try t.expect(!pack.exists("exd/not_a_file.exl"));
     try t.expectError(error.FileNotFound, pack.read(t.io, t.allocator, "exd/not_a_file.exl"));
+
+    // Its header says it's 37540 bytes, but its mips come to less
+    const sky = try pack.read(t.io, t.allocator, "bgcommon/nature/sky/texture/sky_047.tex");
+    defer t.allocator.free(sky);
+    try t.expectEqual(35052, sky.len);
 }
 
 test "a clash of hashes finds both files" {

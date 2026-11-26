@@ -1,0 +1,23 @@
+//! `GFateClimbing`, made from EXDSchema by tools/excel-sheets. Don't edit it.
+//! Its column shown for a link to it is `Text`.
+
+const std = @import("std");
+const excel = @import("excel");
+const sheets = @import("root.zig");
+
+const GFateClimbing = @This();
+
+pub const sheet_name = "GFateClimbing";
+pub const kind: excel.Header.Kind = .rows;
+pub const columns_hash: u32 = 0xaafab8d8;
+pub const Sheet = excel.Typed(GFateClimbing);
+
+row: excel.Row,
+
+pub fn text(self: @This()) []const u8 {
+    return self.row.stringAt(0);
+}
+
+pub fn unknown0(self: @This()) u32 {
+    return self.row.at(u32, 4);
+}

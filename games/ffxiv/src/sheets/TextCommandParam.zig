@@ -1,0 +1,19 @@
+//! `TextCommandParam`, made from EXDSchema by tools/excel-sheets. Don't edit it.
+//! Its column shown for a link to it is `Param`.
+
+const std = @import("std");
+const excel = @import("excel");
+const sheets = @import("root.zig");
+
+const TextCommandParam = @This();
+
+pub const sheet_name = "TextCommandParam";
+pub const kind: excel.Header.Kind = .rows;
+pub const columns_hash: u32 = 0xdebb20e3;
+pub const Sheet = excel.Typed(TextCommandParam);
+
+row: excel.Row,
+
+pub fn param(self: @This()) []const u8 {
+    return self.row.stringAt(0);
+}

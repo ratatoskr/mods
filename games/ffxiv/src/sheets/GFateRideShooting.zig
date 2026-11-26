@@ -1,0 +1,20 @@
+//! `GFateRideShooting`, made from EXDSchema by tools/excel-sheets. Don't edit it.
+//! Its column shown for a link to it is `ContentEntry`.
+
+const std = @import("std");
+const excel = @import("excel");
+const sheets = @import("root.zig");
+
+const GFateRideShooting = @This();
+
+pub const sheet_name = "GFateRideShooting";
+pub const kind: excel.Header.Kind = .rows;
+pub const columns_hash: u32 = 0xdbf43666;
+pub const Sheet = excel.Typed(GFateRideShooting);
+
+row: excel.Row,
+
+/// Links to `ContentEntry`.
+pub fn contentEntry(self: @This()) excel.Link(sheets.ContentEntry) {
+    return .of(self.row.at(u32, 0));
+}

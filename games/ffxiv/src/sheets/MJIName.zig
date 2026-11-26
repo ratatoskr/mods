@@ -1,0 +1,47 @@
+//! `MJIName`, made from EXDSchema by tools/excel-sheets. Don't edit it.
+//! Its column shown for a link to it is `Singular`.
+
+const std = @import("std");
+const excel = @import("excel");
+const sheets = @import("root.zig");
+
+const MJIName = @This();
+
+pub const sheet_name = "MJIName";
+pub const kind: excel.Header.Kind = .rows;
+pub const columns_hash: u32 = 0x77a72da0;
+pub const Sheet = excel.Typed(MJIName);
+
+row: excel.Row,
+
+pub fn singular(self: @This()) []const u8 {
+    return self.row.stringAt(0);
+}
+
+pub fn plural(self: @This()) []const u8 {
+    return self.row.stringAt(4);
+}
+
+pub fn adjective(self: @This()) i8 {
+    return self.row.at(i8, 8);
+}
+
+pub fn possessivePronoun(self: @This()) i8 {
+    return self.row.at(i8, 9);
+}
+
+pub fn startsWithVowel(self: @This()) i8 {
+    return self.row.at(i8, 10);
+}
+
+pub fn countability(self: @This()) i8 {
+    return self.row.at(i8, 11);
+}
+
+pub fn pronoun(self: @This()) i8 {
+    return self.row.at(i8, 12);
+}
+
+pub fn article(self: @This()) i8 {
+    return self.row.at(i8, 13);
+}
