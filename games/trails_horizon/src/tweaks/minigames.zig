@@ -121,7 +121,7 @@ const PickFish = struct {
     fn listFish(self: *PickFish, io: std.Io) void {
         const rows = while (true) {
             if (fishRows()) |found| if (found.count > 0) break found;
-            sdk.frame.delay(io, .fromSeconds(1)) catch return;
+            sdk.threads.delay(io, .fromSeconds(1)) catch return;
         };
         var arena: std.heap.ArenaAllocator = .init(self.ctx.allocator);
         defer arena.deinit();

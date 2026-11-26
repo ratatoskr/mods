@@ -544,7 +544,7 @@ fn steerWith(tools: anytype, io: Io, off: Offsets, params: usize, view: View) ?P
 /// The view as Wraith wants it, D3D's way round, for drawing over the world.
 fn publish(loop: *const Loop, pose: Pose) void {
     const v = viewOf(pose, loop.aspectRatio());
-    sdk.frame.setView(v.view, v.projection);
+    sdk.display.setView(v.view, v.projection);
 }
 
 fn viewOf(pose: Pose, aspect: f32) struct { view: Mat4, projection: Mat4 } {

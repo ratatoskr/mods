@@ -552,7 +552,7 @@ pub fn publishView(e: *const Engine, camera: *Object) void {
     e.world_to_camera(camera, &view);
     e.projection(camera, &projection);
     const d3d = toD3d(view, projection);
-    sdk.frame.setView(d3d.view, d3d.projection);
+    sdk.display.setView(d3d.view, d3d.projection);
 }
 
 /// Unity's view is mirrored, from its left-handed world to an OpenGL camera that looks down -z with

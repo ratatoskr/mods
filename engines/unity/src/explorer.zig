@@ -217,10 +217,10 @@ pub const Explorer = struct {
     scene: *Scene = undefined,
     calls: Calls = undefined,
     tools: ?W.FreeCamera = null,
-    ticks: ?sdk.frame.TickDriver = null,
+    ticks: ?sdk.threads.TickDriver = null,
     transform_type: usize = 0,
     component_type: usize = 0,
-    tick_sub: ?sdk.frame.FrameSubscription = null,
+    tick_sub: ?sdk.threads.Subscription = null,
     panel: ?sdk.workbench.Panel = null,
 
     tree: sdk.workbench.Latest(Tree) = .{},
@@ -273,7 +273,7 @@ pub const Explorer = struct {
 
     /// Blocks while the game's runtime looks, so not on the render thread. Panel and all, or
     /// nothing if this Unity's missing what it needs.
-    pub fn start(self: *Explorer, engine: *const Engine, scene: *Scene, managed: W.Managed, tools: ?W.FreeCamera, ticks: ?sdk.frame.TickDriver) !void {
+    pub fn start(self: *Explorer, engine: *const Engine, scene: *Scene, managed: W.Managed, tools: ?W.FreeCamera, ticks: ?sdk.threads.TickDriver) !void {
         self.* = .{ .engine = engine, .scene = scene, .managed = managed, .tools = tools, .ticks = ticks };
         var missing: []const u8 = "";
         self.calls = engine_.findCalls(Calls, Calls.names, managed, &missing) catch |err| {
@@ -282,7 +282,7 @@ pub const Explorer = struct {
         };
         self.transform_type = try managed.typeObject("UnityEngine.Transform");
         self.component_type = try managed.typeObject("UnityEngine.Component");
-        self.tick_sub = try sdk.frame.onTick(self, tick);
+        self.tick_sub = try sdk.threads.onTick(self, tick);
         self.panel = sdk.workbench.addPanel(self, draw, .{ .title = "Scene", .engine = true }) catch |err| {
             self.tick_sub.?.unsubscribe();
             self.tick_sub = null;

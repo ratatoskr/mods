@@ -24,7 +24,7 @@ pub const Camera = struct {
         hook.original()(manager, dt, index);
         const camera = manager.camera orelse return;
         if (self.tools) |t| steer(t, camera);
-        sdk.frame.setView(camera.view, camera.proj);
+        sdk.display.setView(camera.view, camera.proj);
     }
 
     fn steer(tools: W.FreeCamera, camera: *schema.Camera) void {

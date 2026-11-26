@@ -57,7 +57,7 @@ pub const Items = struct {
     fn listItems(self: *Items, io: std.Io) void {
         const items = while (true) {
             if (common.itemTable()) |found| if (found.len > 0) break found;
-            sdk.frame.delay(io, .fromSeconds(1)) catch return;
+            sdk.threads.delay(io, .fromSeconds(1)) catch return;
         };
         var arena: std.heap.ArenaAllocator = .init(self.ctx.allocator);
         defer arena.deinit();

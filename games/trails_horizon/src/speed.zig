@@ -30,7 +30,7 @@ pub const Speed = struct {
     /// all. Game thread only, while `updating`.
     own_pace: f32 = 0,
     /// Wraith's ticks, which the game's update drives so plugins' `onTick` runs on its thread.
-    ticks: ?sdk.frame.TickDriver = null,
+    ticks: ?sdk.threads.TickDriver = null,
 
     pub fn start(self: *Speed, game: sdk.api.wraith.Game) !void {
         self.scale = try sdk.hooks.createFnWith(HighSpeed.Fns.scale, try HighSpeed.addresses.scale(), scaleDetour, self, .{ .enabled = true });

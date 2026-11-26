@@ -96,7 +96,7 @@ const Choice = struct { value: f64, label: []const u8 };
 pub const Party = struct {
     window: ui.Window = .{ .title = "Party##trails_horizon", .size = .{ 340, 460 }, .min_size = .{ 280, 260 } },
     ctx: *sdk.Context = undefined,
-    tick_sub: ?sdk.frame.FrameSubscription = null,
+    tick_sub: ?sdk.threads.Subscription = null,
     lock: sdk.sync.RwLock = .{},
     /// Under `lock`
     view: View = .{},
@@ -114,7 +114,7 @@ pub const Party = struct {
         try ctx.addWindow(self);
         try ctx.menuItem("Party", &self.window.open);
         try sdk.tweaks.opens(ctx, .{ .id = "party", .title = "Party members", .section = common.sections.party }, &self.window);
-        self.tick_sub = try sdk.frame.onTick(self, tick);
+        self.tick_sub = try sdk.threads.onTick(self, tick);
     }
 
     /// Waits for a tick in flight.

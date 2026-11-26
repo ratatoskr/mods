@@ -2,7 +2,7 @@
 // `Unreal` service. Workbench scripts and tweaks have it too, as `import { Unreal } from "unreal"`
 // in JS or `require("unreal").Unreal` in Lua.
 //
-// Game thread only, since that's where Unreal frees its objects. That's `frame.onTick`, a tweak's
+// Game thread only, since that's where Unreal frees its objects. That's `threads.onTick`, a tweak's
 // code and `tick()`, and Workbench scripts unless they're moved to the render thread. Anywhere else
 // fails with `WrongThread`.
 //

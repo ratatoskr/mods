@@ -31,7 +31,7 @@ pub const Plugin = struct {
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
         // Taken first, so nobody's ticks run on the render thread before the game's update has them
-        self.speed.ticks = sdk.frame.driveTicks() catch |err| blk: {
+        self.speed.ticks = sdk.threads.driveTicks() catch |err| blk: {
             log.warn("Wraith won't let the game's thread tick ({t}), so plugins' ticks stay on the render thread", .{err});
             break :blk null;
         };

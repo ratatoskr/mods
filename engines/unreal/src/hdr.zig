@@ -63,7 +63,7 @@ pub const Hdr = struct {
         const on = self.ask() orelse return;
         if (self.told == on) return;
         self.told = on;
-        sdk.frame.setColorSpace(if (on) .hdr10 else .srgb);
+        sdk.display.setColorSpace(if (on) .hdr10 else .srgb);
         log.info("The game's HDR is {s}", .{if (on) "on" else "off"});
     }
 

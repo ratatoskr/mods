@@ -1,6 +1,6 @@
 // Unity's main camera and objects, for plugins in any language. Depend on `unity` and get the
 // `unity` service. Unity's main thread is Wraith's game thread while this plugin's loaded, so
-// `frame.onTick` runs there, where Unity's engine calls and methods work. Engine calls come from the
+// `threads.onTick` runs there, where Unity's engine calls and methods work. Engine calls come from the
 // `managed` area's `icall`, or `[Icall]` in your own schemas.
 
 [Service] trait Unity {

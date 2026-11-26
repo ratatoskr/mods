@@ -35,7 +35,7 @@ pub const Plugin = struct {
     ue: ?Unreal = null,
     world: ?World = null,
     /// Taken in `start`, so nobody's ticks run on the render thread first.
-    ticks: ?sdk.frame.TickDriver = null,
+    ticks: ?sdk.threads.TickDriver = null,
     loop: Loop = .{},
     speed: Speed = .{},
     console: Console = .{},
@@ -57,11 +57,11 @@ pub const Plugin = struct {
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
-        self.ticks = sdk.frame.driveTicks() catch |err| blk: {
+        self.ticks = sdk.threads.driveTicks() catch |err| blk: {
             log.warn("Wraith won't let Unreal's game thread tick ({t}), so plugins' ticks stay on the render thread", .{err});
             break :blk null;
         };
-        _ = try ctx.onFrame(&self.loop, Loop.frame);
+        _ = try ctx.onDraw(&self.loop, Loop.frame);
         try ctx.addWindow(&self.console);
         try ctx.menuItem("Console", &self.console.window.open);
         try ctx.spawn(setUp, .{self});
@@ -115,7 +115,7 @@ pub const Plugin = struct {
         // Nothing would tick otherwise
         errdefer self.handBack();
         const io = self.ctx.io;
-        try sdk.frame.toWorker(io);
+        try sdk.threads.toWorker(io);
         self.mem = try Mem.init(self.ctx.allocator);
         const mem = &self.mem.?;
         var data: std.ArrayList([]const usize) = .empty;

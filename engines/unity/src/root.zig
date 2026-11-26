@@ -28,7 +28,7 @@ pub const Plugin = struct {
     /// Set once `engine` is, for other threads.
     ready: sdk.atomic.Value(bool) = .init(false),
     /// Taken in `start`, so nobody's ticks run on the render thread first.
-    ticks: ?sdk.frame.TickDriver = null,
+    ticks: ?sdk.threads.TickDriver = null,
     camera: Camera = .{},
     render: Render = .{},
     scene: ?Scene = null,
@@ -45,7 +45,7 @@ pub const Plugin = struct {
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
-        self.ticks = sdk.frame.driveTicks() catch |err| blk: {
+        self.ticks = sdk.threads.driveTicks() catch |err| blk: {
             log.warn("Wraith won't let Unity's main thread tick ({t}), so plugins' ticks stay on the render thread", .{err});
             break :blk null;
         };
@@ -57,7 +57,7 @@ pub const Plugin = struct {
     /// which drives the game thread, the only place that's safe.
     pub fn stopping(self: *Plugin, ctx: *sdk.Context) !void {
         if (!self.ready.load(.acquire)) return;
-        try sdk.frame.toGame(ctx.io);
+        try sdk.threads.toGame(ctx.io);
         self.camera.windDown();
     }
 
@@ -85,11 +85,11 @@ pub const Plugin = struct {
         // Nothing would tick otherwise
         errdefer self.handBack();
         const io = self.ctx.io;
-        try sdk.frame.toWorker(io);
+        try sdk.threads.toWorker(io);
         const managed = self.ctx.wraith.managed();
         try sdk.tasks.wait(managed.running());
         // Waiting lands back on the render thread, and the rest blocks
-        try sdk.frame.toWorker(io);
+        try sdk.threads.toWorker(io);
         var missing: []const u8 = "";
         self.engine = Engine.find(managed, &missing) catch |err| {
             log.err("This Unity's missing {s}, so there's nothing to do", .{missing});

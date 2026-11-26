@@ -41,7 +41,7 @@ pub const Service = struct {
     /// Unreal's there and this is its game thread.
     fn check(self: *Service) Error!*const Unreal {
         if (!self.ready.load(.acquire)) return fail(error.NotReady, "Unreal isn't found yet, or this game's missing what the plugin needs", .{});
-        if (!self.loop.onGameThread()) return fail(error.WrongThread, "Unreal's objects can only be used on the game thread. Use frame.onTick, or a script on the game thread", .{});
+        if (!self.loop.onGameThread()) return fail(error.WrongThread, "Unreal's objects can only be used on the game thread. Use threads.onTick, or a script on the game thread", .{});
         return self.ue;
     }
 

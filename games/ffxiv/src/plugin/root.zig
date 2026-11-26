@@ -37,7 +37,7 @@ pub const Plugin = struct {
     /// From the `game` folder the exe's in. On a worker, as it's files.
     fn openPack(self: *Plugin) !void {
         const io = self.ctx.io;
-        try sdk.frame.toWorker(io);
+        try sdk.threads.toWorker(io);
         var path_buf: [1024]u8 = undefined;
         const exe = sdk.Module.main().path(&path_buf) orelse return error.NoExePath;
         const game_dir = std.fs.path.dirname(exe) orelse return error.NoExePath;

@@ -10,12 +10,12 @@ const TickHook = sdk.hooks.FnHook(Framework.Fns.tick);
 const log = sdk.log.scoped(.plugin);
 
 pub const Tick = struct {
-    driver: ?sdk.frame.TickDriver = null,
+    driver: ?sdk.threads.TickDriver = null,
     hook: TickHook = undefined,
 
     /// In `start`, before anything subscribes. Without the hook, ticks stay on the render thread.
     pub fn start(self: *Tick) void {
-        self.driver = sdk.frame.driveTicks() catch |err| {
+        self.driver = sdk.threads.driveTicks() catch |err| {
             log.warn("Wraith won't let FFXIV's main thread tick ({t}), so plugins' ticks stay on the render thread", .{err});
             return;
         };
