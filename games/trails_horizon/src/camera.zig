@@ -37,7 +37,7 @@ pub const Camera = struct {
             .fov = camera.fov,
         };
         const before = view;
-        tools.camera(&view);
+        tools.camera(0, &view);
         if (std.meta.eql(view, before)) return;
         camera.eye = view.position;
         camera.target = view.target;

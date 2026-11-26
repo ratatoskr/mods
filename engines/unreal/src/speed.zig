@@ -10,6 +10,8 @@ const sdk = @import("wraith_sdk");
 
 const World = @import("ue/World.zig");
 
+const log = sdk.log.scoped(.unreal);
+
 /// Within what `AWorldSettings` takes by default.
 const min_dilation = 0.0001;
 const max_dilation = 20;
@@ -28,6 +30,8 @@ pub const Speed = struct {
     paused_with: usize = 0,
     /// The controller we kept ticking through our pause, and whether it was already.
     kept: usize = 0,
+    /// Its slot in the object array, to tell it's still there without reading it.
+    kept_slot: u32 = 0,
     kept_was: bool = false,
 
     pub fn start(self: *Speed, world: *const World, game: sdk.api.wraith.Game) void {
@@ -35,17 +39,24 @@ pub const Speed = struct {
         game.provideSpeed(.init(self, changed));
     }
 
-    /// Puts the game's own back. Game thread, or once nothing ticks.
-    pub fn stop(self: *Speed) void {
+    /// Puts the game's own back. Game thread only, where the world's read plainly.
+    pub fn leave(self: *Speed) void {
         const world = self.world orelse return;
         self.ours.store(@bitCast(@as(f64, 1)), .release);
         self.unkeep(world);
+        defer self.settings = 0;
         if (self.settings == 0 or world.settings() != self.settings) return;
         const mem = world.ue.mem;
-        if (self.written != null) _ = mem.write(f32, self.settings + world.off.time_dilation, self.game);
-        if (self.paused_with != 0 and mem.ptr(self.settings + world.off.pauser) == self.paused_with) {
-            _ = mem.write(usize, self.settings + world.off.pauser, 0);
+        if (self.written != null) mem.setLive(f32, self.settings + world.off.time_dilation, self.game);
+        if (self.paused_with != 0 and mem.live(usize, self.settings + world.off.pauser) == self.paused_with) {
+            mem.setLive(usize, self.settings + world.off.pauser, 0);
         }
+    }
+
+    /// Once nothing ticks. The game's own is only put back by `leave`, on the game thread.
+    pub fn stop(self: *Speed) void {
+        self.ours.store(@bitCast(@as(f64, 1)), .release);
+        if (self.settings != 0 or self.kept != 0) log.warn("The game thread didn't come round, so the game's speed is left as it was", .{});
     }
 
     fn changed(self: *Speed, speed: f64) bool {
@@ -64,25 +75,26 @@ pub const Speed = struct {
             self.paused_with = 0;
         }
         const dilation_at = settings + world.off.time_dilation;
-        const now = mem.read(f32, dilation_at) orelse return;
+        const now = mem.live(f32, dilation_at);
         // Not what we left, so the game's set its own
         if (self.written == null or now != self.written.?) self.game = now;
         const ours: f64 = @bitCast(self.ours.load(.acquire));
 
         const want = if (ours == 0) self.game else dilated(self.game, ours);
-        if (want != now) _ = mem.write(f32, dilation_at, want);
+        if (want != now) mem.setLive(f32, dilation_at, want);
         self.written = want;
 
         const pauser_at = settings + world.off.pauser;
-        const pauser = mem.read(usize, pauser_at) orelse return;
+        const pauser = mem.live(usize, pauser_at);
         if (ours == 0) {
             if (pauser == 0) if (world.playerState()) |ps| {
-                if (mem.write(usize, pauser_at, ps)) self.paused_with = ps;
+                mem.setLive(usize, pauser_at, ps);
+                self.paused_with = ps;
             };
             self.keep(world);
         } else {
             if (self.paused_with != 0) {
-                if (pauser == self.paused_with) _ = mem.write(usize, pauser_at, 0);
+                if (pauser == self.paused_with) mem.setLive(usize, pauser_at, 0);
                 self.paused_with = 0;
             }
             self.unkeep(world);
@@ -96,15 +108,16 @@ pub const Speed = struct {
         const controller = world.playerController() orelse return;
         if (controller == self.kept) return;
         self.unkeep(world);
-        self.kept_was = world.setBit(controller, bit, true) orelse return;
+        self.kept_was = world.setBit(controller, bit, true);
         self.kept = controller;
+        self.kept_slot = world.ue.objects.slotOf(controller);
     }
 
     fn unkeep(self: *Speed, world: *const World) void {
         if (self.kept == 0) return;
         defer self.kept = 0;
         const bit = world.off.full_tick_when_paused orelse return;
-        if (!world.ue.objects.isObject(self.kept)) return;
+        if (!world.ue.objects.isAt(self.kept, self.kept_slot)) return;
         _ = world.setBit(self.kept, bit, self.kept_was);
     }
 };

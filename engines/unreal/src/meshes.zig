@@ -23,6 +23,8 @@ const locate_every = 30;
 
 pub const Mesh = struct {
     seen: u64 = 0,
+    /// Its slot in the object array, to tell it's still there without reading it.
+    slot: u32 = 0,
     /// Not a skeletal mesh.
     skip: bool = false,
     /// When it was last found, and where.
@@ -37,6 +39,8 @@ pub const Offsets = struct {
     anim_instance: usize,
     num_bones: Unreal.Call,
     to_world: Unreal.Call,
+    /// `SkeletalMeshComponent`, the kind it poses.
+    skeletal: usize,
 };
 
 /// Told about each mesh as it's animated, on the game thread.
@@ -86,6 +90,7 @@ pub const Meshes = struct {
                 },
                 .num_bones = try ue.callOf(skinned, "GetNumBones", &.{"ReturnValue"}, missing),
                 .to_world = try ue.callOf(scene, "K2_GetComponentToWorld", &.{"ReturnValue"}, missing),
+                .skeletal = skeletal,
             },
             .bones = .{
                 .ue = ue,
@@ -120,8 +125,9 @@ pub const Meshes = struct {
         const component = mem.live(usize, anim_instance + self.ue.outerAt());
         if (component == 0) return;
         const entry = self.map.getOrPut(gpa, component) catch return;
-        if (!entry.found_existing) entry.value_ptr.* = .{ .skip = !self.ue.isA(component, "SkeletalMeshComponent") };
+        if (!entry.found_existing) entry.value_ptr.* = .{ .skip = !self.ue.isLive(component, self.off.skeletal) };
         const mesh = entry.value_ptr;
+        mesh.slot = self.ue.objects.slotOf(component);
         if (mesh.skip) return;
         // Linked and post-process anim instances get this too, but the main one's once a frame
         if (mem.live(usize, component + self.off.anim_instance) != anim_instance) return;
@@ -175,7 +181,16 @@ pub const Meshes = struct {
     pub fn lateCallback(raw: *anyopaque) void {
         const self: *Meshes = @ptrCast(@alignCast(raw));
         if (self.bones.ready()) return;
-        const near = self.nearest();
+        // Only the ones still there, which it reads plainly. The nearest were picked a while back
+        var live: [max_nearest]usize = undefined;
+        var n: usize = 0;
+        for (self.nearest()) |c| {
+            const m = self.map.getPtr(c) orelse continue;
+            if (!self.ue.objects.isAt(c, m.slot)) continue;
+            live[n] = c;
+            n += 1;
+        }
+        const near = live[0..n];
         self.bones.learn(near, if (near.len > 0 and self.bones.arrays == null) self.numBones(near[0]) else null);
     }
 

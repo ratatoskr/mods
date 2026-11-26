@@ -55,6 +55,8 @@ pub const Render = struct {
     begin_camera_seen: sdk.atomic.Value(bool) = .init(false),
     /// Main thread. Unity's frame count it last ticked for.
     last_frame: i32 = -1,
+    /// Main thread. Unity's frame count the camera to steer was last picked for.
+    picked_frame: i32 = -1,
 
     /// Blocks while the game's runtime looks, so not on the render thread.
     pub fn start(self: *Render, engine: *const Engine, managed: W.Managed, ticks: ?sdk.frame.TickDriver, camera: *Camera, posing: ?*Posing) !void {
@@ -128,9 +130,7 @@ pub const Render = struct {
         if (self.speed) |s| s.apply();
         if (self.scene) |s| s.tick();
         if (self.pose_step == null) if (self.posing) |p| p.run();
-        if (self.engine.main_camera()) |camera| {
-            self.rendering(camera);
-        }
+        if (self.steering()) |camera| self.rendering(camera);
         h.original()();
     }
 
@@ -153,11 +153,22 @@ pub const Render = struct {
         return self.step_seen.load(.monotonic) or self.pre_cull_seen.load(.monotonic) or self.begin_camera_seen.load(.monotonic);
     }
 
+    /// The camera the free camera steers this frame, picked once a frame before any renders, so a
+    /// picked camera that's rendering first still gets it.
+    fn steering(self: *Render) ?*Object {
+        const frame = self.engine.frame_count();
+        if (frame != self.picked_frame) {
+            self.picked_frame = frame;
+            self.camera.pick(self.scene);
+        }
+        return self.camera.target();
+    }
+
     fn rendering(self: *Render, camera: *Object) void {
         const e = self.engine;
-        // Not UI cameras, reflections and the like
-        if (e.main_camera() != camera) return;
-        // Once a frame, even if the main camera renders twice, like for each eye in VR
+        // Not UI cameras, reflections and the like, unless the player's picked one
+        if (self.steering() != camera) return;
+        // Once a frame, even if the camera renders twice, like for each eye in VR
         const frame = e.frame_count();
         if (frame != self.last_frame) {
             self.last_frame = frame;

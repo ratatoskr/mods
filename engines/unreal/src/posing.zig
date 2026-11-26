@@ -62,6 +62,8 @@ const Skeleton = struct {
     total: u32,
     count: u32,
     name: []const u8,
+    /// Its mesh's slot in the object array, to tell it's still there without reading it.
+    slot: u32,
     bones: []W.Posing.Bone,
     /// As the game last animated it.
     base: []Mat4,
@@ -76,11 +78,13 @@ const Skeleton = struct {
 };
 
 /// A mesh that copies its bones from another, by the other's object index.
-const Follower = struct { leader: u32, component: usize };
+const Follower = struct { leader: u32, component: usize, slot: u32 };
 
 /// A mesh being held, and what to put back.
 const Held = struct {
     component: usize,
+    /// Its slot in the object array, to tell it's still there without reading it.
+    slot: u32,
     /// Copies its bones from a held mesh, so it's only kept ticking through a pause.
     follower: bool = false,
     uro: bool = false,
@@ -259,7 +263,7 @@ pub const Posing = struct {
         const m = &(self.morphs orelse return);
         var it = self.skeletons.valueIterator();
         while (it.next()) |sk| for (sk.shapes) |*sh| {
-            if (sh.set != null and self.ue.objects.isObject(sh.component)) m.set(sh, null);
+            if (sh.set != null and self.ue.objects.isAt(sh.component, sh.slot)) m.set(sh, null);
         };
     }
 
@@ -274,7 +278,7 @@ pub const Posing = struct {
         var it = self.skeletons.iterator();
         while (it.next()) |kv| {
             const sk = kv.value_ptr;
-            if (!sk.edited or !self.ue.objects.isObject(kv.key_ptr.*)) continue;
+            if (!sk.edited or !self.ue.objects.isAt(kv.key_ptr.*, sk.slot)) continue;
             sk.edited = false;
             const bones = self.meshes.bones.drawn(kv.key_ptr.*) orelse continue;
             if (bones.count != sk.total) continue;
@@ -312,14 +316,15 @@ pub const Posing = struct {
         // Parents come before children, so the first ones are a whole skeleton
         for (0..n) |i| {
             fnames[i] = self.boneName(component, @intCast(i));
-            const text = self.ue.names.text(fnames[i].index, &buf) orelse "?";
+            const text = self.ue.nameText(.{ .index = fnames[i].index, .number = 0 }, &buf) orelse "?";
             const parent_name = self.parentBone(component, fnames[i]);
             const parent: i32 = for (fnames[0..i], 0..) |f, j| {
                 if (f.index == parent_name.index and f.number == parent_name.number) break @intCast(j);
             } else -1;
             bones[i] = .{ .name = try a.dupe(u8, text), .parent = parent };
         }
-        const owner = self.ue.outerOf(component) orelse component;
+        const outer = self.ue.mem.live(usize, component + self.ue.outerAt());
+        const owner = if (outer != 0) outer else component;
         var shapes: std.ArrayList(morphs_.Shape) = .empty;
         var list: std.ArrayList(W.Posing.Shape) = .empty;
         if (self.morphs) |*m| {
@@ -327,9 +332,11 @@ pub const Posing = struct {
             var with: [16]usize = undefined;
             with[0] = component;
             var k: usize = 1;
-            const index = self.ue.mem.read(u32, component + Unreal.object.index) orelse 0;
+            const index = self.ue.objects.slotOf(component);
             for (self.followers.items) |f| {
                 if (f.leader != index or k == with.len) continue;
+                // Found as posing opened, so it could be gone
+                if (!self.ue.objects.isAt(f.component, f.slot)) continue;
                 with[k] = f.component;
                 k += 1;
             }
@@ -338,7 +345,8 @@ pub const Posing = struct {
         return .{
             .total = total,
             .count = n,
-            .name = try a.dupe(u8, self.ue.nameOf(owner, &buf) orelse "?"),
+            .name = try a.dupe(u8, self.ue.nameOfLive(owner, &buf) orelse "?"),
+            .slot = self.ue.objects.slotOf(component),
             .bones = bones,
             .base = try a.alloc(Mat4, n),
             .wrote = blk: {
@@ -378,7 +386,7 @@ pub const Posing = struct {
             for (self.meshes.nearest()) |c| self.hold(c);
             if (paused) self.holdFollowers();
             for (self.held.items) |*h| {
-                if (!self.ue.objects.isObjectPlain(h.component)) continue;
+                if (!self.ue.objects.isAt(h.component, h.slot)) continue;
                 if (paused) self.freeze(h) else self.thaw(h);
             }
             return;
@@ -395,7 +403,9 @@ pub const Posing = struct {
     /// reads and writes, since it's every tick and the game was animating it a moment ago. Full
     /// detail costs the most, so only once the player's picked it or edited it.
     fn hold(self: *Posing, component: usize) void {
-        if (!self.ue.objects.isObjectPlain(component)) return;
+        // From the nearest, which can have gone since it was last animated
+        const slot = (self.meshes.get(component) orelse return).slot;
+        if (!self.ue.objects.isAt(component, slot)) return;
         const mem = self.ue.mem;
         const o = self.off;
         const h = for (self.held.items) |*h| {
@@ -404,6 +414,7 @@ pub const Posing = struct {
             if (self.held.items.len >= max_held) return;
             self.held.append(gpa, .{
                 .component = component,
+                .slot = slot,
                 .uro = if (o.uro) |b| mem.live(u8, component + b.offset) & b.mask != 0 else false,
                 .interval = if (o.interval) |i| mem.live(f32, component + i) else 0,
                 .lod = if (o.forced_lod_at) |l| mem.live(i32, component + l) else 0,
@@ -428,13 +439,13 @@ pub const Posing = struct {
     fn findFollowers(self: *Posing) void {
         self.followers.clearRetainingCapacity();
         const leader = self.off.leader orelse return;
-        for (0..self.ue.objects.count()) |i| {
+        for (0..self.ue.objects.countPlain()) |i| {
             const obj = self.ue.objects.getPlain(i);
             if (!self.ue.isLive(obj, self.off.skinned)) continue;
             // A weak pointer, its object's index then serial number
             const index = self.ue.mem.live(i32, obj + leader);
             if (index < 0) continue;
-            self.followers.append(gpa, .{ .leader = @intCast(index), .component = obj }) catch return;
+            self.followers.append(gpa, .{ .leader = @intCast(index), .component = obj, .slot = @intCast(i) }) catch return;
         }
     }
 
@@ -445,7 +456,7 @@ pub const Posing = struct {
         var leaders: [max_held]u32 = undefined;
         var n: usize = 0;
         for (self.held.items) |h| {
-            if (h.follower or !self.ue.objects.isObjectPlain(h.component)) continue;
+            if (h.follower or !self.ue.objects.isAt(h.component, h.slot)) continue;
             leaders[n] = self.ue.mem.live(u32, h.component + Unreal.object.index);
             n += 1;
         }
@@ -455,7 +466,7 @@ pub const Posing = struct {
             const known = for (self.held.items) |h| {
                 if (h.component == f.component) break true;
             } else false;
-            if (!known and self.ue.objects.isObjectPlain(f.component)) self.held.append(gpa, .{ .component = f.component, .follower = true }) catch return;
+            if (!known and self.ue.objects.isAt(f.component, f.slot)) self.held.append(gpa, .{ .component = f.component, .slot = f.slot, .follower = true }) catch return;
         }
     }
 
@@ -482,7 +493,7 @@ pub const Posing = struct {
         const mem = self.ue.mem;
         const o = self.off;
         for (self.held.items) |*h| {
-            if (!self.ue.objects.isObjectPlain(h.component)) continue;
+            if (!self.ue.objects.isAt(h.component, h.slot)) continue;
             self.thaw(h);
             if (h.follower) continue;
             if (o.uro) |b| {

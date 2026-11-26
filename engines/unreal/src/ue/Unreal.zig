@@ -97,6 +97,23 @@ pub fn nameOf(self: *const Unreal, obj: usize, buf: []u8) ?[]const u8 {
     return self.fname(obj + object.name, buf);
 }
 
+/// Like `nameOf`, plainly, for an object the game's using now. Game thread only.
+pub fn nameOfLive(self: *const Unreal, obj: usize, buf: []u8) ?[]const u8 {
+    return self.textOf(self.nameFrom(@as([*]const u8, @ptrFromInt(obj + object.name))[0..self.name_size]), buf, true);
+}
+
+/// The text of an FName the engine's just handed over, with its number, plainly. Game thread only.
+pub fn nameText(self: *const Unreal, name: FName, buf: []u8) ?[]const u8 {
+    return self.textOf(name, buf, true);
+}
+
+fn textOf(self: *const Unreal, name: FName, buf: []u8, comptime plain: bool) ?[]const u8 {
+    const text = (if (plain) self.names.textPlain(name.index, buf) else self.names.text(name.index, buf)) orelse return null;
+    if (name.number == 0) return text;
+    const suffix = std.fmt.bufPrint(buf[text.len..], "_{d}", .{name.number - 1}) catch return text;
+    return buf[0 .. text.len + suffix.len];
+}
+
 /// The FName at `at`.
 pub fn readName(self: *const Unreal, at: usize) ?FName {
     var bytes: [@sizeOf(FName) + 4]u8 = undefined;
@@ -121,11 +138,7 @@ pub fn putName(self: *const Unreal, out: []u8, name: FName) void {
 
 /// The text of the FName at `at`, with its number.
 pub fn fname(self: *const Unreal, at: usize, buf: []u8) ?[]const u8 {
-    const name = self.readName(at) orelse return null;
-    const text = self.names.text(name.index, buf) orelse return null;
-    if (name.number == 0) return text;
-    const suffix = std.fmt.bufPrint(buf[text.len..], "_{d}", .{name.number - 1}) catch return text;
-    return buf[0 .. text.len + suffix.len];
+    return self.textOf(self.readName(at) orelse return null, buf, false);
 }
 
 pub fn classOf(self: *const Unreal, obj: usize) ?usize {
@@ -447,9 +460,17 @@ pub fn findInstance(self: *const Unreal, class_name: []const u8) ?usize {
 /// Like `findInstance` but by the class itself, with plain reads, so it's quick enough for the game
 /// thread. Game thread only, where every object in the array is alive. Skips templates too.
 pub fn liveInstanceOf(self: *const Unreal, class: usize) ?usize {
-    for (0..self.objects.count()) |i| {
+    return if (self.liveInstance(class)) |l| l.object else null;
+}
+
+/// An object and its slot in the object array, for checking it's still there later.
+pub const Live = struct { object: usize, slot: u32 };
+
+/// Like `liveInstanceOf`, with its slot. Game thread only.
+pub fn liveInstance(self: *const Unreal, class: usize) ?Live {
+    for (0..self.objects.countPlain()) |i| {
         const obj = self.objects.getPlain(i);
-        if (self.isLive(obj, class)) return obj;
+        if (self.isLive(obj, class)) return .{ .object = obj, .slot = @intCast(i) };
     }
     return null;
 }
@@ -459,12 +480,13 @@ pub fn liveInstanceOf(self: *const Unreal, class: usize) ?usize {
 pub fn isLive(self: *const Unreal, obj: usize, class: usize) bool {
     const templates = class_default | 0x20;
     if (obj == 0 or @as(*align(1) const u32, @ptrFromInt(obj + object.flags)).* & templates != 0) return false;
-    var at: ?usize = @as(*align(1) const usize, @ptrFromInt(obj + object.class)).*;
+    // Its class and their supers are alive too, so they're read plainly as well
+    var at = @as(*align(1) const usize, @ptrFromInt(obj + object.class)).*;
     var depth: usize = 0;
-    while (at) |c| : (at = self.superOf(c)) {
+    while (at != 0) : (at = @as(*align(1) const usize, @ptrFromInt(at + self.layout.super)).*) {
         depth += 1;
         if (depth > 64) return false;
-        if (c == class) return true;
+        if (at == class) return true;
     }
     return false;
 }

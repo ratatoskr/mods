@@ -119,6 +119,8 @@ pub const Bones = struct {
     // Learning, from one mesh with both arrays
     probe: Probe = .{},
     watching: usize = 0,
+    /// Its slot in the object array, to tell it's still there without reading it.
+    watching_slot: u32 = 0,
     watching_animated: bool = false,
     read_then: i32 = -1,
     votes: [2]u32 = .{ 0, 0 },
@@ -132,21 +134,23 @@ pub const Bones = struct {
     pub fn animated(self: *Bones, component: usize) void {
         if (self.ready() or component != self.watching) return;
         self.watching_animated = true;
-        if (self.read_index) |r| self.read_then = self.ue.mem.read(i32, component + r) orelse -1;
+        if (self.read_index) |r| self.read_then = self.ue.mem.live(i32, component + r);
     }
 
     /// Game thread, once a frame after every mesh's been animated. Learns a bit more from the
-    /// nearest animated meshes, given how many bones the first has.
+    /// nearest animated meshes, given how many bones the first has. They're all live, so they're
+    /// read plainly, and so's the one it's watching once its slot says it's still there.
     pub fn learn(self: *Bones, nearest: []const usize, first_count: ?u32) void {
         if (self.ready() or nearest.len == 0) return;
         const arrays = self.arrays orelse {
             self.arrays = self.findArrays(nearest[0], first_count orelse return);
             return;
         };
-        if (self.watching == 0 or !self.ue.objects.isObject(self.watching) or !self.doubled(self.watching)) {
+        if (!self.ue.objects.isAt(self.watching, self.watching_slot) or !self.doubled(self.watching)) {
             self.watching = for (nearest) |c| {
                 if (self.doubled(c)) break c;
             } else 0;
+            if (self.watching != 0) self.watching_slot = self.ue.objects.slotOf(self.watching);
             self.probe = .{};
             self.watching_animated = false;
             if (self.watching != 0) return;
@@ -160,7 +164,7 @@ pub const Bones = struct {
         if (!self.watching_animated) return;
         self.watching_animated = false;
         const r = self.read_index orelse {
-            const values = self.ue.mem.read([Probe.slots]i32, self.watching + arrays + 2 * @sizeOf(TArray)) orelse return;
+            const values = self.ue.mem.live([Probe.slots]i32, self.watching + arrays + 2 * @sizeOf(TArray));
             self.probe.add(values);
             if (self.probe.samples < Probe.enough) return;
             // Not animated every frame, maybe, so it's another go
@@ -175,7 +179,7 @@ pub const Bones = struct {
         const then = self.read_then;
         self.read_then = -1;
         if (then < 0) return;
-        const now = self.ue.mem.read(i32, self.watching + r) orelse return;
+        const now = self.ue.mem.live(i32, self.watching + r);
         self.votes[@intFromBool(now != then)] += 1;
         const after, const before = .{ self.votes[1], self.votes[0] };
         if (after + before < flip_votes) return;
@@ -207,24 +211,26 @@ pub const Bones = struct {
         return .{ .data = h[which].data, .count = count };
     }
 
-    /// Has a second array as full as its first. Checked, for meshes that may be gone.
+    /// Has a second array as full as its first. On a live mesh.
     fn doubled(self: *const Bones, component: usize) bool {
         const arrays = self.arrays orelse return false;
-        return isDoubled(self.ue.mem.read([2]TArray, component + arrays) orelse return false);
+        return isDoubled(self.ue.mem.live([2]TArray, component + arrays));
     }
 
     fn isDoubled(h: [2]TArray) bool {
         return h[0].num != 0 and h[1].num == h[0].num and h[1].data != 0;
     }
 
-    /// Two `TArray<FTransform>`s of the bone count, or the second empty.
+    /// Two `TArray<FTransform>`s of the bone count, or the second empty. The headers are inside a
+    /// live mesh, so they're read plainly, but what they point at is only a guess till it's
+    /// plausible, so that's checked.
     fn findArrays(self: *const Bones, component: usize, n: u32) ?usize {
         const mem = self.ue.mem;
         var o = std.mem.alignForward(usize, self.from, @alignOf(TArray));
         while (o + 64 <= self.to) : (o += @alignOf(TArray)) {
-            const a = mem.read(TArray, component + o) orelse continue;
+            const a = mem.live(TArray, component + o);
             if (!countIs(a, n, false)) continue;
-            const b = mem.read(TArray, component + o + @sizeOf(TArray)) orelse continue;
+            const b = mem.live(TArray, component + o + @sizeOf(TArray));
             if (!countIs(b, n, true)) continue;
             if (!self.layout.plausible(mem, a.data)) continue;
             return o;

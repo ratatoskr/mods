@@ -77,6 +77,7 @@ pub const Plugin = struct {
         // No more ticks once it's out, and it waits for one in flight
         self.loop.stop();
         self.speed.stop();
+        self.camera.deinit();
         if (self.posing) |*p| p.deinit();
         if (self.meshes) |*m| m.deinit();
         self.handBack();
@@ -88,6 +89,7 @@ pub const Plugin = struct {
         const self: *Plugin = @ptrCast(@alignCast(raw));
         if (self.posing) |*p| p.restore();
         self.camera.leave();
+        self.speed.leave();
     }
 
     fn handBack(self: *Plugin) void {

@@ -28,6 +28,8 @@ pub const Offsets = struct {
 /// One morph target, on the mesh that has it, and what posing's put it at.
 pub const Shape = struct {
     component: usize,
+    /// Its slot in the object array, to tell it's still there without reading it.
+    slot: u32,
     name: FName,
     set: ?f32 = null,
 };
@@ -65,22 +67,25 @@ pub const Morphs = struct {
     }
 
     /// Every morph target on `components`' meshes, with a name and mesh for posing, up to
-    /// `max_shapes`.
+    /// `max_shapes`. Game thread only, with every one of them live, so their meshes and morph
+    /// targets are too, and it's all read plainly.
     pub fn collect(self: *Morphs, a: std.mem.Allocator, components: []const usize, shapes: *std.ArrayList(Shape), list: *std.ArrayList(W.Posing.Shape)) !void {
         const mem = self.ue.mem;
         var buf: [256]u8 = undefined;
         for (components) |c| {
-            const asset = mem.ptr(c + self.off.skeletal_mesh) orelse continue;
-            const header = mem.read(Unreal.TArray, asset + self.off.morph_targets) orelse continue;
+            const asset = mem.live(usize, c + self.off.skeletal_mesh);
+            if (asset == 0) continue;
+            const header = mem.live(Unreal.TArray, asset + self.off.morph_targets);
             const count: u32 = @bitCast(header.num);
             if (header.data == 0 or header.num <= 0) continue;
-            const mesh = try a.dupe(u8, self.ue.nameOf(asset, &buf) orelse "?");
+            const mesh = try a.dupe(u8, self.ue.nameOfLive(asset, &buf) orelse "?");
             for (0..count) |i| {
                 if (shapes.items.len == max_shapes) return;
-                const target = mem.ptr(header.data + i * @sizeOf(usize)) orelse continue;
-                const name = self.ue.readName(target + Unreal.object.name) orelse continue;
-                const text = self.ue.nameOf(target, &buf) orelse continue;
-                try shapes.append(a, .{ .component = c, .name = name });
+                const target = mem.live(usize, header.data + i * @sizeOf(usize));
+                if (target == 0) continue;
+                const name = self.ue.nameFrom(@as([*]const u8, @ptrFromInt(target + Unreal.object.name))[0..self.ue.name_size]);
+                const text = self.ue.nameText(name, &buf) orelse continue;
+                try shapes.append(a, .{ .component = c, .slot = self.ue.objects.slotOf(c), .name = name });
                 try list.append(a, .{ .name = try a.dupe(u8, text), .mesh = mesh });
             }
         }

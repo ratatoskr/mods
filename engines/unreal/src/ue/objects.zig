@@ -160,6 +160,27 @@ pub const Objects = struct {
         return @as(*align(1) const usize, @ptrFromInt(at)).*;
     }
 
+    /// Like `count`, plainly. Game thread only, where the array's the game's and alive.
+    pub fn countPlain(self: *const Objects) usize {
+        const n = plain32(self.table + @as(usize, if (self.kind == .chunked) chunked_num else fixed_num));
+        return @intCast(@max(n, 0));
+    }
+
+    /// A live object's slot in the array, plainly. Game thread only, on one the game's using now.
+    pub fn slotOf(_: *const Objects, p: usize) u32 {
+        return @bitCast(plain32(p + object.index));
+    }
+
+    /// Whether `p` is still the object in `slot`, as it was when it was alive. Only the array's
+    /// read, never `p`, so it's fine for one that's been destroyed and freed since. Game thread only.
+    pub fn isAt(self: *const Objects, p: usize, slot: u32) bool {
+        return p != 0 and slot < self.countPlain() and self.getPlain(slot) == p;
+    }
+
+    fn plain32(at: usize) i32 {
+        return @as(*align(1) const i32, @ptrFromInt(at)).*;
+    }
+
     /// Like `isObject`, quick enough for the game thread every frame. `p` can be one kept from an
     /// earlier frame that's been destroyed and freed since, so its index is read safely. The
     /// array's the game's and alive, so that's read plainly.
@@ -314,6 +335,13 @@ const tests = struct {
         const gone = @intFromPtr(page.ptr);
         std.heap.page_allocator.free(page);
         try std.testing.expect(!objects.isObjectPlain(gone));
+
+        // Its slot says so without reading it at all
+        try std.testing.expectEqual(1, objects.slotOf(@intFromPtr(&objs[1])));
+        try std.testing.expect(objects.isAt(@intFromPtr(&objs[1]), 1));
+        try std.testing.expect(!objects.isAt(gone, 1));
+        try std.testing.expect(!objects.isAt(@intFromPtr(&objs[1]), 2));
+        try std.testing.expect(!objects.isAt(@intFromPtr(&objs[1]), 4));
     }
 
     test "fixed, with smaller items" {

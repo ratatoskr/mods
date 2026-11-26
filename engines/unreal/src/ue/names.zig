@@ -107,6 +107,53 @@ pub const Names = struct {
         };
     }
 
+    /// Like `text`, plainly, for a name a live object or the engine's just handed over, whose
+    /// entry's there for good. Game thread only.
+    pub fn textPlain(self: *const Names, index: u32, buf: []u8) ?[]const u8 {
+        return switch (self.kind) {
+            .pool => {
+                const block = plainPtr(self.table + (index >> pool_block_bits) * P);
+                if (block == 0) return null;
+                const entry = block + (index & 0xFFFF) * self.pool.step + self.pool.header_at;
+                const header = @as(*align(1) const u16, @ptrFromInt(entry)).*;
+                const len: usize = header >> 6;
+                const at: [*]const u8 = @ptrFromInt(entry + 2);
+                if (header & 1 == 0) {
+                    if (len > buf.len) return null;
+                    @memcpy(buf[0..len], at[0..len]);
+                    return buf[0..len];
+                }
+                var wide: [max_len]u16 = undefined;
+                if (len > wide.len) return null;
+                @memcpy(std.mem.sliceAsBytes(wide[0..len]), at[0 .. len * 2]);
+                return utf8(wide[0..len], buf);
+            },
+            .array => {
+                const chunk = plainPtr(self.table + (index / array_chunk) * P);
+                if (chunk == 0) return null;
+                const entry = plainPtr(chunk + (index % array_chunk) * P);
+                if (entry == 0) return null;
+                const flags = @as(*align(1) const i32, @ptrFromInt(entry)).*;
+                const at = entry + self.text_at;
+                if (flags & 1 == 0) {
+                    const narrow: [*]const u8 = @ptrFromInt(at);
+                    var n: usize = 0;
+                    while (n < buf.len and narrow[n] != 0) : (n += 1) buf[n] = narrow[n];
+                    return buf[0..n];
+                }
+                const wide: [*]align(1) const u16 = @ptrFromInt(at);
+                var copy: [max_len]u16 = undefined;
+                var n: usize = 0;
+                while (n < copy.len and wide[n] != 0) : (n += 1) copy[n] = wide[n];
+                return utf8(copy[0..n], buf);
+            },
+        };
+    }
+
+    fn plainPtr(at: usize) usize {
+        return @as(*align(1) const usize, @ptrFromInt(at)).*;
+    }
+
     fn poolText(self: *const Names, index: u32, buf: []u8) ?[]const u8 {
         const block = self.mem.ptr(self.table + (index >> pool_block_bits) * P) orelse return null;
         const entry = block + (index & 0xFFFF) * self.pool.step + self.pool.header_at;
@@ -199,9 +246,13 @@ const tests = struct {
         try std.testing.expectEqual(.pool, names.kind);
         var buf: [64]u8 = undefined;
         try std.testing.expectEqualStrings("None", names.text(0, &buf).?);
+        try std.testing.expectEqualStrings("None", names.textPlain(0, &buf).?);
         try std.testing.expectEqualStrings("ByteProperty", names.text(3, &buf).?);
+        try std.testing.expectEqualStrings("ByteProperty", names.textPlain(3, &buf).?);
         try std.testing.expectEqualStrings("Kai", names.text(10, &buf).?);
+        try std.testing.expectEqualStrings("Kai", names.textPlain(10, &buf).?);
         try std.testing.expectEqualStrings("Füße", names.text(13, &buf).?);
+        try std.testing.expectEqualStrings("Füße", names.textPlain(13, &buf).?);
     }
 
     test "a pool whose names end in a 0, like FF7 Remake's" {
@@ -217,7 +268,9 @@ const tests = struct {
         var buf: [64]u8 = undefined;
         // Indexes are 2 byte steps, so ByteProperty's 4 and Kai's 12
         try std.testing.expectEqualStrings("ByteProperty", names.text(4, &buf).?);
+        try std.testing.expectEqualStrings("ByteProperty", names.textPlain(4, &buf).?);
         try std.testing.expectEqualStrings("Kai", names.text(12, &buf).?);
+        try std.testing.expectEqualStrings("Kai", names.textPlain(12, &buf).?);
     }
 
     test "a pool with a hash before each name, like FF7 Rebirth's" {
@@ -233,9 +286,13 @@ const tests = struct {
         var buf: [64]u8 = undefined;
         // 4 byte steps to each hash: ByteProperty's at 12, Kai's at 32 and Füße at 44
         try std.testing.expectEqualStrings("None", names.text(0, &buf).?);
+        try std.testing.expectEqualStrings("None", names.textPlain(0, &buf).?);
         try std.testing.expectEqualStrings("ByteProperty", names.text(3, &buf).?);
+        try std.testing.expectEqualStrings("ByteProperty", names.textPlain(3, &buf).?);
         try std.testing.expectEqualStrings("Kai", names.text(8, &buf).?);
+        try std.testing.expectEqualStrings("Kai", names.textPlain(8, &buf).?);
         try std.testing.expectEqualStrings("Füße", names.text(11, &buf).?);
+        try std.testing.expectEqualStrings("Füße", names.textPlain(11, &buf).?);
     }
 
     const Entry = extern struct {
@@ -266,6 +323,7 @@ const tests = struct {
         try std.testing.expectEqual(@intFromPtr(&array), names.table);
         var buf: [64]u8 = undefined;
         try std.testing.expectEqualStrings("Kai", names.text(2, &buf).?);
+        try std.testing.expectEqualStrings("Kai", names.textPlain(2, &buf).?);
     }
 };
 

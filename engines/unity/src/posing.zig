@@ -245,6 +245,8 @@ pub const Posing = struct {
     managed: W.Managed,
     scratch: *Scratch,
     actors: *[max_actors]Actor,
+    /// The camera on screen, which nearest is measured from. The main camera without one
+    eye_camera: ?*const @import("camera.zig").Camera = null,
     // Main thread only from here down
     /// The scene's answer they were picked from
     picked: u32 = 0,
@@ -317,7 +319,8 @@ pub const Posing = struct {
 
         const e = self.engine;
         var eye: Vec3 = .{};
-        if (e.main_camera()) |cam| if (e.transform(cam)) |t| e.get_position(t, &eye);
+        const seen = if (self.eye_camera) |c| c.target() else e.main_camera();
+        if (seen) |cam| if (e.transform(cam)) |t| e.get_position(t, &eye);
         const ByDistance = struct {
             fn lessThan(at: Vec3, x: scene_.Found, y: scene_.Found) bool {
                 return x.position.distance(at) < y.position.distance(at);

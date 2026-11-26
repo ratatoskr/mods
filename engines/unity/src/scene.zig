@@ -17,7 +17,6 @@ const Object = engine_.Object;
 
 const W = sdk.api.wraith;
 const Vec3 = sdk.math.Vec3;
-const local = sdk.mem.Memory.local;
 const gpa = std.heap.smp_allocator;
 const word = @sizeOf(usize);
 const array_length = 3 * word;
@@ -195,7 +194,8 @@ pub const Scene = struct {
         var found: std.ArrayList(Found) = .empty;
         // On the stack, where the garbage collector sees it, and what's in it through it
         if (self.calls.find_objects(@ptrFromInt(c.type_object), false)) |array| {
-            const n = @min(local.load(usize, @intFromPtr(array) + array_length) catch 0, max_objects);
+            // Unity's just made it, so it's there to read plainly
+            const n = @min(@as(*align(1) const usize, @ptrFromInt(@intFromPtr(array) + array_length)).*, max_objects);
             const items: [*]const ?*Object = @ptrFromInt(@intFromPtr(array) + array_items);
             found.ensureTotalCapacity(gpa, n) catch {};
             for (items[0..n]) |item| {
@@ -235,6 +235,19 @@ pub const Scene = struct {
 
     fn release(self: *Scene, found: []const Found) void {
         for (found) |f| for (f.holds) |h| if (h != 0) self.managed.release(h);
+    }
+
+    /// Main thread, once its GameObject's been renamed, so what's handed out says so before Unity's
+    /// next answer. `object_native` is the component's, `transform_native` what its name's kept by.
+    pub fn rename(self: *Scene, object_native: usize, transform_native: usize, name: []const u8) void {
+        const n: Name = .init(name);
+        self.names.put(gpa, transform_native, n) catch {};
+        self.lock.lock();
+        defer self.lock.unlock();
+        // Every component on it has its GameObject's name
+        for (self.types.items) |c| for (c.found.items) |*f| {
+            if (f.native == object_native or f.transform_native == transform_native) f.name = n;
+        };
     }
 
     /// Main thread. `native` is what it's kept by.

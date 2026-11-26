@@ -143,7 +143,8 @@ pub const Console = struct {
         const mem = world.ue.mem;
         const console_at = world.off.viewport_console orelse return true;
         const viewport = world.viewport() orelse return false;
-        if (mem.read(usize, viewport + console_at)) |existing| if (existing != 0) return true;
+        // Game thread, where the engine and its viewport are alive, so it's read plainly
+        if (mem.live(usize, viewport + console_at) != 0) return true;
         // Wait for the first world, so it's made the way the game would
         if (world.world() == null) return false;
         const spawn = world.spawn_object orelse {
@@ -152,7 +153,10 @@ pub const Console = struct {
         };
         const loop = self.loop orelse return false;
         const class = blk: {
-            if (world.off.console_class) |at| if (mem.ptr(world.engine + at)) |c| break :blk c;
+            if (world.off.console_class) |at| {
+                const c = mem.live(usize, world.engine + at);
+                if (c != 0) break :blk c;
+            }
             break :blk world.console_class;
         };
         if (class == 0) return true;
@@ -166,7 +170,7 @@ pub const Console = struct {
             log.warn("Couldn't make the game a console", .{});
             return true;
         }
-        _ = mem.write(usize, viewport + console_at, console);
+        mem.setLive(usize, viewport + console_at, console);
         log.info("The game had no console, so it has one now. {s}", .{keysNote(world)});
         return true;
     }
@@ -176,7 +180,8 @@ pub const Console = struct {
 fn keysNote(world: *const World) []const u8 {
     const at = world.off.console_keys orelse return "";
     if (world.input_settings == 0) return "";
-    const count = world.ue.mem.read(i32, world.input_settings + at + @offsetOf(TArray, "num")) orelse return "";
+    // A class default, there for good
+    const count = world.ue.mem.live(i32, world.input_settings + at + @offsetOf(TArray, "num"));
     return if (count > 0) "The game's console key opens it, usually ` or ~" else "The game has no console key set, so use Wraith's Unreal console window";
 }
 

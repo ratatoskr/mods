@@ -53,6 +53,14 @@ pub const Plugin = struct {
         try ctx.spawn(setUp, .{self});
     }
 
+    /// Before `stop`, while Wraith still ticks it: puts Unity's cameras back from its main thread,
+    /// which drives the game thread, the only place that's safe.
+    pub fn stopping(self: *Plugin, ctx: *sdk.Context) !void {
+        if (!self.ready.load(.acquire)) return;
+        try sdk.frame.toGame(ctx.io);
+        self.camera.windDown();
+    }
+
     pub fn stop(self: *Plugin) void {
         // Waits for its tick and panel, which use the scene
         self.explorer.stop();
@@ -60,6 +68,7 @@ pub const Plugin = struct {
         self.speed.stop();
         // Before what they use goes
         self.render.stop();
+        self.camera.deinit();
         self.handBack();
         if (self.posing) |*p| p.deinit();
         if (self.scene) |*s| s.deinit();
@@ -91,11 +100,12 @@ pub const Plugin = struct {
             break :blk null;
         };
         self.ready.store(true, .release);
-        self.camera.start(&self.engine);
+        self.camera.start(&self.engine, managed);
         if (self.scene) |*s| self.posing = Posing.find(&self.engine, s, managed, &missing) catch |err| blk: {
             log.warn("No posing, since this Unity's missing {s}: {t}", .{ missing, err });
             break :blk null;
         };
+        if (self.posing) |*p| p.eye_camera = &self.camera;
         self.speed.start(managed, self.ctx.wraith.game()) catch |err| log.info("No time scale to change ({t}), so game speed goes by the clocks", .{err});
         self.render.speed = &self.speed;
         self.render.scene = if (self.scene) |*s| s else null;

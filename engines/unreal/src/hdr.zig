@@ -25,6 +25,8 @@ pub const Hdr = struct {
     returns: usize,
     // Game thread only from here
     settings: usize = 0,
+    /// Its slot in the object array, to tell it's still there without reading it.
+    slot: u32 = 0,
     ticks: u32 = 0,
     told: ?bool = null,
     /// Looking for the settings goes through every object, so it stops after a few misses.
@@ -67,13 +69,15 @@ pub const Hdr = struct {
 
     fn ask(self: *Hdr) ?bool {
         // The game makes its settings object as it starts, and could make another
-        if (self.settings == 0 or !self.ue.objects.isObject(self.settings)) {
+        if (!self.ue.objects.isAt(self.settings, self.slot)) {
             if (self.misses == max_misses) return null;
-            self.settings = self.ue.liveInstanceOf(self.class) orelse {
+            const found = self.ue.liveInstance(self.class) orelse {
                 self.misses += 1;
                 if (self.misses == max_misses) log.info("The game has no settings object, so Wraith can't ask it about HDR", .{});
                 return null;
             };
+            self.settings = found.object;
+            self.slot = found.slot;
         }
         var params: [16]u8 align(16) = @splat(0);
         if (self.size > params.len or self.returns >= params.len) return null;

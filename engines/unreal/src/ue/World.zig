@@ -126,15 +126,21 @@ fn function(ue: *const Unreal, class: usize, cdo: usize, name: []const u8, param
     return out;
 }
 
-fn at(self: *const World, obj: usize, offset: usize) ?usize {
-    return self.ue.mem.ptr(obj + offset);
+// From here down, game thread only. The engine, its viewport and game instance, the world being
+// played and what's in it are all the game's and alive there, so they're read plainly, and each
+// pointer's checked for null before it's followed.
+
+fn at(_: *const World, obj: usize, offset: usize) ?usize {
+    const p = @as(*align(1) const usize, @ptrFromInt(obj + offset)).*;
+    return if (p == 0) null else p;
 }
 
-/// Sets `bit` on `obj`, giving what it was.
-pub fn setBit(self: *const World, obj: usize, bit: Bit, on: bool) ?bool {
-    const byte = self.ue.mem.read(u8, obj + bit.offset) orelse return null;
+/// Sets `bit` on `obj`, a live object, giving what it was.
+pub fn setBit(self: *const World, obj: usize, bit: Bit, on: bool) bool {
+    const mem = self.ue.mem;
+    const byte = mem.live(u8, obj + bit.offset);
     const was = byte & bit.mask != 0;
-    _ = self.ue.mem.write(u8, obj + bit.offset, if (on) byte | bit.mask else byte & ~bit.mask);
+    mem.setLive(u8, obj + bit.offset, if (on) byte | bit.mask else byte & ~bit.mask);
     return was;
 }
 
@@ -155,16 +161,16 @@ pub fn settings(self: *const World) ?usize {
 /// Someone's paused the world the engine's way, like the game's pause menu or Wraith's speed at 0.
 pub fn paused(self: *const World) bool {
     const s = self.settings() orelse return false;
-    return (self.ue.mem.read(usize, s + self.off.pauser) orelse 0) != 0;
+    return self.ue.mem.live(usize, s + self.off.pauser) != 0;
 }
 
 /// The first local player's controller.
 pub fn playerController(self: *const World) ?usize {
     const instance = self.at(self.engine, self.off.game_instance) orelse return null;
     const players = self.at(instance, self.off.local_players) orelse return null;
-    const count = self.ue.mem.read(i32, instance + self.off.local_players + @offsetOf(Unreal.TArray, "num")) orelse return null;
+    const count = self.ue.mem.live(i32, instance + self.off.local_players + @offsetOf(Unreal.TArray, "num"));
     if (count < 1) return null;
-    const player = self.ue.mem.ptr(players) orelse return null;
+    const player = self.at(players, 0) orelse return null;
     return self.at(player, self.off.player_controller);
 }
 
