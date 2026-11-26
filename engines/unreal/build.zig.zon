@@ -1,6 +1,6 @@
 .{
     .name = .unreal,
-    .version = "0.0.0",
+    .version = "0.0.10",
     .dependencies = .{
         .wraith = .{
             .url = "git+https://github.com/ratatoskr/wraith#b25a9307bbac7a02cb0be7a5260f4f436181489d",
