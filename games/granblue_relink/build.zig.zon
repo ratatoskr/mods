@@ -1,6 +1,6 @@
 .{
     .name = .granblue_relink,
-    .version = "0.0.1",
+    .version = "0.0.0",
     .dependencies = .{
         .wraith = .{
             .url = "git+https://github.com/ratatoskr/wraith#518f10d8270be0e034308c3998da1035693c5e02",
