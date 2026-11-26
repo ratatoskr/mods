@@ -24,8 +24,7 @@ pub const Loop = struct {
     votes: Votes = .{},
     votes_lock: sdk.sync.RwLock = .{},
     /// Run after the game calls these UFunctions, with their object and params. Set before `start`.
-    watches: [4]After = undefined,
-    watch_count: usize = 0,
+    watches: std.ArrayList(After) = .empty,
     /// The game's window shape, from the render thread, as f32 bits.
     aspect: sdk.atomic.Value(u32) = .init(@bitCast(@as(f32, 16.0 / 9.0))),
     /// `farewell`'s, run once on the game thread.
@@ -47,9 +46,8 @@ pub const Loop = struct {
 
     /// Before `start`. `function` is the UFunction, whose name's matched.
     pub fn watch(self: *Loop, function: usize, context: *anyopaque, func: *const fn (*anyopaque, object: usize, params: ?*anyopaque) void) void {
-        if (self.watch_count == self.watches.len) return;
-        self.watches[self.watch_count] = .{ .name = nameIndex(function), .context = context, .func = func };
-        self.watch_count += 1;
+        self.watches.append(std.heap.smp_allocator, .{ .name = nameIndex(function), .context = context, .func = func }) catch
+            log.warn("Out of memory, so something won't hear about its UFunction being called", .{});
     }
 
     /// A live UFunction's name, read straight, since the game's just handed it over.
@@ -89,6 +87,9 @@ pub const Loop = struct {
     pub fn stop(self: *Loop) void {
         if (self.hook) |h| h.destroy();
         self.hook = null;
+        // Only once the hook's gone, since its calls read them
+        self.watches.deinit(std.heap.smp_allocator);
+        self.watches = .empty;
     }
 
     /// Runs `cb` on the game thread before the hook goes, so the game can be put back how it was.
@@ -136,9 +137,9 @@ pub const Loop = struct {
     fn onProcessEvent(self: *Loop, h: sdk.hooks.FnHook(ProcessEventFn), object: usize, function: usize, params: ?*anyopaque) void {
         self.maybeTick();
         h.original()(object, function, params);
-        if (self.watch_count == 0) return;
+        if (self.watches.items.len == 0) return;
         const name = nameIndex(function);
-        for (self.watches[0..self.watch_count]) |w| if (w.name == name) w.func(w.context, object, params);
+        for (self.watches.items) |w| if (w.name == name) w.func(w.context, object, params);
     }
 
     fn maybeTick(self: *Loop) void {

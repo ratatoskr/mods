@@ -12,6 +12,7 @@ const Engine = @import("engine.zig").Engine;
 const Camera = @import("camera.zig").Camera;
 const Render = @import("render.zig").Render;
 const Posing = @import("posing.zig").Posing;
+const Photo = @import("photo.zig").Photo;
 const Speed = @import("speed.zig").Speed;
 const scene_ = @import("scene.zig");
 const Scene = scene_.Scene;
@@ -30,6 +31,8 @@ pub const Plugin = struct {
     /// Taken in `start`, so nobody's ticks run on the render thread first.
     ticks: ?sdk.Lease = null,
     camera: Camera = .{},
+    /// Lens, Look and Clean shot in Photo mode
+    photo: Photo = .{},
     render: Render = .{},
     scene: ?Scene = null,
     posing: ?Posing = null,
@@ -67,16 +70,19 @@ pub const Plugin = struct {
         if (!self.ready.load(.acquire)) return;
         try sdk.threads.toGame(ctx.io);
         self.camera.windDown();
+        self.photo.windDown();
     }
 
     pub fn stop(self: *Plugin) void {
         // Waits for its tick and panel, which use the scene
         self.explorer.stop();
+        self.photo.stop();
         // Puts the game's own time scale back
         self.speed.stop();
         // Before what they use goes
         self.render.stop();
         self.camera.deinit();
+        self.photo.deinit();
         self.handBack();
         if (self.posing) |*p| p.deinit();
         if (self.scene) |*s| s.deinit();
@@ -120,6 +126,10 @@ pub const Plugin = struct {
         self.speed.start(managed, self.ctx.wraith.game()) catch |err| log.info("No time scale to change ({t}), so game speed goes by the clocks", .{err});
         self.render.speed = &self.speed;
         self.render.scene = if (self.scene) |*s| s else null;
+        if (self.scene) |*s| {
+            self.photo.start(managed, s, &self.camera);
+            self.render.photo = &self.photo;
+        }
         self.render.start(&self.engine, managed, self.ticks, &self.camera, if (self.posing) |*p| p else null) catch |err| {
             log.err("Can't tell when Unity renders: {t}", .{err});
             return err;
@@ -180,6 +190,7 @@ test {
     _ = @import("explorer.zig");
     _ = @import("loop.zig");
     _ = @import("posing.zig");
+    _ = @import("photo.zig");
     _ = @import("speed.zig");
     _ = @import("scene.zig");
 }

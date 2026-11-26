@@ -13,6 +13,7 @@ const Engine = @import("engine.zig").Engine;
 const Object = @import("engine.zig").Object;
 const Camera = @import("camera.zig").Camera;
 const camera_ = @import("camera.zig");
+const Photo = @import("photo.zig").Photo;
 const Posing = @import("posing.zig").Posing;
 const Speed = @import("speed.zig").Speed;
 const Scene = @import("scene.zig").Scene;
@@ -40,6 +41,8 @@ pub const Render = struct {
     ticks: ?sdk.Lease = null,
     camera: *Camera = undefined,
     posing: ?*Posing = null,
+    /// Photo mode's lens, look and clean shot, after the camera's picked
+    photo: ?*Photo = null,
     /// Put on at the start of each frame
     speed: ?*Speed = null,
     /// Looks round a little each frame
@@ -160,6 +163,7 @@ pub const Render = struct {
         if (frame != self.picked_frame) {
             self.picked_frame = frame;
             self.camera.pick(self.scene);
+            if (self.photo) |p| p.frame();
         }
         return self.camera.target();
     }

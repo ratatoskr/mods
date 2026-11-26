@@ -17,6 +17,7 @@ const Loop = @import("loop.zig").Loop;
 const Speed = @import("speed.zig").Speed;
 const Console = @import("console.zig").Console;
 const Camera = @import("camera.zig").Camera;
+const Photo = @import("photo.zig").Photo;
 const Posing = @import("posing.zig").Posing;
 const Meshes = @import("meshes.zig").Meshes;
 const Hdr = @import("hdr.zig").Hdr;
@@ -45,6 +46,8 @@ pub const Plugin = struct {
     view_lease: ?sdk.Lease = null,
     console: Console = .{},
     camera: Camera = .{},
+    /// Lens, Look and Clean shot in Photo mode
+    photo: Photo = .{},
     meshes: ?Meshes = null,
     posing: ?Posing = null,
     hdr: ?Hdr = null,
@@ -77,6 +80,7 @@ pub const Plugin = struct {
 
     pub fn stop(self: *Plugin) void {
         self.service.stop();
+        self.photo.stop();
         // Its panels go first, while ticks still run
         if (self.explorer_on) self.explorer.stop();
         self.explorer_on = false;
@@ -86,6 +90,7 @@ pub const Plugin = struct {
         self.loop.stop();
         self.speed.stop();
         self.camera.deinit();
+        self.photo.deinit();
         if (self.posing) |*p| p.deinit();
         if (self.meshes) |*m| m.deinit();
         self.handBack();
@@ -96,6 +101,7 @@ pub const Plugin = struct {
     fn farewell(raw: *anyopaque) void {
         const self: *Plugin = @ptrCast(@alignCast(raw));
         if (self.posing) |*p| p.restore();
+        if (self.photo.hiding) self.photo.restore();
         self.camera.leave();
         self.speed.leave();
     }
@@ -112,6 +118,7 @@ pub const Plugin = struct {
         self.speed.apply();
         self.console.tick();
         if (self.camera.tools != null) self.camera.tick();
+        self.photo.tick();
         if (self.meshes) |*m| m.tick();
         if (self.posing) |*p| p.tick();
         if (self.hdr) |*h| h.tick();
@@ -191,6 +198,8 @@ pub const Plugin = struct {
         if (Camera.find(ue, &missing)) |off| {
             self.camera.start(world, &self.loop, off);
             self.loop.watch(off.modify, &self.camera, Camera.onModify);
+            // After the camera's, so its view's made first
+            self.photo.start(world, &self.loop, &self.camera);
         } else |err| log.warn("No free camera, since this Unreal's missing {s}: {t}", .{ missing, err });
         if (Meshes.find(ue, &self.loop, &self.camera, &missing)) |m| {
             self.meshes = m;
@@ -309,6 +318,7 @@ test {
     _ = @import("morphs.zig");
     _ = @import("ue/Bones.zig");
     _ = @import("hdr.zig");
+    _ = @import("photo.zig");
     _ = @import("explorer.zig");
     _ = @import("service.zig");
 }
