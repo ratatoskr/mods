@@ -10,17 +10,15 @@ const sqpack = @import("sqpack");
 const Tick = @import("tick.zig").Tick;
 const Explorer = @import("explorer.zig").Explorer;
 
-/// What's in its Workbench tab
-const Part = enum { sheets };
-
 pub const Plugin = struct {
     ctx: *sdk.Context = undefined,
     tick: Tick = .{},
     /// The game's files, once `openPack` has them.
     pack: ?sqpack.Pack = null,
-    /// Its Workbench tab, with a part each in `parts`
-    tab: ?sdk.workbench.Panel = null,
-    parts: sdk.workbench.Parts(Part) = .init(.{ .sheets = "Sheets" }),
+    /// Its Workbench tab, holding Sheets, and others' that name `ffxiv` as their parent
+    holder: sdk.workbench.Holder = .{ .options = .{ .title = "FFXIV", .kind = "ffxiv" } },
+    tab: ?sdk.workbench.Tab = null,
+    sheets: ?sdk.workbench.Panel = null,
     explorer: Explorer = .{},
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
@@ -32,18 +30,17 @@ pub const Plugin = struct {
         // Changing its speed breaks it online, so it stays off till something turns it on where it
         // works, like Group Pose
         ctx.wraith.game().setSpeedControl(false);
-        self.tab = sdk.workbench.addPanel(self, drawTab, .{ .title = "FFXIV", .kind = "ffxiv" }) catch |err| blk: {
-            log.warn("No FFXIV tab in the Workbench: {t}", .{err});
-            break :blk null;
-        };
+        self.addTabs() catch |err| log.warn("No FFXIV tab in the Workbench: {t}", .{err});
         try ctx.spawn(askDalamud, .{self});
         try ctx.spawn(openPack, .{self});
     }
 
     pub fn stop(self: *Plugin) void {
         self.tick.stop();
-        // Its parts read the pack, so they go first
+        // Sheets reads the pack, so it goes first
+        if (self.sheets) |p| p.remove();
         if (self.tab) |t| t.remove();
+        self.sheets = null;
         self.tab = null;
         self.explorer.stop();
         if (self.pack) |*p| p.close(self.ctx.io, self.ctx.allocator);
@@ -69,15 +66,14 @@ pub const Plugin = struct {
         self.explorer.start(&self.pack.?, io);
     }
 
-    /// On the Workbench's thread.
-    fn drawTab(self: *Plugin) void {
-        self.parts.draw(self, drawPart);
+    fn addTabs(self: *Plugin) !void {
+        self.tab = try sdk.workbench.addHolder(&self.holder);
+        self.sheets = try sdk.workbench.addPanel(self, drawSheets, .{ .title = "Sheets", .kind = "sheets", .parent = "ffxiv" });
     }
 
-    fn drawPart(self: *Plugin, part: Part) void {
-        switch (part) {
-            .sheets => self.explorer.draw(),
-        }
+    /// On the Workbench's thread.
+    fn drawSheets(self: *Plugin) void {
+        self.explorer.draw();
     }
 
     /// Dalamud runs its C# on .NET's CoreCLR in the game, which Wraith joins once it's started. Asks

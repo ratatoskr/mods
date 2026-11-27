@@ -141,6 +141,10 @@ pub const Photo = struct {
     lock: sdk.sync.RwLock = .{},
     /// Under `lock`
     want: Want = .{},
+    /// Its parts of Photo mode, kept while they're in its slots
+    lens_part: sdk.slots.PhotoPart = .{ .info = .{ .id = "lens", .kind = "camera", .title = "Lens", .presentation = .foldout, .open = true, .order = 300 } },
+    look_info: sdk.slots.PhotoPart = .{ .info = .{ .id = "look", .kind = "camera", .title = "Look", .presentation = .foldout, .open = true, .order = 400 } },
+    clean_part: sdk.slots.PhotoPart = .{ .info = .{ .id = "clean_shot", .order = 450 } },
     contributions: std.ArrayList(W.Contribution) = .empty,
     // Game thread only from here down
     hiding: bool = false,
@@ -162,20 +166,19 @@ pub const Photo = struct {
         self.off = find(world.ue, camera);
         if (self.off.lens()) loop.watch(camera.off.modify, self, onModify);
         if (self.off.look()) loop.watch(self.off.post.?, self, onPostProcess);
-        const ui_area = (sdk.wraith.root() orelse return).ui();
-        if (self.off.lens()) self.contribute(ui_area, .{ .slot = "photo.inspector", .id = "lens", .kind = "camera", .title = "Lens", .presentation = .foldout, .open = true, .order = 300 }, drawLens);
+        if (self.off.lens()) self.contribute("photo.inspector", &self.lens_part, drawLens);
         // Without one, Wraith's own says there's none
-        if (self.off.look()) self.contribute(ui_area, .{ .slot = "photo.inspector", .id = "look", .kind = "camera", .title = "Look", .presentation = .foldout, .open = true, .order = 400 }, drawLook);
-        if (self.off.clean()) self.contribute(ui_area, .{ .slot = "photo.toolbar", .id = "clean_shot", .order = 450 }, drawClean);
+        if (self.off.look()) self.contribute("photo.inspector", &self.look_info, drawLook);
+        if (self.off.clean()) self.contribute("photo.toolbar", &self.clean_part, drawClean);
         var found: usize = 0;
         for (self.off.fields) |f| found += @intFromBool(f != null);
         if (!self.off.look()) log.warn("Photo mode has no look. {s}", .{noLook(&self.off)});
         log.debug("Photo mode has {s}lens, {d} of {d} look settings, and {s}clean shot", .{ if (self.off.lens()) "" else "no ", if (self.off.look()) found else 0, items.len, if (self.off.clean()) "" else "no " });
     }
 
-    fn contribute(self: *Photo, ui_area: W.Ui, placement: W.Slot.Placement, comptime draw: fn (*Photo, W.Slot.Target) void) void {
+    fn contribute(self: *Photo, slot: []const u8, part: *sdk.slots.PhotoPart, comptime draw: fn (*Photo, W.Slot.Target) void) void {
         // An older Wraith has no slots, so there's just nothing to show
-        const c = ui_area.contribute(placement, .init(self, draw)) catch |err| return log.debug("No {s} in Photo mode: {t}", .{ placement.id, err });
+        const c = sdk.slots.addPhotoPart(slot, part, self, draw) catch |err| return log.debug("No {s} in Photo mode: {t}", .{ part.info.id, err });
         self.contributions.append(gpa, c) catch c.remove();
     }
 

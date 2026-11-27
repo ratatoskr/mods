@@ -24,9 +24,6 @@ const Vec3 = sdk.math.Vec3;
 const Mat4 = sdk.math.Mat4;
 const gpa = std.heap.smp_allocator;
 
-/// What's in the Unreal tab
-const Part = enum { scene, classes };
-
 const log = sdk.log.scoped(.unreal);
 const object = objects_.object;
 
@@ -252,9 +249,11 @@ pub const Explorer = struct {
     loop: *Loop = undefined,
     tools: ?W.FreeCamera = null,
     found: Found = undefined,
-    /// The Workbench's Unreal tab, with Scene and Classes in it
-    panel: ?sdk.workbench.Panel = null,
-    parts: sdk.workbench.Parts(Part) = .init(.{ .scene = "Scene", .classes = "Classes" }),
+    /// The Workbench's Unreal tab, holding Scene and Classes, and others' that name `unreal` as their parent
+    holder: sdk.workbench.Holder = .{ .options = .{ .title = "Unreal", .kind = "unreal" } },
+    tab: ?sdk.workbench.Tab = null,
+    scene_panel: ?sdk.workbench.Panel = null,
+    classes_panel: ?sdk.workbench.Panel = null,
 
     tree: sdk.workbench.Latest(Tree) = .{},
     details: sdk.workbench.Latest(Details) = .{},
@@ -313,18 +312,29 @@ pub const Explorer = struct {
     pub fn start(self: *Explorer, ue: *const Unreal, world: *const World, loop: *Loop, tools: ?W.FreeCamera) !void {
         self.* = .{ .ue = ue, .world = world, .loop = loop, .tools = tools };
         self.found = try find(ue);
-        self.panel = try sdk.workbench.addPanel(self, drawTab, .{ .title = "Unreal", .kind = "unreal" });
+        errdefer self.removeTabs();
+        self.tab = try sdk.workbench.addHolder(&self.holder);
+        self.scene_panel = try sdk.workbench.addPanel(self, drawScene, .{ .title = "Scene", .kind = "scene", .parent = "unreal" });
+        self.classes_panel = try sdk.workbench.addPanel(self, drawClasses, .{ .title = "Classes", .kind = "classes", .parent = "unreal" });
         // No gizmo without the overlay, but the panels are still fine
         self.gizmo = sdk.overlay.addGizmo() catch null;
         if (self.gizmo) |g| g.setTool(.move);
+    }
+
+    fn removeTabs(self: *Explorer) void {
+        if (self.scene_panel) |p| p.remove();
+        if (self.classes_panel) |p| p.remove();
+        if (self.tab) |t| t.remove();
+        self.scene_panel = null;
+        self.classes_panel = null;
+        self.tab = null;
     }
 
     /// Waits for a draw in flight. Call it before the game thread's ticks stop for good.
     pub fn stop(self: *Explorer) void {
         if (self.gizmo) |g| g.remove();
         self.gizmo = null;
-        if (self.panel) |p| p.remove();
-        self.panel = null;
+        self.removeTabs();
         if (self.walk) |*w| w.deinit();
         self.walk = null;
         self.sorts.deinit(gpa);
@@ -378,8 +388,8 @@ pub const Explorer = struct {
     pub fn tick(self: *Explorer) void {
         for (self.actions.drain()) |a| self.apply(a);
         self.tickGizmo();
-        const scene_open = self.parts.showing(self.panel, .scene);
-        const classes_open = self.parts.showing(self.panel, .classes);
+        const scene_open = if (self.scene_panel) |p| p.isOpen() else false;
+        const classes_open = if (self.classes_panel) |p| p.isOpen() else false;
         if (!scene_open and !classes_open) return;
         const now = sdk.timing.now();
 
@@ -1183,21 +1193,10 @@ pub const Explorer = struct {
 
     /// Any thread.
     fn sceneOpen(self: *const Explorer) bool {
-        return self.parts.showing(self.panel, .scene);
+        return if (self.scene_panel) |p| p.isOpen() else false;
     }
 
     // The Workbench's thread
-
-    fn drawTab(self: *Explorer) void {
-        self.parts.draw(self, drawPart);
-    }
-
-    fn drawPart(self: *Explorer, part: Part) void {
-        switch (part) {
-            .scene => self.drawScene(),
-            .classes => self.drawClasses(),
-        }
-    }
 
     fn drawScene(self: *Explorer) void {
         const jumped = self.found_instance.swap(0, .acq_rel);
@@ -1553,7 +1552,7 @@ pub const Explorer = struct {
     fn showClass(self: *Explorer, class: usize) void {
         self.picked_class = class;
         self.actions.push(.{ .select_class = class });
-        self.parts.focus(self.panel, .classes);
+        if (self.classes_panel) |p| p.focus();
     }
 
     fn drawClasses(self: *Explorer) void {
@@ -1671,7 +1670,7 @@ pub const Explorer = struct {
         const any = self.picked_class != 0;
         if (menu.item(.{ .label = "Look at one", .enabled = any, .default = true, .tooltip = "Finds a live one of it, or of what comes from it, in Scene" })) {
             self.actions.push(.{ .find_instance = self.picked_class });
-            self.parts.focus(self.panel, .scene);
+            if (self.scene_panel) |p| p.focus();
         }
         if (menu.item(.{ .label = "Copy name", .chord = ui.copy_chord, .enabled = any })) {
             if (self.classes.read()) |r| {

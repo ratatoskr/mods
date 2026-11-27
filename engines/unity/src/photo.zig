@@ -273,6 +273,10 @@ pub const Photo = struct {
     lock: sdk.sync.RwLock = .{},
     /// Under `lock`
     want: Want = .{},
+    /// Its parts of Photo mode, kept while they're in its slots
+    lens_part: sdk.slots.PhotoPart = .{ .info = .{ .id = "lens", .kind = "camera", .title = "Lens", .presentation = .foldout, .open = true, .order = 300 } },
+    look_info: sdk.slots.PhotoPart = .{ .info = .{ .id = "look", .kind = "camera", .title = "Look", .presentation = .foldout, .open = true, .order = 400 } },
+    clean_part: sdk.slots.PhotoPart = .{ .info = .{ .id = "clean_shot", .order = 450 } },
     contributions: std.ArrayList(W.Contribution) = .empty,
     /// Look, among `contributions`, for taking out if its volume can't be made
     look_part: ?W.Contribution = null,
@@ -311,11 +315,10 @@ pub const Photo = struct {
         self.near.find(managed);
         if (self.calls.volumes()) self.findLook();
         self.say();
-        const ui_area = (sdk.wraith.root() orelse return).ui();
-        if (self.hasLens()) _ = self.contribute(ui_area, .{ .slot = "photo.inspector", .id = "lens", .kind = "camera", .title = "Lens", .presentation = .foldout, .open = true, .order = 300 }, drawLens);
+        if (self.hasLens()) _ = self.contribute("photo.inspector", &self.lens_part, drawLens);
         // Without one, Wraith's own says there's none
-        if (self.hasLook()) self.look_part = self.contribute(ui_area, .{ .slot = "photo.inspector", .id = "look", .kind = "camera", .title = "Look", .presentation = .foldout, .open = true, .order = 400 }, drawLook);
-        if (self.calls.canvases()) _ = self.contribute(ui_area, .{ .slot = "photo.toolbar", .id = "clean_shot", .order = 450 }, drawClean);
+        if (self.hasLook()) self.look_part = self.contribute("photo.inspector", &self.look_info, drawLook);
+        if (self.calls.canvases()) _ = self.contribute("photo.toolbar", &self.clean_part, drawClean);
     }
 
     /// The first pipeline whose volume class is there and has any of the items.
@@ -381,10 +384,10 @@ pub const Photo = struct {
         return self.pipeline != null and std.mem.indexOfScalar(bool, &self.found, true) != null;
     }
 
-    fn contribute(self: *Photo, ui_area: W.Ui, placement: W.Slot.Placement, comptime draw: fn (*Photo, W.Slot.Target) void) ?W.Contribution {
+    fn contribute(self: *Photo, slot: []const u8, part: *sdk.slots.PhotoPart, comptime draw: fn (*Photo, W.Slot.Target) void) ?W.Contribution {
         // An older Wraith has no slots, so there's just nothing to show
-        const c = ui_area.contribute(placement, .init(self, draw)) catch |err| {
-            log.debug("No {s} in Photo mode: {t}", .{ placement.id, err });
+        const c = sdk.slots.addPhotoPart(slot, part, self, draw) catch |err| {
+            log.debug("No {s} in Photo mode: {t}", .{ part.info.id, err });
             return null;
         };
         self.contributions.append(gpa, c) catch {

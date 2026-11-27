@@ -26,9 +26,6 @@ const word = @sizeOf(usize);
 const array_length = 3 * word;
 const array_items = 4 * word;
 
-/// What's in the Unity tab
-const Part = enum { scene };
-
 /// Asked again this often while it's open
 const tree_every_ns = 2 * std.time.ns_per_s;
 const details_every_ns = 200 * std.time.ns_per_ms;
@@ -224,9 +221,10 @@ pub const Explorer = struct {
     transform_type: usize = 0,
     component_type: usize = 0,
     tick_sub: ?sdk.threads.Subscription = null,
-    /// The Workbench's Unity tab, with Scene in it
+    /// The Workbench's Unity tab, holding Scene, and others' that name `unity` as their parent
+    holder: sdk.workbench.Holder = .{ .options = .{ .title = "Unity", .kind = "unity" } },
+    tab: ?sdk.workbench.Tab = null,
     panel: ?sdk.workbench.Panel = null,
-    parts: sdk.workbench.Parts(Part) = .init(.{ .scene = "Scene" }),
 
     tree: sdk.workbench.Latest(Tree) = .{},
     details: sdk.workbench.Latest(Details) = .{},
@@ -288,7 +286,9 @@ pub const Explorer = struct {
         self.transform_type = try managed.typeObject("UnityEngine.Transform");
         self.component_type = try managed.typeObject("UnityEngine.Component");
         self.tick_sub = try sdk.threads.onTick(self, tick);
-        self.panel = sdk.workbench.addPanel(self, drawTab, .{ .title = "Unity", .kind = "unity" }) catch |err| {
+        self.addTabs() catch |err| {
+            if (self.tab) |t| t.remove();
+            self.tab = null;
             self.tick_sub.?.unsubscribe();
             self.tick_sub = null;
             return err;
@@ -298,12 +298,19 @@ pub const Explorer = struct {
         if (self.gizmo) |g| g.setTool(.move);
     }
 
+    fn addTabs(self: *Explorer) !void {
+        self.tab = try sdk.workbench.addHolder(&self.holder);
+        self.panel = try sdk.workbench.addPanel(self, draw, .{ .title = "Scene", .kind = "scene", .parent = "unity" });
+    }
+
     /// Waits for a tick or draw in flight, so it's fine to free what they use after.
     pub fn stop(self: *Explorer) void {
         if (self.panel) |p| p.remove();
+        if (self.tab) |t| t.remove();
         if (self.tick_sub) |s| s.unsubscribe();
         if (self.gizmo) |g| g.remove();
         self.panel = null;
+        self.tab = null;
         self.tick_sub = null;
         self.gizmo = null;
         if (self.walk) |*w| self.endWalk(w);
@@ -379,7 +386,7 @@ pub const Explorer = struct {
 
     /// Any thread.
     fn panelOpen(self: *const Explorer) bool {
-        return self.parts.showing(self.panel, .scene);
+        return if (self.panel) |p| p.isOpen() else false;
     }
 
     fn startWalk(self: *Explorer) void {
@@ -672,16 +679,6 @@ pub const Explorer = struct {
     }
 
     // The Workbench's thread
-
-    fn drawTab(self: *Explorer) void {
-        self.parts.draw(self, drawPart);
-    }
-
-    fn drawPart(self: *Explorer, part: Part) void {
-        switch (part) {
-            .scene => self.draw(),
-        }
-    }
 
     fn draw(self: *Explorer) void {
         self.takeCopy();
