@@ -2,7 +2,7 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "trails_horizon",
   "kind": "plugin",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "apiVersion": 3,
   "title": "Trails Horizon",
   "summary": "The free camera, posing, game speed and pause, and money, item and script tweaks for Trails beyond the Horizon.",
