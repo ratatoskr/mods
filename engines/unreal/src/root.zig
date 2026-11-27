@@ -101,7 +101,7 @@ pub const Plugin = struct {
     fn farewell(raw: *anyopaque) void {
         const self: *Plugin = @ptrCast(@alignCast(raw));
         if (self.posing) |*p| p.restore();
-        if (self.photo.hiding) self.photo.restore();
+        self.photo.putBack();
         self.camera.leave();
         self.speed.leave();
     }

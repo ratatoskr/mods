@@ -86,7 +86,7 @@ const items = [_]Item{
     .{ .label = "Film grain", .group = "Effects", .in = .{ .{ .component = "FilmGrain", .field = "intensity" }, .{ .component = "Grain", .field = "intensity" } }, .min = 0, .max = 1, .start = 0.3 },
     .{ .label = "Chromatic aberration", .group = "Effects", .in = .{ .{ .component = "ChromaticAberration", .field = "intensity" }, .{ .component = "ChromaticAberration", .field = "intensity" } }, .min = 0, .max = 1, .start = 0.3 },
     // v2's goes by the shutter's angle
-    .{ .label = "Motion blur", .group = "Effects", .in = .{ .{ .component = "MotionBlur", .field = "intensity" }, .{ .component = "MotionBlur", .field = "shutterAngle", .scale = 360 } }, .min = 0, .max = 1, .start = 0.5 },
+    .{ .label = "Motion blur", .group = "Effects", .in = .{ .{ .component = "MotionBlur", .field = "intensity" }, .{ .component = "MotionBlur", .field = "shutterAngle", .scale = 360 } }, .min = 0, .max = 1, .start = 0 },
     .{ .label = "Lens distortion", .group = "Effects", .in = .{ .{ .component = "LensDistortion", .field = "intensity" }, .{ .component = "LensDistortion", .field = "intensity", .scale = 100 } }, .min = -1, .max = 1, .start = 0 },
     .{ .label = "Focus distance", .group = "Depth of field", .in = .{ .{ .component = "DepthOfField", .field = "focusDistance" }, .{ .component = "DepthOfField", .field = "focusDistance" } }, .min = 0.1, .max = 100, .start = 10, .format = "%.1f m", .logarithmic = true },
     .{ .label = "Aperture", .group = "Depth of field", .in = .{ .{ .component = "DepthOfField", .field = "aperture" }, .{ .component = "DepthOfField", .field = "aperture" } }, .min = 1, .max = 32, .start = 5.6, .format = "f/%.1f", .logarithmic = true },
@@ -96,6 +96,11 @@ const items = [_]Item{
 /// URP and HDRP's depth of field is off till its mode says otherwise: URP's `mode` Bokeh, HDRP's
 /// `focusMode` Manual, both 2.
 const dof_on = 2;
+/// Their `Off`
+const dof_off = 0;
+
+/// Depth of field as the game has it, on for what's ticked, or off.
+const Dof = enum { game, on, off };
 
 fn Get(comptime T: type) type {
     return ?*const fn (*Object) callconv(.c) T;
@@ -213,6 +218,8 @@ const Want = struct {
     /// Metres, or 0 for the game's
     near_clip: f32 = 0,
     look: [items.len]?f32 = @splat(null),
+    /// Over the game's depth of field and any ticked above
+    no_dof: bool = false,
     clean: bool = false,
 };
 
@@ -276,6 +283,7 @@ pub const Photo = struct {
     volume: ?Volume = null,
     /// What's on the volume now, so only changes are sent
     applied: [items.len]?f32 = @splat(null),
+    applied_dof: Dof = .game,
     /// An item the runtime wouldn't set, so it's left alone
     broken: [items.len]bool = @splat(false),
     hidden: std.ArrayList(Hidden) = .empty,
@@ -502,8 +510,8 @@ pub const Photo = struct {
     /// Sends what's changed to our volume, making it the first time anything's ticked.
     fn look(self: *Photo, want: Want) void {
         const alive = self.volumeAlive();
-        if (alive and std.mem.eql(?f32, &want.look, &self.applied)) return;
-        const any = for (want.look) |v| {
+        if (alive and std.mem.eql(?f32, &want.look, &self.applied) and want.no_dof == (self.applied_dof == .off)) return;
+        const any = want.no_dof or for (want.look) |v| {
             if (v != null) break true;
         } else false;
         if (!alive) {
@@ -523,10 +531,10 @@ pub const Photo = struct {
                 self.dispatch = false;
             };
         };
-        var dof = false;
-        for (items, want.look) |item, v| {
-            if (v != null and std.mem.eql(u8, item.group, "Depth of field")) dof = true;
-        }
+        var dof: Dof = if (want.no_dof) .off else .game;
+        if (dof == .game) for (items, want.look) |item, v| {
+            if (v != null and std.mem.eql(u8, item.group, "Depth of field")) dof = .on;
+        };
         for (items, want.look, &self.applied, 0..) |item, v, *was, i| {
             if (!self.found[i] or self.broken[i]) continue;
             if (std.meta.eql(v, was.*)) continue;
@@ -538,7 +546,10 @@ pub const Photo = struct {
             };
             was.* = v;
         }
-        self.setDepthOfField(dof);
+        if (dof != self.applied_dof) {
+            self.setDepthOfField(dof) catch |err| log.debug("Couldn't turn depth of field {t}: {t}", .{ dof, err });
+            self.applied_dof = dof;
+        }
     }
 
     fn volumeAlive(self: *Photo) bool {
@@ -635,6 +646,7 @@ pub const Photo = struct {
         for (v.components, 0..) |h, i| if (h != 0 and std.mem.indexOfScalar(u32, v.components[0..i], h) == null) m.release(h);
         for (v.params) |h| if (h != 0) m.release(h);
         self.applied = @splat(null);
+        self.applied_dof = .game;
     }
 
     /// An item's parameter on our volume: its value and that it overrides, or that it doesn't.
@@ -704,23 +716,30 @@ pub const Photo = struct {
         return added.object;
     }
 
-    /// URP and HDRP's depth of field only shows once its mode's on. v2's is on with its effect.
-    fn setDepthOfField(self: *Photo, on: bool) void {
+    /// Depth of field on for ticked settings, which URP and HDRP only show once their mode's on, off
+    /// for Off, else the game's. v2's goes by its effect's own switch.
+    fn setDepthOfField(self: *Photo, dof: Dof) !void {
         const p = self.pipeline orelse return;
-        if (p.which != .srp) return;
         const v = &(self.volume orelse return);
-        const at = for (items, 0..) |item, i| {
-            if (std.mem.eql(u8, item.group, "Depth of field") and v.components[i] != 0) break i;
+        const at = for (items, self.found, 0..) |item, found, i| {
+            if (found and std.mem.eql(u8, item.group, "Depth of field")) break i;
         } else return;
+        // Back to the game's needs nothing made for it
+        if (dof == .game and v.components[at] == 0) return;
         const m = self.managed;
-        const component = m.heldAt(v.components[at]) catch return;
+        const component = if (v.components[at] != 0) try m.heldAt(v.components[at]) else try self.componentOf(at, items[at]);
+        if (p.which == .ppv2) {
+            const enabled = (try m.getField(component, "enabled")).object;
+            if (enabled == 0) return error.NotFound;
+            return m.setField(enabled, p.value, .{ .kind = .flag, .flag = dof != .off });
+        }
         for ([_][]const u8{ "mode", "focusMode" }) |name| {
             const param = (m.getField(component, name) catch continue).object;
             if (param == 0) continue;
-            m.setField(param, p.value, .{ .kind = .integer, .integer = dof_on }) catch {};
-            m.setField(param, p.override, .{ .kind = .flag, .flag = on }) catch {};
-            return;
+            try m.setField(param, p.value, .{ .kind = .integer, .integer = if (dof == .off) dof_off else dof_on });
+            return m.setField(param, p.override, .{ .kind = .flag, .flag = dof != .game });
         }
+        return error.NotFound;
     }
 
     fn clean(self: *Photo, want: bool) void {
@@ -790,16 +809,23 @@ pub const Photo = struct {
         self.lock.lock();
         defer self.lock.unlock();
         var group: []const u8 = "";
-        var any = false;
+        var any = self.want.no_dof;
         for (items, self.found, &self.want.look, 0..) |item, found, *value, i| {
             if (!found) continue;
+            const dof = std.mem.eql(u8, item.group, "Depth of field");
             if (!std.mem.eql(u8, item.group, group)) {
                 group = item.group;
                 var buf: [64:0]u8 = undefined;
                 ui.separatorText(std.fmt.bufPrintSentinel(&buf, "{s}", .{group}, 0) catch "");
+                if (dof) {
+                    _ = ui.checkbox("Off", &self.want.no_dof);
+                    ui.tooltip("No blur from focus, so things stay sharp however close the camera gets.", .{});
+                }
             }
             const scope = ui.id(@as(i32, @intCast(i)));
             defer scope.end();
+            const dropped = ui.disabled(dof and self.want.no_dof);
+            defer dropped.end();
             var on = value.* != null;
             if (ui.checkbox("##on", &on)) value.* = if (on) item.start else null;
             ui.tooltip("{s} the game's", .{if (on) "Back to" else "Change"});
@@ -814,7 +840,10 @@ pub const Photo = struct {
         {
             const nothing = ui.disabled(!any);
             defer nothing.end();
-            if (ui.button("Back to the game's look")) self.want.look = @splat(null);
+            if (ui.button("Back to the game's look")) {
+                self.want.look = @splat(null);
+                self.want.no_dof = false;
+            }
         }
         ui.textDisabled("Ticked ones go over the game's. Ctrl-click a slider to type.", .{});
     }

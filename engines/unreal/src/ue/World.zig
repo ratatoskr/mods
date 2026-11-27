@@ -13,6 +13,8 @@ engine: usize,
 off: Offsets,
 /// `KismetSystemLibrary.ExecuteConsoleCommand`, called on its class default.
 console_command: ?Function = null,
+/// `KismetSystemLibrary.GetConsoleVariableIntValue`, 4.22 and later.
+cvar_int: ?Function = null,
 /// `GameplayStatics.SpawnObject`, 4.20 and later.
 spawn_object: ?Function = null,
 /// The `Console` class, for a game that ships without one made.
@@ -111,6 +113,7 @@ pub fn find(ue: *const Unreal, missing: *[]const u8) !World {
     };
     if (get(&found, .kismet) != 0 and get(&found, .kismet_cdo) != 0) {
         self.console_command = function(ue, get(&found, .kismet), get(&found, .kismet_cdo), "ExecuteConsoleCommand", &.{ "WorldContextObject", "Command", "SpecificPlayer" });
+        self.cvar_int = function(ue, get(&found, .kismet), get(&found, .kismet_cdo), "GetConsoleVariableIntValue", &.{ "VariableName", "ReturnValue" });
     }
     if (get(&found, .statics) != 0 and get(&found, .statics_cdo) != 0) {
         self.spawn_object = function(ue, get(&found, .statics), get(&found, .statics_cdo), "SpawnObject", &.{ "ObjectClass", "Outer", "ReturnValue" });

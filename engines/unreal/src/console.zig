@@ -124,18 +124,9 @@ pub const Console = struct {
     }
 
     fn run(self: *Console, world: *const World, command: []const u8) void {
-        const f = world.console_command orelse return;
         const loop = self.loop orelse return;
-        const w = world.world() orelse return log.warn("No world to run \"{s}\" in yet", .{command});
-        var wide: [max_len + 1]u16 = undefined;
-        const len = std.unicode.utf8ToUtf16Le(&wide, command) catch return;
-        wide[len] = 0;
-        var params: [256]u8 align(16) = @splat(0);
-        if (f.size > params.len) return;
-        std.mem.writeInt(usize, params[f.params[0]..][0..P], w, .little);
-        writeString(params[f.params[1]..][0..@sizeOf(TArray)], wide[0 .. len + 1]);
-        loop.call(f.object, f.function, params[0..f.size]);
-        log.info("Ran \"{s}\"", .{command});
+        if (world.world() == null) return log.warn("No world to run \"{s}\" in yet", .{command});
+        if (runCommand(world, loop, command)) log.info("Ran \"{s}\"", .{command});
     }
 
     /// True once there's a console, ours or the game's, or there's no making one.
@@ -175,6 +166,34 @@ pub const Console = struct {
         return true;
     }
 };
+
+/// Runs `command` as the console would. False if there's no world or no way to. Game thread.
+pub fn runCommand(world: *const World, loop: *Loop, command: []const u8) bool {
+    const f = world.console_command orelse return false;
+    const w = world.world() orelse return false;
+    var wide: [max_len + 1]u16 = undefined;
+    const len = std.unicode.utf8ToUtf16Le(&wide, command) catch return false;
+    wide[len] = 0;
+    var params: [256]u8 align(16) = @splat(0);
+    if (f.size > params.len) return false;
+    std.mem.writeInt(usize, params[f.params[0]..][0..P], w, .little);
+    writeString(params[f.params[1]..][0..@sizeOf(TArray)], wide[0 .. len + 1]);
+    loop.call(f.object, f.function, params[0..f.size]);
+    return true;
+}
+
+/// A console variable's value as a whole number, or null if it can't be read. Game thread.
+pub fn intVariable(world: *const World, loop: *Loop, name: []const u8) ?i32 {
+    const f = world.cvar_int orelse return null;
+    var wide: [128]u16 = undefined;
+    const len = std.unicode.utf8ToUtf16Le(wide[0 .. wide.len - 1], name) catch return null;
+    wide[len] = 0;
+    var params: [64]u8 align(16) = @splat(0);
+    if (f.size > params.len) return null;
+    writeString(params[f.params[0]..][0..@sizeOf(TArray)], wide[0 .. len + 1]);
+    loop.call(f.object, f.function, params[0..f.size]);
+    return std.mem.readInt(i32, params[f.params[1]..][0..4], .little);
+}
 
 /// Which key opens it, from the input settings.
 fn keysNote(world: *const World) []const u8 {

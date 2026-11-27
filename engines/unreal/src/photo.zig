@@ -12,6 +12,7 @@ const Unreal = @import("ue/Unreal.zig");
 const World = @import("ue/World.zig");
 const Loop = @import("loop.zig").Loop;
 const Camera = @import("camera.zig").Camera;
+const console = @import("console.zig");
 
 const log = sdk.log.scoped(.unreal);
 const gpa = std.heap.smp_allocator;
@@ -44,11 +45,22 @@ const items = [_]Item{
     .{ .field = "BloomIntensity", .label = "Bloom", .group = "Effects", .min = 0, .max = 8, .start = 0.675 },
     .{ .field = "FilmGrainIntensity", .old = "GrainIntensity", .label = "Film grain", .group = "Effects", .min = 0, .max = 1, .start = 0 },
     .{ .field = "SceneFringeIntensity", .label = "Chromatic aberration", .group = "Effects", .min = 0, .max = 5, .start = 0 },
-    .{ .field = "MotionBlurAmount", .label = "Motion blur", .group = "Effects", .min = 0, .max = 1, .start = 0.5 },
+    // Off once ticked, since it's mostly there to be turned off
+    .{ .field = "MotionBlurAmount", .label = "Motion blur", .group = "Effects", .min = 0, .max = 1, .start = 0 },
     .{ .field = "DepthOfFieldFocalDistance", .label = "Focus distance", .group = "Depth of field", .min = 1, .max = 100_000, .start = 1000, .format = "%.0f cm", .logarithmic = true },
     .{ .field = "DepthOfFieldFstop", .label = "Aperture", .group = "Depth of field", .min = 0.7, .max = 32, .start = 4, .format = "f/%.1f", .logarithmic = true },
     .{ .field = "DepthOfFieldSensorWidth", .label = "Sensor width", .group = "Depth of field", .min = 5, .max = 100, .start = 24.576, .format = "%.1f mm" },
 };
+
+/// What turns depth of field off, each at 0: cinematic's focus distance, then Gaussian's blur sizes
+/// and the old Bokeh's scale.
+const dof_off = [_][]const u8{ "DepthOfFieldFocalDistance", "DepthOfFieldNearBlurSize", "DepthOfFieldFarBlurSize", "DepthOfFieldScale" };
+
+/// Off turns this down too, since some games' depth of field wins over ours, like Dragon Quest VII
+/// Reimagined's.
+const dof_quality = "r.DepthOfFieldQuality";
+/// The engine's own, for when the game's can't be read.
+const dof_quality_default = 2;
 
 /// Where an item's value and its `bOverride_` bit are in `FPostProcessSettings`.
 const Field = struct { at: usize, bit: Unreal.Bit };
@@ -65,11 +77,14 @@ const Offsets = struct {
     weight: usize = 0,
     settings: usize = 0,
     fields: [items.len]?Field = @splat(null),
+    no_dof: [dof_off.len]?Field = @splat(null),
     /// `PlayerController.MyHUD` and `HUD.bShowHUD`
     my_hud: ?usize = null,
     show_hud: ?Unreal.Bit = null,
     /// `UserWidget`, and its calls
     widget: usize = 0,
+    /// `Widget.Slot`, which top-level ones haven't got
+    slot: ?usize = null,
     in_viewport: ?Unreal.Call = null,
     get_visibility: ?Unreal.Call = null,
     set_visibility: ?Unreal.Call = null,
@@ -101,6 +116,8 @@ const Want = struct {
     /// Centimetres, or 0 for the game's
     near_clip: f32 = 0,
     look: [items.len]?f32 = @splat(null),
+    /// Over the game's depth of field and any ticked above
+    no_dof: bool = false,
     clean: bool = false,
 };
 
@@ -131,6 +148,11 @@ pub const Photo = struct {
     hud: usize = 0,
     hud_was: bool = true,
     scan_at: usize = 0,
+    /// On-screen widgets seen this pass, and whether the first pass has been logged
+    seen: u32 = 0,
+    said: bool = false,
+    /// The game's depth of field quality while Off has it at 0
+    dof_was: ?i32 = null,
 
     /// Finds what it can, and watches our modifier for what it found. Before the loop starts.
     pub fn start(self: *Photo, world: *const World, loop: *Loop, camera: *const Camera) void {
@@ -198,6 +220,7 @@ pub const Photo = struct {
                 o.weight = weight;
                 o.settings = at;
                 for (items, &o.fields) |item, *field| field.* = fieldOf(ue, settings, item.field) orelse if (item.old.len > 0) fieldOf(ue, settings, item.old) else null;
+                for (dof_off, &o.no_dof) |name, *field| field.* = fieldOf(ue, settings, name);
             };
         };
 
@@ -206,11 +229,12 @@ pub const Photo = struct {
             o.show_hud = ue.bitOf(hud, "bShowHUD");
         }
 
-        var umg: [1]usize = undefined;
-        ue.findIn("/Script/UMG", &.{"UserWidget"}, &umg);
+        var umg: [2]usize = undefined;
+        ue.findIn("/Script/UMG", &.{ "UserWidget", "Widget" }, &umg);
         if (umg[0] != 0) {
             var missing: []const u8 = "";
             o.widget = umg[0];
+            if (umg[1] != 0) o.slot = ue.offsetOf(umg[1], "Slot");
             o.in_viewport = ue.callOf(umg[0], "IsInViewport", &.{"ReturnValue"}, &missing) catch null;
             o.get_visibility = ue.callOf(umg[0], "GetVisibility", &.{"ReturnValue"}, &missing) catch null;
             o.set_visibility = ue.callOf(umg[0], "SetVisibility", &.{"InVisibility"}, &missing) catch null;
@@ -246,21 +270,45 @@ pub const Photo = struct {
         const self: *Photo = @ptrCast(@alignCast(context));
         if (modifier == 0 or modifier != self.camera.modifier) return;
         const want = self.wanted();
-        applyLook(@intFromPtr(params orelse return), &self.off, &want.look, self.world.ue.layout.doubles);
+        applyLook(@intFromPtr(params orelse return), &self.off, &want.look, want.no_dof, self.world.ue.layout.doubles);
     }
 
-    /// Game thread, once a tick: hides or puts back the HUD and widgets.
+    /// Game thread, once a tick: depth of field's quality, and hides or puts back the HUD and widgets.
     pub fn tick(self: *Photo) void {
+        const all = self.wanted();
+        self.dofQuality(all.no_dof);
         if (!self.off.clean()) return;
-        const want = self.wanted().clean;
+        const want = all.clean;
         if (want and !self.hiding) {
             self.hiding = true;
             self.scan_at = 0;
+            self.seen = 0;
+            self.said = false;
             self.hideHud();
         }
         if (!want and self.hiding) return self.restore();
         // New widgets come along while it's on, so it keeps looking
         if (self.hiding) self.hideSome();
+    }
+
+    /// Everything back as the game had it. Game thread, as the plugin goes.
+    pub fn putBack(self: *Photo) void {
+        if (self.hiding) self.restore();
+        self.dofQuality(false);
+    }
+
+    fn dofQuality(self: *Photo, off: bool) void {
+        if (off == (self.dof_was != null)) return;
+        if (off) {
+            const was = console.intVariable(self.world, self.loop, dof_quality) orelse dof_quality_default;
+            // Tried again next tick if there's no world yet
+            if (!console.runCommand(self.world, self.loop, dof_quality ++ " 0")) return;
+            self.dof_was = was;
+            return;
+        }
+        var buf: [64]u8 = undefined;
+        const back = std.fmt.bufPrint(&buf, dof_quality ++ " {d}", .{self.dof_was.?}) catch return;
+        if (console.runCommand(self.world, self.loop, back)) self.dof_was = null;
     }
 
     fn hideHud(self: *Photo) void {
@@ -281,17 +329,32 @@ pub const Photo = struct {
         for (self.scan_at..end) |i| {
             const obj = ue.objects.getPlain(i);
             if (!ue.isLive(obj, self.off.widget)) continue;
-            if (!self.returns(bool, obj, self.off.in_viewport.?)) continue;
+            // Top-level ones too, since some games put theirs on screen without IsInViewport knowing, like
+            // Dragon Quest VII Reimagined
+            const top = if (self.off.slot) |at| readRaw(usize, obj + at) == 0 else false;
+            if (!top and !self.returns(bool, obj, self.off.in_viewport.?)) continue;
+            self.seen +%= 1;
             const was = self.returns(u8, obj, self.off.get_visibility.?);
             if (was != visible and was != hit_test_invisible and was != self_hit_test_invisible) continue;
+            // Games show some again themselves, like CommonUI's as they're activated, so they're hidden again
             const known = for (self.hidden.items) |h| {
                 if (h.widget == obj) break true;
             } else false;
-            if (known) continue;
+            if (known) {
+                self.setVisibility(obj, hidden_visibility);
+                continue;
+            }
             self.hidden.append(gpa, .{ .widget = obj, .slot = @intCast(i), .visibility = was }) catch continue;
             self.setVisibility(obj, hidden_visibility);
         }
-        self.scan_at = if (end < count) end else 0;
+        if (end < count) {
+            self.scan_at = end;
+            return;
+        }
+        if (!self.said) log.debug("Clean shot found {d} widgets on screen or at the top, and has {d} hidden", .{ self.seen, self.hidden.items.len });
+        self.said = true;
+        self.scan_at = 0;
+        self.seen = 0;
     }
 
     /// The HUD and widgets back as they were. Game thread, and as the plugin goes.
@@ -352,16 +415,26 @@ pub const Photo = struct {
         self.lock.lock();
         defer self.lock.unlock();
         var group: []const u8 = "";
-        var any = false;
+        var any = self.want.no_dof;
+        const can_drop_dof = self.world.console_command != null or for (self.off.no_dof) |f| {
+            if (f != null) break true;
+        } else false;
         for (items, self.off.fields, &self.want.look, 0..) |item, field, *value, i| {
             if (field == null) continue;
+            const dof = std.mem.eql(u8, item.group, "Depth of field");
             if (!std.mem.eql(u8, item.group, group)) {
                 group = item.group;
                 var buf: [64:0]u8 = undefined;
                 ui.separatorText(std.fmt.bufPrintSentinel(&buf, "{s}", .{group}, 0) catch "");
+                if (dof and can_drop_dof) {
+                    _ = ui.checkbox("Off", &self.want.no_dof);
+                    ui.tooltip("No blur from focus, so things stay sharp however close the camera gets.", .{});
+                }
             }
             const scope = ui.id(@as(i32, @intCast(i)));
             defer scope.end();
+            const dropped = ui.disabled(dof and self.want.no_dof);
+            defer dropped.end();
             var on = value.* != null;
             if (ui.checkbox("##on", &on)) value.* = if (on) item.start else null;
             ui.tooltip("{s} the game's", .{if (on) "Back to" else "Change"});
@@ -376,7 +449,10 @@ pub const Photo = struct {
         {
             const nothing = ui.disabled(!any);
             defer nothing.end();
-            if (ui.button("Back to the game's look")) self.want.look = @splat(null);
+            if (ui.button("Back to the game's look")) {
+                self.want.look = @splat(null);
+                self.want.no_dof = false;
+            }
         }
         ui.textDisabled("Ticked ones go over the game's. Ctrl-click a slider to type.", .{});
     }
@@ -395,7 +471,7 @@ pub const Photo = struct {
 
 /// The ticked settings into `BlueprintModifyPostProcess`' params at `p`, each with its override, at
 /// full weight. Nothing's touched when none are.
-fn applyLook(p: usize, off: *const Offsets, look: []const ?f32, doubles: bool) void {
+fn applyLook(p: usize, off: *const Offsets, look: []const ?f32, no_dof: bool, doubles: bool) void {
     const settings = p + off.settings;
     var any = false;
     for (items, off.fields, look) |item, field, value| {
@@ -406,10 +482,21 @@ fn applyLook(p: usize, off: *const Offsets, look: []const ?f32, doubles: bool) v
             // All of it, its w, which the colour channels go by
             .vec4 => if (doubles) writeRaw([4]f64, settings + f.at, .{ 1, 1, 1, v }) else writeRaw([4]f32, settings + f.at, .{ 1, 1, 1, v }),
         }
-        writeRaw(u8, settings + f.bit.offset, readRaw(u8, settings + f.bit.offset) | f.bit.mask);
+        override(settings, f);
         any = true;
     }
+    // After, so it's over a ticked focus distance
+    if (no_dof) for (off.no_dof) |field| {
+        const f = field orelse continue;
+        writeRaw(f32, settings + f.at, 0);
+        override(settings, f);
+        any = true;
+    };
     if (any) writeRaw(f32, p + off.weight, 1);
+}
+
+fn override(settings: usize, f: Field) void {
+    writeRaw(u8, settings + f.bit.offset, readRaw(u8, settings + f.bit.offset) | f.bit.mask);
 }
 
 /// Why there's no look, as a sentence.
@@ -437,7 +524,7 @@ test "ticked look settings go in with their overrides, at full weight" {
     const p = @intFromPtr(&params);
 
     // Nothing ticked leaves the game's alone
-    applyLook(p, &off, &look, false);
+    applyLook(p, &off, &look, false, false);
     try testing.expectEqual(0, readRaw(f32, p));
 
     look[0] = 1.5;
@@ -445,7 +532,7 @@ test "ticked look settings go in with their overrides, at full weight" {
     // One this Unreal hasn't got is skipped
     look[1] = 7000;
     params[8] = 0x2;
-    applyLook(p, &off, &look, false);
+    applyLook(p, &off, &look, false, false);
     try testing.expectEqual(1, readRaw(f32, p));
     try testing.expectEqual(0x2 | 0x4, params[8]);
     try testing.expectEqual(0x1, params[9]);
@@ -453,6 +540,13 @@ test "ticked look settings go in with their overrides, at full weight" {
     try testing.expectEqual([4]f32{ 1, 1, 1, 0.25 }, readRaw([4]f32, p + 24));
 
     // UE5's vectors are doubles
-    applyLook(p, &off, &look, true);
+    applyLook(p, &off, &look, false, true);
     try testing.expectEqual([4]f64{ 1, 1, 1, 0.25 }, readRaw([4]f64, p + 24));
+
+    // No depth of field puts its focus distance at 0, over the game's
+    off.no_dof[0] = .{ .at = 48, .bit = .{ .offset = 2, .mask = 0x8 } };
+    @as(*align(1) f32, @ptrFromInt(p + 56)).* = 500;
+    applyLook(p, &off, &look, true, true);
+    try testing.expectEqual(0, readRaw(f32, p + 56));
+    try testing.expectEqual(0x8, params[10]);
 }
