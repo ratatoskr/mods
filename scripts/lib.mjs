@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crc32, deflateRawSync } from "node:zlib";
@@ -14,7 +15,17 @@ export const manifestName = "wraith.json";
 export const dist = (process.env.HUB_DIST_URL ?? "https://dist.wraith.io/hub").replace(/\/+$/, "");
 
 /** Never packages or groups of them. */
-const skipped = new Set(["scripts", "release", "node_modules", "zig-out", "zig-pkg", "dist"]);
+const skipped = new Set(["scripts", "release", "node_modules", "zig-out", "zig-pkg", "dist", "build", "target", "bin", "obj"]);
+
+/** How a package builds, by what's in its folder. C and C++ build with zig or CMake. */
+function builderOf(path) {
+    if (existsSync(join(path, "build.zig"))) return "zig";
+    if (existsSync(join(path, "package.json"))) return "js";
+    if (existsSync(join(path, "Cargo.toml"))) return "rust";
+    if (existsSync(join(path, "CMakeLists.txt"))) return "cmake";
+    if (readdirSync(path).some((f) => f.endsWith(".csproj"))) return "cs";
+    return "files";
+}
 /** How deep groups go, like `games/<game>/<mod>`. */
 const maxDepth = 4;
 
@@ -30,8 +41,8 @@ export function findPackages() {
             if (!manifest.id) throw new Error(`${manifestFile} needs an "id"`);
             if (ids.has(manifest.id)) throw new Error(`${dir} and ${ids.get(manifest.id)} both have the id "${manifest.id}"`);
             ids.set(manifest.id, dir);
-            const builder = existsSync(join(path, "build.zig")) ? "zig" : existsSync(join(path, "package.json")) ? "js" : "files";
-            packages.set(dir, { dir, path, name: manifest.id, kind: manifest.kind ?? "plugin", manifestFile, builder, version: manifest.version, depends: manifest.depends ?? [] });
+            const builder = builderOf(path);
+            packages.set(dir, { dir, path, name: manifest.id, kind: manifest.kind ?? "plugin", manifestFile, builder, version: manifest.version, depends: manifest.depends ?? [], arches: manifest.arches ?? ["x64"] });
             return;
         }
         if (depth === maxDepth) return;
@@ -110,7 +121,63 @@ export function hasZigTests(pkg) {
     return /b\.step\(\s*"test"/.test(readFileSync(join(pkg.path, "build.zig"), "utf8"));
 }
 
-const zonVersion = /^(\s*\.version\s*=\s*")([^"]*)(")/m;
+const wraithDist = (process.env.WRAITH_DIST_URL ?? "https://dist.wraith.io/wraith").replace(/\/+$/, "");
+let wraithPath;
+
+/** The wraith CLI, which makes Rust, CMake and C# packages' bindings: WRAITH, else one on PATH, else
+ *  Wraith's newest release, downloaded once into .wraith-cli. */
+export async function wraithCli() {
+    if (wraithPath) return wraithPath;
+    if (process.env.WRAITH) return (wraithPath = process.env.WRAITH);
+    const found = spawnSync(process.platform === "win32" ? "where" : "which", ["wraith"], { encoding: "utf8" });
+    if (found.status === 0) return (wraithPath = found.stdout.split(/\r?\n/)[0].trim());
+
+    const response = await fetch(`${wraithDist}/latest.json`);
+    if (!response.ok) throw new Error(`couldn't get ${wraithDist}/latest.json: ${response.status}`);
+    const latest = await response.json();
+    const dir = join(root, ".wraith-cli", latest.version);
+    const exe = join(dir, "wraith.exe");
+    if (!existsSync(exe)) {
+        console.log(`Downloading wraith ${latest.version}`);
+        const bytes = Buffer.from(await (await fetch(latest.url)).arrayBuffer());
+        if (createHash("sha256").update(bytes).digest("hex") !== latest.sha256.toLowerCase()) throw new Error(`${latest.url} isn't what latest.json says`);
+        mkdirSync(dir, { recursive: true });
+        const zipFile = join(dir, "wraith.zip");
+        writeFileSync(zipFile, bytes);
+        // Windows' own tar, since Git's can't read a zip
+        run(dir, process.platform === "win32" ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe") : "tar", ["-xf", zipFile]);
+        rmSync(zipFile);
+    }
+    return (wraithPath = exe);
+}
+
+/** Builds a Rust, CMake or C# package, with what Wraith loads put in `out`. */
+export async function buildNative(pkg, { release, out }) {
+    const wraith = await wraithCli();
+    // build.rs and the .csproj find it by this too
+    process.env.WRAITH = wraith;
+    rmSync(out, { recursive: true, force: true });
+    if (pkg.builder === "rust") {
+        run(pkg.path, wraith, ["sdk", "rust", "build", ...(release ? [] : ["--debug"]), "--out", out]);
+    } else if (pkg.builder === "cmake") {
+        // wraith.cmake puts each arch's DLL in dist/, beside wraith.json and the schemas
+        const dist = join(pkg.path, "dist");
+        rmSync(dist, { recursive: true, force: true });
+        const cmake = process.env.CMAKE ?? "cmake";
+        for (const arch of pkg.arches) {
+            const build = `build/${arch}`;
+            run(pkg.path, cmake, ["-S", ".", "-B", build, "-A", arch === "x86" ? "Win32" : "x64", `-DWRAITH=${wraith}`]);
+            run(pkg.path, cmake, ["--build", build, "--config", release ? "Release" : "Debug"]);
+        }
+        cpSync(dist, out, { recursive: true });
+    } else if (pkg.builder === "cs") {
+        run(pkg.path, "dotnet", ["publish", "-c", release ? "Release" : "Debug", "-o", out]);
+    } else {
+        throw new Error(`${pkg.builder} isn't native`);
+    }
+}
+
+const zonVersion =/^(\s*\.version\s*=\s*")([^"]*)(")/m;
 
 export function syncVersions(pkg) {
     const changed = [];
@@ -139,7 +206,7 @@ export function npmScripts(pkg) {
     return JSON.parse(readFileSync(join(pkg.path, "package.json"), "utf8")).scripts ?? {};
 }
 
-const devOnly = new Set([".git", ".gitignore", ".wraith", ".luarc.json", ".vscode", "node_modules", "zig-out", ".zig-cache", "zig-pkg"]);
+const devOnly = new Set([".git", ".gitignore", ".wraith", ".luarc.json", ".vscode", "node_modules", "zig-out", ".zig-cache", "zig-pkg", "dist", "build", "target", "bin", "obj"]);
 
 export function packageFiles(dir, under = "") {
     return readdirSync(join(dir, under))

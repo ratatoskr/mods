@@ -1,10 +1,25 @@
 # Mods
 
-Mods for [Wraith](https://wraith.io) in any language it runs, both plugins and projects are supported. Everything here is published on the [Wraith Hub](https://hub.wraith.io).
+Mods for [Wraith](https://wraith.io) in any language it runs: TypeScript, JavaScript, Lua, C#, C++, Rust, Zig and C. Both plugins and projects are supported. Everything here is published on the [Wraith Hub](https://hub.wraith.io).
 
 ## Want to download?
 
 Get the Wraith app from [wraith.io](https://wraith.io). It installs Wraith, finds your games, and installs mods from the [Hub](https://hub.wraith.io). New to it? [Start here](https://docs.wraith.io/play/).
+
+## Adding one
+
+Start a package with `wraith new` in a folder under `engines/` or `games/<game>/`. What's in the folder says how it builds:
+
+| Has | Language | Built with |
+| --- | --- | --- |
+| `build.zig` | Zig, or C and C++ with `--build zig` | `zig build` |
+| `package.json` | TypeScript and JavaScript | `npm run build`, then `npm run pack` |
+| `Cargo.toml` | Rust | `wraith sdk rust build` |
+| `CMakeLists.txt` | C and C++ | CMake, for each arch in `wraith.json` |
+| a `.csproj` | C# | `dotnet publish` |
+| none of these | Lua, or a project | packaged as it is |
+
+Rust, CMake and C# packages make their bindings with the `wraith` CLI: the one `WRAITH` points at, else one on your `PATH`, else the newest release, which CI downloads. `CMAKE` can point at a `cmake` that isn't on your `PATH`, like Visual Studio's. `node scripts/ci.mjs --only games/<game>/<mod>` builds and checks just one.
 
 ## Releasing
 

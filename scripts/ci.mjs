@@ -2,21 +2,23 @@
 // Builds and tests the packages that changed, and checks their versions. A package is a folder
 // with a wraith.json, in groups like `games/<game>/` or `util/`, see findPackages.
 //
-//   node scripts/ci.mjs [--base <git ref>] [--all] [--dry-run]
+//   node scripts/ci.mjs [--base <git ref>] [--all] [--only <folder>] [--dry-run]
 //
 // Without --base, or if the ref isn't there, everything builds. So does a change outside the
 // packages, like to these scripts.
 
-import { checkZigDependencies, compareVersions, error, findPackages, git, group, hasZigTests, manifestName, npmScripts, packageFiles, packageOf, publishedVersions, run, versionPattern, warning } from "./lib.mjs";
+import { buildNative, checkZigDependencies, compareVersions, error, findPackages, git, group, hasZigTests, manifestName, npmScripts, packageFiles, packageOf, publishedVersions, run, versionPattern, warning } from "./lib.mjs";
 import { existsSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 function parseArgs(argv) {
-    const options = { base: null, all: false, dryRun: false };
+    const options = { base: null, all: false, only: null, dryRun: false };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === "--base") options.base = argv[++i] || null;
         else if (a === "--all") options.all = true;
+        else if (a === "--only") options.only = argv[++i]?.replaceAll("\\", "/").replace(/\/$/, "") || null;
         else if (a === "--dry-run") options.dryRun = true;
         else throw new Error(`Unknown argument ${a}`);
     }
@@ -81,6 +83,13 @@ const builders = {
         run(plugin.path, "npm", ["run", "build"]);
         if (npmScripts(plugin).test) run(plugin.path, "npm", ["test"]);
     },
+    async rust(plugin) {
+        run(plugin.path, "cargo", ["fmt", "--check"]);
+        await native(plugin);
+        run(plugin.path, "cargo", ["test"]);
+    },
+    cmake: native,
+    cs: native,
     /** Nothing to build, but it has to have something to run. */
     files(plugin) {
         const files = packageFiles(plugin.path);
@@ -89,12 +98,18 @@ const builders = {
     },
 };
 
+/** A debug build, put somewhere it's thrown away. */
+async function native(plugin) {
+    await buildNative(plugin, { release: false, out: join(tmpdir(), "wraith-mods-ci", plugin.name) });
+}
+
 async function main(argv) {
     const options = parseArgs(argv);
     const packages = findPackages();
     const base = usableBase(options.base);
     const changed = options.all || !base ? null : changedPackages(base, packages);
-    const picked = [...packages.values()].filter((p) => !changed || changed.has(p.dir));
+    if (options.only && !packages.has(options.only)) throw new Error(`No package in ${options.only}`);
+    const picked = [...packages.values()].filter((p) => (options.only ? p.dir === options.only : !changed || changed.has(p.dir)));
     if (picked.length === 0) {
         console.log("No packages changed");
         return 0;
@@ -106,7 +121,7 @@ async function main(argv) {
         await group(`${pkg.dir} (${pkg.builder})`, async () => {
             try {
                 await checkVersion(pkg, base, changed !== null);
-                if (!options.dryRun) builders[pkg.builder](pkg);
+                if (!options.dryRun) await builders[pkg.builder](pkg);
             } catch (e) {
                 failed.push(pkg.dir);
                 error(pkg.dir, e.message);

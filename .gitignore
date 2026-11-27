@@ -11,3 +11,5 @@ dist/
 
 # Release zips
 /release/
+# The wraith CLI scripts/lib.mjs downloads
+/.wraith-cli/

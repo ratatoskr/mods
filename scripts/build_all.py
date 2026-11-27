@@ -1,6 +1,7 @@
-"""Builds every package in mods with a plain `zig build`, on the wraith and tuft each one pins.
+"""Builds every zig package in mods with a plain `zig build`, on the wraith and tuft each one pins.
 
 No forks, so this is how they build for anyone else. Paths are relative to this script.
+`node scripts/ci.mjs --all` builds the other kinds too.
 
     python scripts/build_all.py                 # build everything, stop at the first failure
     python scripts/build_all.py --keep-going    # build the rest after a failure

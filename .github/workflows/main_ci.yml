@@ -41,6 +41,15 @@ jobs:
           version: ${{ env.ZIG_VERSION }}
           cache-key: mods
 
+      # C# packages build with .NET 10, and Rust ones for x86 too if they say so. CMake and MSVC come with the runner
+      - name: install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: add Rust's x86 target
+        run: rustup target add i686-pc-windows-msvc
+
       - name: install node
         uses: actions/setup-node@v7
         with:
@@ -79,6 +88,15 @@ jobs:
         with:
           version: ${{ env.ZIG_VERSION }}
           cache-key: release
+
+      # C# packages build with .NET 10, and Rust ones for x86 too if they say so. CMake and MSVC come with the runner
+      - name: install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: add Rust's x86 target
+        run: rustup target add i686-pc-windows-msvc
 
       - name: install node
         uses: actions/setup-node@v7

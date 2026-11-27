@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { atLeast, checkZigDependencies, error, findPackages, git, group, hasZigTests, manifestName, npmScripts, packageFiles, packagedManifest, publishedVersions, root, run, syncVersions, versionPattern, zip } from "./lib.mjs";
+import { atLeast, buildNative, checkZigDependencies, error, findPackages, git, group, hasZigTests, manifestName, npmScripts, packageFiles, packagedManifest, publishedVersions, root, run, syncVersions, versionPattern, zip } from "./lib.mjs";
 
 const out = join(root, "release");
 const unreleased = "0.0.0";
@@ -18,14 +18,15 @@ const packers = {
         const stage = join(out, "stage", plugin.name);
         rmSync(stage, { recursive: true, force: true });
         run(plugin.path, "zig", ["build", "-Doptimize=ReleaseFast", "--prefix", stage, "--summary", "all"]);
-        // The Hub takes the id and version from here
-        const staged = join(stage, manifestName);
-        writeFileSync(staged, packagedManifest(readFileSync(existsSync(staged) ? staged : join(plugin.path, manifestName), "utf8"), plugin.path));
-        const entries = files(stage)
-            .filter((f) => !f.endsWith(".pdb"))
-            .map((f) => ({ name: `${plugin.name}/${relative(stage, f).replaceAll("\\", "/")}`, data: readFileSync(f) }));
-        return zip(entries);
+        return zipStage(plugin, stage);
     },
+
+    async rust(plugin) {
+        run(plugin.path, "cargo", ["test", "--release"]);
+        return zipNative(plugin);
+    },
+    cmake: zipNative,
+    cs: zipNative,
 
     js(plugin) {
         run(plugin.path, "npm", [existsSync(join(plugin.path, "package-lock.json")) ? "ci" : "install"]);
@@ -43,6 +44,24 @@ const packers = {
         );
     },
 };
+
+/** A release build of a Rust, CMake or C# package, zipped. */
+async function zipNative(plugin) {
+    const stage = join(out, "stage", plugin.name);
+    await buildNative(plugin, { release: true, out: stage });
+    return zipStage(plugin, stage);
+}
+
+/** What's in `stage`, under the plugin's name, with its wraith.json as it goes on the Hub. */
+function zipStage(plugin, stage) {
+    // The Hub takes the id and version from here
+    const staged = join(stage, manifestName);
+    writeFileSync(staged, packagedManifest(readFileSync(existsSync(staged) ? staged : join(plugin.path, manifestName), "utf8"), plugin.path));
+    const entries = files(stage)
+        .filter((f) => !f.endsWith(".pdb"))
+        .map((f) => ({ name: `${plugin.name}/${relative(stage, f).replaceAll("\\", "/")}`, data: readFileSync(f) }));
+    return zip(entries);
+}
 
 function files(dir) {
     return readdirSync(dir)
@@ -109,11 +128,11 @@ async function build(args) {
             error(plugin.dir, `${plugin.name} ${plugin.version} can't go out: ${missing}`);
             continue;
         }
-        await group(`${plugin.dir} ${plugin.version} (${plugin.builder})`, () => {
+        await group(`${plugin.dir} ${plugin.version} (${plugin.builder})`, async () => {
             try {
                 const synced = syncVersions(plugin);
                 if (synced.length) console.log(`Set ${synced.join(", ")} to ${plugin.version}`);
-                const bytes = packers[plugin.builder](plugin);
+                const bytes = await packers[plugin.builder](plugin);
                 const file = join(out, `${plugin.name}-${plugin.version}.zip`);
                 writeFileSync(file, bytes);
                 releases.push({ name: plugin.name, version: plugin.version, file, sha256: sha256(bytes), synced: synced.map((f) => `${plugin.dir}/${f}`) });
