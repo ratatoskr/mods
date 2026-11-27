@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CollectablesShop);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "Quest", "RewardType", "ShopItems[0]", "ShopItems[1]", "ShopItems[2]", "ShopItems[3]", "ShopItems[4]", "ShopItems[5]", "ShopItems[6]", "ShopItems[7]", "ShopItems[8]", "ShopItems[9]", "ShopItems[10]" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

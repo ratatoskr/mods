@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(AOZContentBriefingBNpc);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "BNpcName", "TargetSmall", "TargetLarge", "HideStats", "Endurance", "Fire", "Ice", "Wind", "Earth", "Thunder", "Water", "Slashing", "Piercing", "Blunt", "Magic", "SlowVuln", "PetrificationVuln", "ParalysisVuln", "InterruptionVuln", "BlindVuln", "StunVuln", "SleepVuln", "BindVuln", "HeavyVuln", "FlatOrDeathVuln" };
+
 /// Links to `BNpcName`.
 pub fn bNpcName(self: @This()) excel.Link(sheets.BNpcName) {
     return .of(self.row.at(u32, 0));

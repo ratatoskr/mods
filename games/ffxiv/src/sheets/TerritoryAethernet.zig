@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(TerritoryAethernet);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"TerritoryType"};
+
 /// Links to `TerritoryType`.
 pub fn territoryType(self: @This()) excel.Link(sheets.TerritoryType) {
     return .of(self.row.at(u16, 0));

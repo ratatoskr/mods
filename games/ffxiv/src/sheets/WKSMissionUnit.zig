@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSMissionUnit);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "WKSMissionText", "ClassJobCategory[0]", "ClassJobCategory[1]", "WKSFunction", "IsSpecialQuest", "Unknown2", "Unknown1", "LevelGroup", "MissionTime", "MissionReward", "SilverStarRequirement", "GoldStarRequirement", "MissionToDo[0]", "MissionToDo[1]", "MissionToDo[2]", "MissionLotteryCond", "WKSMissionLotterySpecialCond", "LockedBehind", "WKSMissionSupplyItem", "IsSynced", "WKSMissionRecipe", "PlaceName", "SortKey" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

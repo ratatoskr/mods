@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(DefaultTalk);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown1", "DefaultTalkParams[0].Unknown1", "DefaultTalkParams[1].Unknown1", "DefaultTalkParams[2].Unknown1", "DefaultTalkParams[0].ActionTimelinePose", "DefaultTalkParams[1].ActionTimelinePose", "DefaultTalkParams[2].ActionTimelinePose", "DefaultTalkParams[0].Unknown2", "DefaultTalkParams[1].Unknown2", "DefaultTalkParams[2].Unknown2", "DefaultTalkParams[0].Unknown0", "DefaultTalkParams[1].Unknown0", "DefaultTalkParams[2].Unknown0", "DefaultTalkParams[0].Unknown3", "DefaultTalkParams[1].Unknown3", "DefaultTalkParams[2].Unknown3", "DefaultTalkParams[0].Unknown4", "DefaultTalkParams[1].Unknown4", "DefaultTalkParams[2].Unknown4", "Text[0]", "Text[1]", "Text[2]" };
+
 pub const default_talk_params_len = 3;
 pub fn defaultTalkParams(self: @This(), n0: usize) DefaultTalkParamsEntry {
     std.debug.assert(n0 < 3);

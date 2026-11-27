@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(QuestClassJobReward);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ClassJobCategory", "RewardItem[0]", "RewardItem[1]", "RewardItem[2]", "RewardItem[3]", "RewardAmount[0]", "RewardAmount[1]", "RewardAmount[2]", "RewardAmount[3]", "RequiredItem[0]", "RequiredItem[1]", "RequiredItem[2]", "RequiredItem[3]", "Unknown8", "Unknown9", "RequiredAmount[0]", "RequiredAmount[1]", "RequiredAmount[2]", "RequiredAmount[3]", "Unknown10", "Unknown11", "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4", "Unknown5", "Unknown6", "Unknown7", "Unknown12", "Unknown13", "Unknown14", "Unknown15" };
+
 pub const reward_item_len = 4;
 /// Links to `Item`.
 pub fn rewardItem(self: @This(), n0: usize) excel.Link(sheets.Item) {

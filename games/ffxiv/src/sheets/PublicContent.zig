@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(PublicContent);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Type", "TimeLimit", "MapIcon", "Name", "TextDataStart", "TextDataEnd", "StartCutscene", "LGBEventRange", "LGBPopRange", "ContentFinderCondition", "AdditionalData", "Unknown4", "Unknown0", "Unknown1", "Unknown2", "Unknown3", "EndCutscene", "Unknown5" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

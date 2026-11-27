@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(PhysicsOffGroup);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown1", "Unknown_70_1", "Unknown_70_2", "Unknown_70_3", "Unknown_70_4", "Unknown_70_5", "Unknown_70_6", "Unknown_70_7", "Unknown_70_8", "Unknown_70_9", "Unknown_70_10", "Unknown_70_11", "Unknown_70_12", "Unknown_70_13", "Unknown_70_14" };
+
 pub fn unknown0(self: @This()) i8 {
     return self.row.at(i8, 0);
 }

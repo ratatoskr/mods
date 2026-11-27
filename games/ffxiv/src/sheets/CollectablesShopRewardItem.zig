@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CollectablesShopRewardItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item", "Unknown4", "RewardLow", "RewardMid", "RewardHigh", "Unknown0", "Unknown5", "Unknown1", "Unknown2", "Unknown3" };
+
 /// Links to `Item`.
 pub fn item(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(u32, 0));

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSMissionToDo);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "TemporaryAction", "TemporaryActionCount", "Unknown15", "BronzeScore", "RequiredItem[0]", "RequiredItemQuantity[0]", "RequiredItem[1]", "RequiredItemQuantity[1]", "RequiredItem[2]", "RequiredItemQuantity[2]", "Unknown16", "RequiredFishVariety", "RequiredFishQuantity", "Unknown1", "MissionType", "Unknown10", "Unknown11", "Unknown12", "MapMarker", "Unknown18", "Unknown19", "WKSMissionText" };
+
 /// Links to `Action` or `ActionTransient`, whichever has the row.
 pub fn temporaryAction(self: @This()) u32 {
     return self.row.at(u32, 0);

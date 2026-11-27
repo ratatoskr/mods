@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CSBonusSeason);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4", "Currency1", "Currency2", "Category0", "Unknown14", "Category1", "Unknown15", "Category2", "Unknown16", "Category3", "Unknown17", "Text0", "Text1", "Unknown12" };
+
 /// Links to `Item`.
 pub fn currency1(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(u32, 0));

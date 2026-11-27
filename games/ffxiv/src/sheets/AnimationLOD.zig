@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(AnimationLOD);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "CameraDistance", "SampleInterval", "BoneLOD", "AnimationEnable[0]", "AnimationEnable[1]", "AnimationEnable[2]", "AnimationEnable[3]", "AnimationEnable[4]", "AnimationEnable[5]", "AnimationEnable[6]", "AnimationEnable[7]" };
+
 pub fn cameraDistance(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

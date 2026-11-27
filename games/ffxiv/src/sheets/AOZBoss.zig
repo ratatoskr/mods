@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(AOZBoss);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Boss", "Position" };
+
 /// Links to `AOZContentBriefingBNpc`.
 pub fn boss(self: @This()) excel.Link(sheets.AOZContentBriefingBNpc) {
     return .of(self.row.at(u16, 0));

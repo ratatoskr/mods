@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Ballista);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "BNPC", "Near", "Far", "Angle", "Bullet", "Unknown0", "Unknown1", "Action0", "Action1", "Action2", "Action3" };
+
 /// Links to `BNpcBase`.
 pub fn bnpc(self: @This()) excel.Link(sheets.BNpcBase) {
     return .of(self.row.at(u16, 0));

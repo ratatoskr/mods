@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(HudTransient);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "EditCategory", "Unknown1", "Size", "SimpleModeSize" };
+
 /// System = 0, Hotbars = 1, Duty = 2
 pub fn editCategory(self: @This()) i8 {
     return self.row.at(i8, 0);

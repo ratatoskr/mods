@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CSBonusContent);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ContentType", "Content0", "Content1", "Score0", "Score1", "Score2", "Score3", "Score4", "Score5", "RewardCount0", "RewardCount1", "RewardCount2", "RewardCount3", "RewardCount4" };
+
 pub fn score1(self: @This()) i32 {
     return self.row.at(i32, 0);
 }

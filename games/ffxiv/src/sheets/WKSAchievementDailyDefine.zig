@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSAchievementDailyDefine);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "SuccessPointsRequired", "RequiredQuest[0]", "RewardItem[0]", "RewardQuantity[0]", "RequiredQuest[1]", "RewardItem[1]", "RewardQuantity[1]", "RequiredQuest[2]", "RewardItem[2]", "RewardQuantity[2]", "RequiredQuest[3]", "RewardItem[3]", "RewardQuantity[3]" };
+
 pub const required_quest_len = 4;
 /// Links to `Quest`.
 pub fn requiredQuest(self: @This(), n0: usize) excel.Link(sheets.Quest) {

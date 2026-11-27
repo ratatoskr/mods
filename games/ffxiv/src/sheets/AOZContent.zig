@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(AOZContent);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "StandardFinishTime", "IdealFinishTime", "Act1FightType", "Act1", "ArenaType1", "Unknown0", "Act2FightType", "Act2", "ArenaType2", "Unknown1", "Act3FightType", "Act3", "ArenaType3", "Unknown2", "ContentEntry", "Order", "GilReward", "AlliedSealsReward", "TomestonesReward" };
+
 pub fn gilReward(self: @This()) u16 {
     return self.row.at(u16, 0);
 }

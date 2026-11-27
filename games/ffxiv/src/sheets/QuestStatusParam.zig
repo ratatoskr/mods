@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(QuestStatusParam);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Status", "StatusParam2", "StatusParam1" };
+
 /// Links to `Status`.
 pub fn status(self: @This()) excel.Link(sheets.Status) {
     return .of(self.row.at(u16, 0));

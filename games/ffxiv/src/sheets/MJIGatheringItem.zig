@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(MJIGatheringItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item", "Sort", "Unknown0", "X", "Y", "Radius", "Unknown1" };
+
 pub fn radius(self: @This()) u16 {
     return self.row.at(u16, 0);
 }

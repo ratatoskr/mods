@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(DpsChallengeOfficer);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "UnlockQuest", "ChallengeName[0]", "ChallengeName[1]", "ChallengeName[2]", "ChallengeName[3]", "ChallengeName[4]", "ChallengeName[5]", "ChallengeName[6]", "ChallengeName[7]", "ChallengeName[8]", "ChallengeName[9]", "ChallengeName[10]", "ChallengeName[11]", "ChallengeName[12]", "ChallengeName[13]", "ChallengeName[14]", "ChallengeName[15]", "ChallengeName[16]", "ChallengeName[17]", "ChallengeName[18]", "ChallengeName[19]", "ChallengeName[20]", "ChallengeName[21]", "ChallengeName[22]", "ChallengeName[23]", "ChallengeName[24]", "ChallengeName[25]" };
+
 pub const challenge_name_len = 26;
 /// Links to `DpsChallenge`.
 pub fn challengeName(self: @This(), n0: usize) excel.Link(sheets.DpsChallenge) {

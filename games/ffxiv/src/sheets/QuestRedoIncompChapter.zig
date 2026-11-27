@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(QuestRedoIncompChapter);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Chapter"};
+
 /// Links to `QuestRedoChapter`.
 pub fn chapter(self: @This()) excel.Link(sheets.QuestRedoChapter) {
     return .of(self.row.at(u16, 0));

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(EurekaMagiaAction);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Action", "MaxUses" };
+
 /// Links to `Action`.
 pub fn action(self: @This()) excel.Link(sheets.Action) {
     return .of(self.row.at(u32, 0));

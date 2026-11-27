@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(AnimaWeapon5TradeItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Order", "CrystalSand", "ReceiveQuantity", "Item[0]", "IsHQ[0]", "Quantity[0]", "Item[1]", "IsHQ[1]", "Quantity[1]", "Item[2]", "IsHQ[2]", "Quantity[2]", "Item[3]", "IsHQ[3]", "Quantity[3]", "Item[4]", "IsHQ[4]", "Quantity[4]", "Item[5]", "IsHQ[5]", "Quantity[5]", "Item[6]", "IsHQ[6]", "Quantity[6]", "Item[7]", "IsHQ[7]", "Quantity[7]", "Category" };
+
 /// Links to `Item`.
 pub fn crystalSand(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(u32, 0));

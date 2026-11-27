@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(LeveRewardItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "LeveRewardItemGroup[0]", "ProbabilityPercent[0]", "LeveRewardItemGroup[1]", "ProbabilityPercent[1]", "LeveRewardItemGroup[2]", "ProbabilityPercent[2]", "LeveRewardItemGroup[3]", "ProbabilityPercent[3]", "LeveRewardItemGroup[4]", "ProbabilityPercent[4]", "LeveRewardItemGroup[5]", "ProbabilityPercent[5]", "LeveRewardItemGroup[6]", "ProbabilityPercent[6]", "LeveRewardItemGroup[7]", "ProbabilityPercent[7]" };
+
 pub const leve_reward_item_group_len = 8;
 /// Links to `LeveRewardItemGroup`.
 pub fn leveRewardItemGroup(self: @This(), n0: usize) excel.Link(sheets.LeveRewardItemGroup) {

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GimmickAccessor);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Type", "Param0", "Param1", "Param2", "Param3", "Param4", "Param5", "Unknown6", "Unknown3", "Unknown4", "Unknown5" };
+
 /// Links by `Type`: 2 to `GimmickYesNo`, 3 to `GimmickYesNo`, 4 to `LogMessage`, 5 to `GimmickYesNo`, 6 to `GimmickYesNo`, 7 to `LogMessage`, 10 to `GimmickYesNo`, 14 to `GimmickYesNo`, 17 to `GimmickTalk`, 22 to `GimmickYesNo`.
 pub fn param0(self: @This()) u32 {
     return self.row.at(u32, 0);

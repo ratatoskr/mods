@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WeatherRate);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Weather[0]", "Rate[0]", "Weather[1]", "Rate[1]", "Weather[2]", "Rate[2]", "Weather[3]", "Rate[3]", "Weather[4]", "Rate[4]", "Weather[5]", "Rate[5]", "Weather[6]", "Rate[6]", "Weather[7]", "Rate[7]" };
+
 pub const weather_len = 8;
 /// Links to `Weather`.
 pub fn weather(self: @This(), n0: usize) excel.Link(sheets.Weather) {

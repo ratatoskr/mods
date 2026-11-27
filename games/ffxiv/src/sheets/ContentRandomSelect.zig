@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ContentRandomSelect);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Name"};
+
 /// Links to `ContentFinderCondition`.
 pub fn name(self: @This()) excel.Link(sheets.ContentFinderCondition) {
     return .of(self.row.at(u16, 0));

@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(TerritoryTypeTransient);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"OffsetZ"};
+
 pub fn offsetZ(self: @This()) i16 {
     return self.row.at(i16, 0);
 }

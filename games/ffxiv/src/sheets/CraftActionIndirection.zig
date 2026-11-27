@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CraftActionIndirection);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "PreviousComboAction", "ClassJob" };
+
 /// Links to `CraftAction`.
 pub fn name(self: @This()) excel.Link(sheets.CraftAction) {
     return .of(self.row.at(i32, 0));

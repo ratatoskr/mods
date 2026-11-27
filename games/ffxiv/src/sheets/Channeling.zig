@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Channeling);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "File", "WidthScale", "Unknown0", "Unknown1", "Unknown2", "Unknown_70" };
+
 pub fn file(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

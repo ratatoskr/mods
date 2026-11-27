@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(LogFilter);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "LogKind", "Caster", "Target", "Category", "DisplayOrder", "Preset", "Name", "Example" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

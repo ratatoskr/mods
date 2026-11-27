@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CompanionTransient);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Description", "DescriptionEnhanced", "Tooltip", "SpecialActionName", "SpecialActionDescription", "Attack", "Defense", "Speed", "HasAreaAttack", "StrengthGate", "StrengthEye", "StrengthShield", "StrengthArcana", "MinionSkillType" };
+
 pub fn description(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

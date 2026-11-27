@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MoveControl);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Acceleration", "Unknown1", "GroundSpeed", "RpWalkTurnSpeed", "RpWalkSpeed", "RpWalkStrafeSpeed", "BackpedalSpeed", "RotationStep", "Unknown8", "Unknown9" };
+
 pub fn acceleration(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

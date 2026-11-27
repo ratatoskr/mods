@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(Map);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "MapCondition", "PriorityCategoryUI", "PriorityUI", "MapIndex", "MapType", "MapMarkerRange", "Id", "SizeFactor", "OffsetX", "OffsetY", "PlaceNameRegion", "PlaceName", "PlaceNameSub", "Unknown2", "DiscoveryIndex", "DiscoveryFlag", "TerritoryType", "DiscoveryArrayByte", "IsEvent", "Unknown1", "MapReplace" };
+
 pub fn id(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

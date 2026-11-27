@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(QuestRedoChapterUI);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Quest", "Unknown0", "UITab", "Category", "Unknown1", "QuestRedoUISmall", "QuestRedoUILarge", "QuestRedoUIWide", "ChapterName", "ChapterPart", "Transient" };
+
 pub fn chapterName(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

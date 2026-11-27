@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(RideShootingTargetType);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "EObj", "Score", "Unknown0", "Unknown1", "Unknown2", "Unknown3" };
+
 /// Links to `EObj`.
 pub fn eObj(self: @This()) excel.Link(sheets.EObj) {
     return .of(self.row.at(u32, 0));

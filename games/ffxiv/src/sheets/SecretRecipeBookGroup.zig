@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(SecretRecipeBookGroup);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "SecretRecipeBook[0]", "SecretRecipeBook[1]", "SecretRecipeBook[2]", "SecretRecipeBook[3]", "SecretRecipeBook[4]", "SecretRecipeBook[5]", "SecretRecipeBook[6]", "SecretRecipeBook[7]" };
+
 pub const secret_recipe_book_len = 8;
 /// Index is CraftType, also used as bit index in PlayerState.UnlockedSecretRecipeBooks
 /// Links to `SecretRecipeBook`.

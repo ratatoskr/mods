@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ShellFixedFromCommand);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown18", "Unknown19", "Unknown5", "Unknown6", "Unknown20", "Unknown21", "Unknown7", "Unknown8", "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4", "Unknown9", "Unknown10", "Unknown11", "Unknown12", "Unknown13", "Unknown14", "Unknown15", "Unknown16", "Unknown17", "Unknown22[0]", "Unknown22[8]", "Unknown22[1]", "Unknown22[9]", "Unknown22[2]", "Unknown22[10]", "Unknown22[3]", "Unknown22[11]", "Unknown22[4]", "Unknown22[12]", "Unknown22[5]", "Unknown22[13]", "Unknown22[6]", "Unknown22[14]", "Unknown22[7]", "Unknown22[15]" };
+
 pub fn unknown0(self: @This()) u64 {
     return self.row.at(u64, 0);
 }

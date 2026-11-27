@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(QuestAcceptAdditionCondition);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown2", "Requirement0", "Requirement1", "Unknown0", "Unknown1" };
+
 /// Links to `Quest`.
 pub fn requirement0(self: @This()) excel.Link(sheets.Quest) {
     return .of(self.row.at(u32, 0));

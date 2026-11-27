@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(DawnQuestMember);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown1", "Member", "BigImageOld", "BigImageNew", "Class" };
+
 /// Links to `ENpcResident`.
 pub fn member(self: @This()) excel.Link(sheets.ENpcResident) {
     return .of(self.row.at(u32, 0));

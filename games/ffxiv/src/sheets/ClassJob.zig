@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ClassJob);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "Abbreviation", "NameFemale", "ClassJobCategory", "ExpArrayIndex", "BattleClassIndex", "Unknown8", "JobIndex", "DohDolJobIndex", "ModifierHitPoints", "ModifierManaPoints", "ModifierStrength", "ModifierVitality", "ModifierDexterity", "ModifierIntelligence", "ModifierMind", "ModifierPiety", "Unknown2", "Unknown3", "Unknown4", "Unknown5", "Unknown6", "Unknown7", "ReplaceAction", "ReplaceActionPvP", "Unknown9", "PvPBaseParamValue", "PvPActionSortRow", "PvPInitialSelectActionTrait", "ClassJobParent", "NameEnglish", "ItemStartingWeaponMainHand", "ItemStartingWeaponOffHand", "Role", "StartingTown", "MonsterNote", "PrimaryStat", "LimitBreak1", "LimitBreak2", "LimitBreak3", "UIPriority", "ItemSoulCrystal", "UnlockQuest", "RelicQuest", "Prerequisite", "StartingLevel", "PartyBonus", "JobType", "IsLimitedJob", "CanWearShield", "CanQueueForDuty" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

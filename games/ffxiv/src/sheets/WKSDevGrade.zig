@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(WKSDevGrade);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "StageFull", "Stage", "IndexText2", "IndexText", "IndexNpc", "LodestoneRank", "Unknown24", "FestivalId", "FestivalPhase", "Unknown14", "Thumbnail", "Unknown13", "Unknown4", "Unknown12", "Unknown8", "Unknown9", "Unknown10", "Unknown11", "Unknown15", "Unknown16", "Unknown17", "Unknown18", "Unknown19", "Unknown20", "Unknown21", "Unknown22", "Unknown23" };
+
 pub fn stageFull(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

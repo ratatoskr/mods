@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Frontline03);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "OvooData[0].Unknown0", "OvooData[1].Unknown0", "OvooData[2].Unknown0", "OvooData[0].Unknown1", "OvooData[1].Unknown1", "OvooData[2].Unknown1", "OvooData[0].Unknown2", "OvooData[1].Unknown2", "OvooData[2].Unknown2", "OvooData[0].EmptyIcon", "OvooData[1].EmptyIcon", "OvooData[2].EmptyIcon", "OvooData[0].MaelstromIcon", "OvooData[1].MaelstromIcon", "OvooData[2].MaelstromIcon", "OvooData[0].TwinAdderIcon", "OvooData[1].TwinAdderIcon", "OvooData[2].TwinAdderIcon", "OvooData[0].ImmortalFlamesIcon", "OvooData[1].ImmortalFlamesIcon", "OvooData[2].ImmortalFlamesIcon" };
+
 pub const ovoo_data_len = 3;
 pub fn ovooData(self: @This(), n0: usize) OvooDataEntry {
     std.debug.assert(n0 < 3);

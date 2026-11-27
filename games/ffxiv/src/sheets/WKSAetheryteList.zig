@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSAetheryteList);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Aetheryte"};
+
 /// Links to `WKSAetheryte`.
 pub fn aetheryte(self: @This()) excel.Link(sheets.WKSAetheryte) {
     return .of(self.row.at(u8, 0));

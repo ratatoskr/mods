@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ENpcDressUpDress);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown40", "Unknown41", "Unknown42", "Unknown43", "Unknown44", "Unknown8", "ENpc", "Unknown6", "Behavior", "Unknown7", "Unknown9", "Unknown10", "Unknown11", "Unknown12", "Unknown13", "Unknown14", "Unknown15", "Unknown16", "Unknown17", "Unknown18", "Unknown19", "Unknown20", "Unknown21", "Unknown22", "Unknown23", "Unknown24", "Unknown25", "Unknown26", "Unknown27", "Unknown28", "Unknown29", "Unknown30", "Unknown31", "Unknown32", "Unknown33", "Unknown34", "ModelMainHand", "DyeMainHand", "Dye2MainHand", "ModelOffHand", "DyeOffHand", "Dye2OffHand", "ModelHead", "DyeHead", "Dye2Head", "ModelBody", "DyeBody", "Dye2Body", "ModelHands", "DyeHands", "Dye2Hands", "ModelLegs", "DyeLegs", "Dye2Legs", "ModelFeet", "DyeFeet", "Dye2Feet", "Unknown1", "DyeEars", "Dye2Ears", "Unknown2", "DyeNeck", "Dye2Neck", "Unknown3", "DyeWrists", "Dye2Wrists", "Unknown4", "DyeLeftRing", "Dye2LeftRing", "Unknown5", "DyeRightRing", "Dye2RightRing" };
+
 pub fn modelMainHand(self: @This()) u64 {
     return self.row.at(u64, 0);
 }

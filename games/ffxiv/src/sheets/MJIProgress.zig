@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MJIProgress);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Vision", "Objective", "PreviousObjective", "Unknown3", "Unknown8", "Unknown13", "Unknown4", "Unknown9", "Unknown14", "Unknown5", "Unknown10", "Unknown15", "Unknown6", "Unknown11", "Unknown16", "Unknown7", "Unknown12", "Unknown17", "Unknown18", "Unknown1", "Unknown2", "Unknown0", "Unknown19" };
+
 pub fn vision(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

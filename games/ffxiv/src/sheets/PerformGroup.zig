@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(PerformGroup);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Perform[0]", "Perform[1]", "Perform[2]", "Perform[3]", "Perform[4]" };
+
 pub const perform_len = 5;
 /// Links to `Perform`.
 pub fn perform(self: @This(), n0: usize) excel.Link(sheets.Perform) {

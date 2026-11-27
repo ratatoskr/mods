@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CSBonusContentIdentifier);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ContentLinkType", "Content", "Unknown2", "UnlockQuest0", "UnlockQuest1", "UnlockQuest2", "Unknown6", "Map", "Icon" };
+
 /// Links by `ContentLinkType`: 1 to `InstanceContent`, 2 to `GFateType`, 3 to `TerritoryType`, 4 to `MobHuntOrderType`, 5 to `TreasureHuntRank`, 6 to `FishParameter`, 7 to `ENpcResident`, 8 to `PublicContent`, 9 to `DeepDungeon`, 10 to `DynamicEvent`.
 pub fn content(self: @This()) u32 {
     return self.row.at(u32, 0);

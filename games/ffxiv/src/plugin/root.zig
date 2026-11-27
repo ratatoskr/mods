@@ -8,12 +8,20 @@ const log = sdk.log.scoped(.plugin);
 const schema = @import("schema");
 const sqpack = @import("sqpack");
 const Tick = @import("tick.zig").Tick;
+const Explorer = @import("explorer.zig").Explorer;
+
+/// What's in its Workbench tab
+const Part = enum { sheets };
 
 pub const Plugin = struct {
     ctx: *sdk.Context = undefined,
     tick: Tick = .{},
     /// The game's files, once `openPack` has them.
     pack: ?sqpack.Pack = null,
+    /// Its Workbench tab, with a part each in `parts`
+    tab: ?sdk.workbench.Panel = null,
+    parts: sdk.workbench.Parts(Part) = .init(.{ .sheets = "Sheets" }),
+    explorer: Explorer = .{},
 
     pub fn start(self: *Plugin, ctx: *sdk.Context) !void {
         self.ctx = ctx;
@@ -24,12 +32,20 @@ pub const Plugin = struct {
         // Changing its speed breaks it online, so it stays off till something turns it on where it
         // works, like Group Pose
         ctx.wraith.game().setSpeedControl(false);
+        self.tab = sdk.workbench.addPanel(self, drawTab, .{ .title = "FFXIV", .kind = "ffxiv" }) catch |err| blk: {
+            log.warn("No FFXIV tab in the Workbench: {t}", .{err});
+            break :blk null;
+        };
         try ctx.spawn(askDalamud, .{self});
         try ctx.spawn(openPack, .{self});
     }
 
     pub fn stop(self: *Plugin) void {
         self.tick.stop();
+        // Its parts read the pack, so they go first
+        if (self.tab) |t| t.remove();
+        self.tab = null;
+        self.explorer.stop();
         if (self.pack) |*p| p.close(self.ctx.io, self.ctx.allocator);
         self.pack = null;
     }
@@ -50,6 +66,18 @@ pub const Plugin = struct {
         var installed: usize = 0;
         for (self.pack.?.repos) |*r| installed += @intFromBool(r.version().len > 0);
         log.info("Opened the game's files, version {s} with {d} expansions ({d}ms)", .{ self.pack.?.repos[0].version(), installed -| 1, took });
+        self.explorer.start(&self.pack.?, io);
+    }
+
+    /// On the Workbench's thread.
+    fn drawTab(self: *Plugin) void {
+        self.parts.draw(self, drawPart);
+    }
+
+    fn drawPart(self: *Plugin, part: Part) void {
+        switch (part) {
+            .sheets => self.explorer.draw(),
+        }
     }
 
     /// Dalamud runs its C# on .NET's CoreCLR in the game, which Wraith joins once it's started. Asks
@@ -71,4 +99,8 @@ pub const Plugin = struct {
 
 comptime {
     sdk.exportPlugin(Plugin);
+}
+
+test {
+    _ = @import("explorer.zig");
 }

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(PhysicsGroup);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "SimulationTime[0]", "SimulationTime[1]", "SimulationTime[2]", "SimulationTime[3]", "SimulationTime[4]", "SimulationTime[5]", "PS3SimulationTime[0]", "PS3SimulationTime[1]", "PS3SimulationTime[2]", "PS3SimulationTime[3]", "PS3SimulationTime[4]", "PS3SimulationTime[5]", "ResetByLookAt", "RootFollowingGame", "RootFollowingCutScene", "ConfigSwitch[0]", "ConfigSwitch[1]", "ConfigSwitch[2]", "ForceAttractByPhysicsOff" };
+
 pub const simulation_time_len = 6;
 pub fn simulationTime(self: @This(), n0: usize) f32 {
     return self.row.at(f32, offsets_1[n0]);

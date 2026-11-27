@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CraftLeve);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Leve", "CraftLeveTalk", "Repeats", "Item[0]", "ItemCount[0]", "Item[1]", "ItemCount[1]", "Item[2]", "ItemCount[2]", "Item[3]", "ItemCount[3]" };
+
 /// Links to `Leve`.
 pub fn leve(self: @This()) excel.Link(sheets.Leve) {
     return .of(self.row.at(i32, 0));

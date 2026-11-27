@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ItemFood);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "EXPBonusPercent", "BaseParam[0]", "IsRelative[0]", "Value[0]", "Max[0]", "ValueHQ[0]", "MaxHQ[0]", "BaseParam[1]", "IsRelative[1]", "Value[1]", "Max[1]", "ValueHQ[1]", "MaxHQ[1]", "BaseParam[2]", "IsRelative[2]", "Value[2]", "Max[2]", "ValueHQ[2]", "MaxHQ[2]" };
+
 pub const max_len = 3;
 pub fn max(self: @This(), n0: usize) i16 {
     return self.row.at(i16, offsets_1[n0]);

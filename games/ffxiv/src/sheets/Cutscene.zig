@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(Cutscene);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Path", "Unknown5", "Unknown6", "Unknown7", "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4", "Unknown8" };
+
 pub fn path(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

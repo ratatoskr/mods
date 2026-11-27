@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GcArmyEquipPreset);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "MainHand", "OffHand", "Head", "Body", "Gloves", "Legs", "Feet" };
+
 /// Links to `Item`.
 pub fn mainHand(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(i32, 0));

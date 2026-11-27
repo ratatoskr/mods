@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(DawnContentParticipable);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"DawnQuestMember"};
+
 /// Links to `DawnQuestMember`.
 pub fn dawnQuestMember(self: @This()) excel.Link(sheets.DawnQuestMember) {
     return .of(self.row.at(u8, 0));

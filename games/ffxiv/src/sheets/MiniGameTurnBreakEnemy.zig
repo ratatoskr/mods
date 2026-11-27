@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MiniGameTurnBreakEnemy);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown22", "Unknown23", "Unknown24", "Unknown20", "Unknown34", "Unknown25", "Unknown26", "Unknown21", "Unknown27", "Unknown28", "Unknown29", "Unknown30", "Unknown3", "Unknown8", "Unknown13", "Unknown18", "Unknown4", "Unknown9", "Unknown14", "Unknown19", "Unknown1", "Unknown6", "Unknown11", "Unknown16", "Unknown2", "Unknown7", "Unknown12", "Unknown17", "Unknown0", "Unknown5", "Unknown10", "Unknown15", "Unknown31", "Unknown32", "Unknown33" };
+
 pub fn unknown0(self: @This()) i32 {
     return self.row.at(i32, 0);
 }

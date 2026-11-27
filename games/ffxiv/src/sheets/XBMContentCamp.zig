@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(XBMContentCamp);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"FamiliarRecoverCount"};
+
 /// Based on how they appear from bottom to top
 pub fn familiarRecoverCount(self: @This()) u8 {
     return self.row.at(u8, 0);

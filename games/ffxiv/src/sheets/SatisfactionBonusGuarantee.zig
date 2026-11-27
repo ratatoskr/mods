@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(SatisfactionBonusGuarantee);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "BonusDoH[0]", "BonusDoH[1]", "BonusDoL[0]", "BonusDoL[1]", "BonusFisher[0]", "BonusFisher[1]" };
+
 pub const bonus_do_h_len = 2;
 pub fn bonusDoH(self: @This(), n0: usize) u8 {
     return self.row.at(u8, offsets_1[n0]);

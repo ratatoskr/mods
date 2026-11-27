@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(UIConst);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Value"};
+
 pub fn value(self: @This()) i32 {
     return self.row.at(i32, 0);
 }

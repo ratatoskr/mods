@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(IKDRoute);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Spot[0]", "Time[0]", "Spot[1]", "Time[1]", "Spot[2]", "Time[2]", "Image", "AltImage", "Unknown1", "Instance", "PrerequisiteQuest", "Name" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

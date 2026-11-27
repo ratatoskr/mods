@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CompanyCraftSequence);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ResultItem", "Category", "CompanyCraftDraftCategory", "CompanyCraftType", "CompanyCraftDraft", "CompanyCraftPart[0]", "CompanyCraftPart[1]", "CompanyCraftPart[2]", "CompanyCraftPart[3]", "CompanyCraftPart[4]", "CompanyCraftPart[5]", "CompanyCraftPart[6]", "CompanyCraftPart[7]", "Order" };
+
 pub fn order(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

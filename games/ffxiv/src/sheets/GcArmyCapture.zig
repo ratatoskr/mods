@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GcArmyCapture);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Content", "ClassJobLevelRequired", "ClassJobLevelSync", "ItemLevelRequired", "ItemLevelSync", "Unknown1", "RequiredSeals", "RewardExperience" };
+
 /// Links to `ContentFinderCondition`.
 pub fn content(self: @This()) excel.Link(sheets.ContentFinderCondition) {
     return .of(self.row.at(u32, 0));

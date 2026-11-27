@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ActionComboRoute);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "Unknown3", "Action[0]", "Action[1]", "Action[2]", "Action[3]", "Action[4]", "Action[5]", "Action[6]", "Unknown4" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

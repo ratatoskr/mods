@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(RecipeLookup);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "CRP", "BSM", "ARM", "GSM", "LTW", "WVR", "ALC", "CUL" };
+
 /// Links to `Recipe`.
 pub fn crp(self: @This()) excel.Link(sheets.Recipe) {
     return .of(self.row.at(u16, 0));

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CollectablesShopRefine);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "LowCollectability", "MidCollectability", "HighCollectability" };
+
 pub fn lowCollectability(self: @This()) u16 {
     return self.row.at(u16, 0);
 }

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ItemLevel);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Strength", "Dexterity", "Vitality", "Intelligence", "Mind", "Piety", "HP", "MP", "TP", "GP", "CP", "PhysicalDamage", "MagicalDamage", "Delay", "AdditionalEffect", "AttackSpeed", "BlockRate", "BlockStrength", "Tenacity", "AttackPower", "Defense", "DirectHitRate", "Evasion", "MagicDefense", "CriticalHitPower", "CriticalHitResilience", "CriticalHit", "CriticalHitEvasion", "SlashingResistance", "PiercingResistance", "BluntResistance", "ProjectileResistance", "AttackMagicPotency", "HealingMagicPotency", "EnhancementMagicPotency", "EnfeeblingMagicPotency", "FireResistance", "IceResistance", "WindResistance", "EarthResistance", "LightningResistance", "WaterResistance", "MagicResistance", "Determination", "SkillSpeed", "SpellSpeed", "Haste", "Morale", "Enmity", "EnmityReduction", "CarefulDesynthesis", "EXPBonus", "Regen", "Refresh", "MovementSpeed", "Spikes", "SlowResistance", "PetrificationResistance", "ParalysisResistance", "SilenceResistance", "BlindResistance", "PoisonResistance", "StunResistance", "SleepResistance", "BindResistance", "HeavyResistance", "DoomResistance", "ReducedDurabilityLoss", "IncreasedSpiritbondGain", "Craftsmanship", "Control", "Gathering", "Perception", "Unknown0" };
+
 pub fn strength(self: @This()) u16 {
     return self.row.at(u16, 0);
 }

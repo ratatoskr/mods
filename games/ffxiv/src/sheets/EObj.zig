@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(EObj);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown1", "Unknown2", "Unknown3", "Unknown4", "Unknown5", "Unknown6", "Unknown7", "Unknown8", "PopType", "Data", "Invisibility", "SgbPath", "Targetable", "Unknown9", "Unknown10", "AdditionalInteractRangeX", "AdditionalInteractRangeY", "Unknown11", "Unknown0", "LuaSetup", "SharedTimelineStateUnknown" };
+
 /// Links to `Quest`, `CustomTalk` or `Warp`, whichever has the row.
 pub fn data(self: @This()) u32 {
     return self.row.at(u32, 0);

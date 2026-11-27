@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(HWDDevProgress);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"CanGoNext"};
+
 pub fn canGoNext(self: @This()) bool {
     return self.row.bitAt(0, 0);
 }

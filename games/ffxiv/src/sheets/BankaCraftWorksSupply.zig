@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BankaCraftWorksSupply);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item[0].Level", "Item[1].Level", "Item[2].Level", "Item[3].Level", "Item[0].ItemId", "Item[1].ItemId", "Item[2].ItemId", "Item[3].ItemId", "Item[0].Collectability", "Item[1].Collectability", "Item[2].Collectability", "Item[3].Collectability", "Item[0].XPReward", "Item[1].XPReward", "Item[2].XPReward", "Item[3].XPReward", "Item[0].HighXPMultiplier", "Item[1].HighXPMultiplier", "Item[2].HighXPMultiplier", "Item[3].HighXPMultiplier", "Item[0].GilReward", "Item[1].GilReward", "Item[2].GilReward", "Item[3].GilReward", "Item[0].HighGilMultiplier", "Item[1].HighGilMultiplier", "Item[2].HighGilMultiplier", "Item[3].HighGilMultiplier", "Item[0].Unknown8", "Item[1].Unknown8", "Item[2].Unknown8", "Item[3].Unknown8", "Item[0].ScripReward", "Item[1].ScripReward", "Item[2].ScripReward", "Item[3].ScripReward", "Item[0].HighScripMultiplier", "Item[1].HighScripMultiplier", "Item[2].HighScripMultiplier", "Item[3].HighScripMultiplier" };
+
 pub const item_len = 4;
 pub fn item(self: @This(), n0: usize) ItemEntry {
     std.debug.assert(n0 < 4);

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(SpearfishingRecordPage);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown1", "Unknown2", "Unknown3", "PlaceName", "Image", "Unknown0", "Unknown4" };
+
 /// Links to `PlaceName`.
 pub fn placeName(self: @This()) excel.Link(sheets.PlaceName) {
     return .of(self.row.at(i32, 0));

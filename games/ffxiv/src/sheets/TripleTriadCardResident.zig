@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(TripleTriadCardResident);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Top", "Bottom", "Left", "Right", "TripleTriadCardRarity", "TripleTriadCardType", "SaleValue", "SortKey", "Order", "UIPriority", "Unknown1", "AcquisitionType", "Acquisition", "Location", "Quest" };
+
 /// Links by `AcquisitionType`: 2 to `ContentFinderCondition`, 3 to `ContentFinderCondition`, 4 to `Fate`, 5 to `Fate`, 6 to `ENpcResident`, 8 to `Item`, 9 to `Item`, 10 to `ENpcResident`, 11 to `Achievement`, 12 to `ContentFinderCondition`.
 pub fn acquisition(self: @This()) u32 {
     return self.row.at(u32, 0);

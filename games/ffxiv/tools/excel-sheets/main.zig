@@ -71,6 +71,31 @@ pub fn main(init: std.process.Init) !void {
     try r.writeAll("\n/// Every one of them, for tests.\npub const all = .{\n");
     for (names.items) |name| try r.print("    {f},\n", .{std.zig.fmtId(name)});
     try r.writeAll("};\n");
+    try r.writeAll(
+        \\
+        \\/// A sheet's column names, for tools that read sheets raw.
+        \\pub const Named = struct { name: []const u8, columns_hash: u32, column_names: []const []const u8 };
+        \\
+        \\/// Every one's, by name.
+        \\pub const named = [_]Named{
+        \\
+    );
+    for (names.items) |name| try r.print("    .{{ .name = \"{s}\", .columns_hash = {f}.columns_hash, .column_names = &{f}.column_names }},\n", .{ name, std.zig.fmtId(name), std.zig.fmtId(name) });
+    try r.writeAll(
+        \\};
+        \\
+        \\/// By its name exactly, like `Item`.
+        \\pub fn namedFor(name: []const u8) ?*const Named {
+        \\    const std = @import("std");
+        \\    const i = std.sort.binarySearch(Named, &named, name, struct {
+        \\        fn order(key: []const u8, n: Named) std.math.Order {
+        \\            return std.mem.order(u8, key, n.name);
+        \\        }
+        \\    }.order) orelse return null;
+        \\    return &named[i];
+        \\}
+        \\
+    );
     try out_dir.writeFile(io, .{ .sub_path = "root.zig", .data = root.written() });
     std.debug.print("Wrote {d} sheets\n", .{names.items.len});
 }
@@ -245,6 +270,18 @@ const Gen = struct {
             \\row: excel.Row,
             \\
         , .{ std.zig.fmtId(self.sheet), self.sheet, if (columns.subrows) "subrows" else "rows", columnsHash(columns.header), std.zig.fmtId(self.sheet) });
+
+        // EXDSchema's names go by offset, but the header's order is what readers index by
+        var sorted_names: std.ArrayList([]const u8) = .empty;
+        try columnNames(self.arena, &sorted_names, fields, "");
+        try w.writeAll("\n/// Each column's name, in the header's order, like `Item[2].Count`.\npub const column_names = [_][]const u8{");
+        for (columns.header, 0..) |h, i| {
+            const j = for (columns.sorted, 0..) |c, j| {
+                if (c.offset == h.offset and c.type == h.type) break j;
+            } else unreachable;
+            try w.print("{s}\"{f}\"", .{ if (i == 0) " " else ", ", std.zig.fmtString(sorted_names.items[j]) });
+        }
+        try w.writeAll(" };\n");
 
         const instance: []const Column = columns.sorted;
         try self.fieldsOf(w, fields, &.{}, &.{instance}, 0, self.sheet);
@@ -425,6 +462,33 @@ const Gen = struct {
     }
 };
 
+/// Names in the order fields take columns, as `Gen.fieldsOf` walks them.
+fn columnNames(arena: std.mem.Allocator, out: *std.ArrayList([]const u8), fields: []const Node, prefix: []const u8) anyerror!void {
+    var unnamed: usize = 0;
+    for (fields) |field| {
+        const name = field.string("name") orelse blk: {
+            unnamed += 1;
+            break :blk try std.fmt.allocPrint(arena, "Unnamed{d}", .{unnamed});
+        };
+        try fieldNames(arena, out, field, try std.fmt.allocPrint(arena, "{s}{s}", .{ prefix, name }));
+    }
+}
+
+fn fieldNames(arena: std.mem.Allocator, out: *std.ArrayList([]const u8), field: Node, label: []const u8) !void {
+    if (!std.mem.eql(u8, field.string("type") orelse "scalar", "array")) return out.append(arena, label);
+    const inner = Node.items(field.get("fields"));
+    for (0..try countOf(field)) |i| {
+        const at = try std.fmt.allocPrint(arena, "{s}[{d}]", .{ label, i });
+        if (inner.len == 0) {
+            try out.append(arena, at);
+        } else if (inner.len == 1 and inner[0].string("name") == null) {
+            try fieldNames(arena, out, inner[0], at);
+        } else {
+            try columnNames(arena, out, inner, try std.fmt.allocPrint(arena, "{s}.", .{at}));
+        }
+    }
+}
+
 /// Packed bools are their offset and bit together.
 fn encode(c: Column) u32 {
     return if (c.type.bit()) |b| @as(u32, c.offset) * 8 + b else c.offset;
@@ -492,7 +556,7 @@ const Names = struct {
     arena: std.mem.Allocator,
     used: std.StringHashMapUnmanaged(void) = .empty,
 
-    const reserved = [_][]const u8{ "row", "at", "self", "std", "excel", "sheets", "sheet_name", "kind", "columns_hash", "Sheet" };
+    const reserved = [_][]const u8{ "row", "at", "self", "std", "excel", "sheets", "sheet_name", "kind", "columns_hash", "column_names", "Sheet" };
 
     fn reserve(self: *Names, name: []const u8) !void {
         try self.used.put(self.arena, name, {});

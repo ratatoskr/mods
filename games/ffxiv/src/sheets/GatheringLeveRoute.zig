@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GatheringLeveRoute);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "GatheringPoint[0]", "PopRange[0]", "GatheringPoint[1]", "PopRange[1]", "GatheringPoint[2]", "PopRange[2]", "GatheringPoint[3]", "PopRange[3]", "GatheringPoint[4]", "PopRange[4]", "GatheringPoint[5]", "PopRange[5]", "GatheringPoint[6]", "PopRange[6]", "GatheringPoint[7]", "PopRange[7]", "GatheringPoint[8]", "PopRange[8]", "GatheringPoint[9]", "PopRange[9]", "GatheringPoint[10]", "PopRange[10]", "GatheringPoint[11]", "PopRange[11]" };
+
 pub const gathering_point_len = 12;
 /// Links to `GatheringPoint`.
 pub fn gatheringPoint(self: @This(), n0: usize) excel.Link(sheets.GatheringPoint) {

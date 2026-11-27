@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ModelSkeleton);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Radius", "Height", "VFXScale", "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4", "Unknown5", "Unknown6", "Unknown7", "FloatHeight", "FloatDown", "FloatUp", "Unknown8", "MotionBlendType", "LoopFlySE" };
+
 pub fn radius(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

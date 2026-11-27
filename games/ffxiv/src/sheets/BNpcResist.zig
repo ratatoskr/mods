@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BNpcResist);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ResistsSlow", "ResistsPetrify", "ResistsParalysis", "ResistsInterrupt", "ResistsBlind", "ResistsPoison", "ResistsStun", "ResistsSleep", "ResistsBind", "ResistsHeavy", "ResistsDeath" };
+
 pub fn resistsSlow(self: @This()) bool {
     return self.row.at(u8, 0) != 0;
 }

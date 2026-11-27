@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(PartyContent);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Key", "TimeLimit", "Name", "TextDataStart", "TextDataEnd", "LGBEventObject[0]", "LGBEventObject[1]", "LGBEventObject[2]", "LGBEventObject[3]", "LGBEventObject[4]", "LGBEventObject[5]", "LGBEventObject[6]", "LGBEventObject[7]", "LGBEventObject[8]", "LGBEventRange[0]", "LGBEventRange[1]", "LGBEventRange[2]", "LGBEventRange[3]", "LGBEventRange[4]", "LGBEventRange[5]", "LGBEventRange[6]", "LGBEventRange[7]", "LGBEventRange[8]", "LGBEventObject2[0]", "LGBEventObject2[1]", "LGBEventObject2[2]", "LGBEventObject2[3]", "LGBEventObject2[4]", "LGBEventObject2[5]", "LGBEventObject2[6]", "LGBEventObject2[7]", "LGBEventObject2[8]", "Unknown0", "ContentFinderCondition", "Image", "Unknown1" };
+
 pub const lgb_event_object_len = 9;
 pub fn lgbEventObject(self: @This(), n0: usize) u32 {
     return self.row.at(u32, offsets_1[n0]);

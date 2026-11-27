@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BuddyItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item", "UseField", "UseTraining", "Unknown0", "Status" };
+
 /// Links to `Item`.
 pub fn item(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(u16, 0));

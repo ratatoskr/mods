@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(SnipePerformanceCamera);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown9", "Unknown3", "Unknown4", "Unknown5", "Unknown6", "Unknown0", "Unknown7", "Unknown8", "Unknown1", "Unknown2" };
+
 pub fn unknown0(self: @This()) u16 {
     return self.row.at(u16, 0);
 }

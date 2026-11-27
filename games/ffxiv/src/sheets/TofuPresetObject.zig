@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(TofuPresetObject);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Object", "Unknown1", "Unknown2", "Unknown4", "Unknown3", "Unknown6", "Unknown5", "Unknown7", "Unknown8" };
+
 /// Links to `TofuObject`.
 pub fn object(self: @This()) excel.Link(sheets.TofuObject) {
     return .of(self.row.at(i32, 0));

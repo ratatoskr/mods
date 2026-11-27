@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSMissionLotterySpecialCond);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "StartTimeHour", "EndTimeHour", "WeatherRequired" };
+
 /// Links to `Weather`.
 pub fn weatherRequired(self: @This()) excel.Link(sheets.Weather) {
     return .of(self.row.at(u16, 0));

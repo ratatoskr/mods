@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(RaidFinderParam);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"SeparatedHealerRoles"};
+
 /// Displays Addon#10115 instead of Addon#10093, to list pure and barrier healer count.
 pub fn separatedHealerRoles(self: @This()) bool {
     return self.row.bitAt(0, 0);

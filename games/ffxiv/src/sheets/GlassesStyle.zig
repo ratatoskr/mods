@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(GlassesStyle);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "GlassesSlot", "Icon", "Order", "Glasses[0]", "Glasses[1]", "Glasses[2]", "Glasses[3]", "Glasses[4]", "Glasses[5]", "Glasses[6]", "Glasses[7]", "Glasses[8]", "Glasses[9]", "Glasses[10]", "Glasses[11]", "Singular", "Adjective", "Plural", "PossessivePronoun", "StartsWithVowel", "Countability", "Pronoun", "Article", "Name" };
+
 pub fn singular(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

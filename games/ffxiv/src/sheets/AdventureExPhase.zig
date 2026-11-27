@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(AdventureExPhase);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Quest", "AdventureBegin", "AdventureEnd", "Expansion", "AllVistasCompletedScreenImage" };
+
 /// Links to `Quest`.
 pub fn quest(self: @This()) excel.Link(sheets.Quest) {
     return .of(self.row.at(u32, 0));

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSTerritoryInfo);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "TerritoryType", "Unknown5", "MechaEventNpc", "Item", "Unknown4", "Unknown3", "Unknown6", "Unknown7", "Unknown8", "Unknown9", "Unknown10", "Unknown11", "Unknown12" };
+
 pub fn unknown6(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

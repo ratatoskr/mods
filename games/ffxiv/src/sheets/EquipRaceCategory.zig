@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(EquipRaceCategory);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Hyur", "Elezen", "Lalafell", "Miqote", "Roegadyn", "AuRa", "Hrothgar", "Viera", "Male", "Female" };
+
 pub fn hyur(self: @This()) bool {
     return self.row.at(u8, 0) != 0;
 }

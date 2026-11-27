@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSMissionReward);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ExpModifier[0]", "ExpModifier[1]", "ExpModifier[2]", "CosmoCredits", "PlanetCredits", "BaseDronebits", "Unknown19", "Tool[0]", "TypeIndex[0]", "ResearchReward[0]", "Tool[1]", "TypeIndex[1]", "ResearchReward[1]", "Tool[2]", "TypeIndex[2]", "ResearchReward[2]", "Item", "ItemCount" };
+
 /// Links to `Item`.
 pub fn item(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(u32, 0));

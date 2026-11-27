@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ExportedGatheringPoint);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "X", "Y", "GatheringType", "GatheringPointType", "Radius" };
+
 pub fn x(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

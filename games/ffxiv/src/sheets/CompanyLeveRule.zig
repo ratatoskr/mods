@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CompanyLeveRule);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Type", "Objective", "Help" };
+
 pub fn @"type"(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

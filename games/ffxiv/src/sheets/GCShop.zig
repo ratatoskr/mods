@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GCShop);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"GrandCompany"};
+
 /// Links to `GrandCompany`.
 pub fn grandCompany(self: @This()) excel.Link(sheets.GrandCompany) {
     return .of(self.row.at(i8, 0));

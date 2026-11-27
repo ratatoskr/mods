@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(StanceChange);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown1", "Action[0]", "Action[1]", "Unknown2", "Unknown0" };
+
 pub fn unknown0(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

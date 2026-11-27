@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(FateShop);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "SpecialShop[0]", "SpecialShop[1]", "SpecialShop[2]", "DefaultTalk[0]", "DefaultTalk[1]", "DefaultTalk[2]", "DefaultTalk[3]", "DefaultTalk[4]", "DefaultTalk[5]", "DefaultTalk[6]", "DefaultTalk[7]", "DefaultTalk[8]" };
+
 pub const special_shop_len = 3;
 /// Links to `SpecialShop`.
 pub fn specialShop(self: @This(), n0: usize) excel.Link(sheets.SpecialShop) {

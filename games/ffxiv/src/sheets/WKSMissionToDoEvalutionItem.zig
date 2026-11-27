@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(WKSMissionToDoEvalutionItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Item"};
+
 /// Links to `WKSItemInfo`.
 pub fn item(self: @This()) excel.Link(sheets.WKSItemInfo) {
     return .of(self.row.at(u16, 0));

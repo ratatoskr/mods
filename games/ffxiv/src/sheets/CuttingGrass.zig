@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CuttingGrass);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "PopRange", "Unknown10", "Duration", "Unknown3", "Unknown4", "ScreenImageStart", "ScreenImageEnd", "Action[0]", "Action[1]", "Action[2]" };
+
 pub fn unknown0(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

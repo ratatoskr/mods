@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(RecommendContents);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Level", "ClassJob", "MinLevel", "MaxLevel" };
+
 /// Links to `Level`.
 pub fn level(self: @This()) excel.Link(sheets.Level) {
     return .of(self.row.at(i32, 0));

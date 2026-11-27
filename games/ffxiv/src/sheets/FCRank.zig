@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(FCRank);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "NextPoint", "CurrentPoint", "Rights", "Unknown0", "Unknown1", "FCActionActiveNum", "FCActionStockNum", "FCChestCompartments" };
+
 pub fn nextPoint(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

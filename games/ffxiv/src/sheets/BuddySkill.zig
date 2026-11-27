@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BuddySkill);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "BuddyLevel", "IsActive", "Defender", "Attacker", "Healer" };
+
 /// Links to `Trait` or `Action`, whichever has the row.
 pub fn defender(self: @This()) u16 {
     return self.row.at(u16, 0);

@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(Item);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Singular", "Adjective", "Plural", "PossessivePronoun", "StartsWithVowel", "Countability", "Pronoun", "Article", "Description", "Name", "Icon", "LevelItem", "Rarity", "FilterGroup", "AdditionalData", "ItemUICategory", "ItemSearchCategory", "EquipSlotCategory", "ItemSortCategory", "SubcategorySort", "StackSize", "IsUnique", "IsUntradable", "IsIndisposable", "Lot", "PriceMid", "PriceLow", "CanBeHq", "DyeCount", "IsCrestWorthy", "ItemAction", "CastTimeSeconds", "Cooldowns", "ClassJobRepair", "ItemRepair", "ItemGlamour", "Desynth", "IsCollectable", "AlwaysCollectable", "AetherialReduce", "LevelEquip", "RequiredPvpRank", "EquipRestriction", "ClassJobCategory", "GrandCompany", "ItemSeries", "BaseParamModifier", "ModelMain", "ModelSub", "ClassJobUse", "DamagePhysType", "DamagePhys", "DamageMag", "Delayms", "DefaultActionRange", "BlockRate", "Block", "DefensePhys", "DefenseMag", "BaseParam[0]", "BaseParamValue[0]", "BaseParam[1]", "BaseParamValue[1]", "BaseParam[2]", "BaseParamValue[2]", "BaseParam[3]", "BaseParamValue[3]", "BaseParam[4]", "BaseParamValue[4]", "BaseParam[5]", "BaseParamValue[5]", "ItemSpecialBonus", "ItemSpecialBonusParam", "BaseParamSpecial[0]", "BaseParamValueSpecial[0]", "BaseParamSpecial[1]", "BaseParamValueSpecial[1]", "BaseParamSpecial[2]", "BaseParamValueSpecial[2]", "BaseParamSpecial[3]", "BaseParamValueSpecial[3]", "BaseParamSpecial[4]", "BaseParamValueSpecial[4]", "BaseParamSpecial[5]", "BaseParamValueSpecial[5]", "MaterializeType", "MateriaSlotCount", "IsAdvancedMeldingPermitted", "IsPvP", "SubStatCategory", "IsGlamorous" };
+
 pub fn singular(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

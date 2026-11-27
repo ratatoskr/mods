@@ -26,6 +26,9 @@ const word = @sizeOf(usize);
 const array_length = 3 * word;
 const array_items = 4 * word;
 
+/// What's in the Unity tab
+const Part = enum { scene };
+
 /// Asked again this often while it's open
 const tree_every_ns = 2 * std.time.ns_per_s;
 const details_every_ns = 200 * std.time.ns_per_ms;
@@ -221,7 +224,9 @@ pub const Explorer = struct {
     transform_type: usize = 0,
     component_type: usize = 0,
     tick_sub: ?sdk.threads.Subscription = null,
+    /// The Workbench's Unity tab, with Scene in it
     panel: ?sdk.workbench.Panel = null,
+    parts: sdk.workbench.Parts(Part) = .init(.{ .scene = "Scene" }),
 
     tree: sdk.workbench.Latest(Tree) = .{},
     details: sdk.workbench.Latest(Details) = .{},
@@ -283,7 +288,7 @@ pub const Explorer = struct {
         self.transform_type = try managed.typeObject("UnityEngine.Transform");
         self.component_type = try managed.typeObject("UnityEngine.Component");
         self.tick_sub = try sdk.threads.onTick(self, tick);
-        self.panel = sdk.workbench.addPanel(self, draw, .{ .title = "Scene", .engine = true }) catch |err| {
+        self.panel = sdk.workbench.addPanel(self, drawTab, .{ .title = "Unity", .kind = "unity" }) catch |err| {
             self.tick_sub.?.unsubscribe();
             self.tick_sub = null;
             return err;
@@ -327,8 +332,7 @@ pub const Explorer = struct {
             if (self.copied.publish(c)) self.unpublished_copy = null;
         }
         self.tickGizmo();
-        const panel = self.panel orelse return;
-        if (!panel.isOpen()) return;
+        if (!self.panelOpen()) return;
         const now = sdk.timing.now();
         if (self.unpublished_tree) |t| {
             if (self.tree.publish(t)) self.unpublished_tree = null;
@@ -375,7 +379,7 @@ pub const Explorer = struct {
 
     /// Any thread.
     fn panelOpen(self: *const Explorer) bool {
-        return if (self.panel) |p| p.isOpen() else false;
+        return self.parts.showing(self.panel, .scene);
     }
 
     fn startWalk(self: *Explorer) void {
@@ -668,6 +672,16 @@ pub const Explorer = struct {
     }
 
     // The Workbench's thread
+
+    fn drawTab(self: *Explorer) void {
+        self.parts.draw(self, drawPart);
+    }
+
+    fn drawPart(self: *Explorer, part: Part) void {
+        switch (part) {
+            .scene => self.draw(),
+        }
+    }
 
     fn draw(self: *Explorer) void {
         self.takeCopy();

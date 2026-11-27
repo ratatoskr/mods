@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(LogKind);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown1", "Format", "Unknown2" };
+
 pub fn format(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

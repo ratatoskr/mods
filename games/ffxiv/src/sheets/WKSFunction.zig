@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSFunction);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "RequiredDevGrade[0]", "RequiredDevGrade[1]", "RequiredDevGrade[2]", "RequiredDevGrade[3]", "Unknown12[0]", "Unknown12[1]", "Unknown12[2]", "Unknown12[3]", "RequiredQuests0[0]", "RequiredQuests0[1]", "RequiredQuests0[2]", "RequiredQuests0[3]", "RequiredQuests1[0]", "RequiredQuests1[1]", "RequiredQuests1[2]", "RequiredQuests1[3]", "RequiredQuests2[0]", "RequiredQuests2[1]", "RequiredQuests2[2]", "RequiredQuests2[3]" };
+
 pub const required_quests0_len = 4;
 /// Required quest needed for function to return true
 /// Links to `Quest`.

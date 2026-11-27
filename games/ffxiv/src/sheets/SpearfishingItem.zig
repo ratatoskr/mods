@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(SpearfishingItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Description", "Item", "GatheringItemLevel", "Expansion", "IsHidden", "FishingRecordType", "SpearfishingNotebook", "GatheringSubCategory", "IsInLog" };
+
 pub fn description(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

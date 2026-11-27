@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(YKW);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Companion", "Item", "Location[0]", "Location[1]", "Location[2]", "Location[3]", "Location[4]", "Location[5]", "Transient" };
+
 pub fn transient(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

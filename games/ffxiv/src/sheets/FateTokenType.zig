@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(FateTokenType);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Currency"};
+
 /// Links to `Item`.
 pub fn currency(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(u32, 0));

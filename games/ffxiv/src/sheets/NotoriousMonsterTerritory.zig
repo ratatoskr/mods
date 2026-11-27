@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(NotoriousMonsterTerritory);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "NotoriousMonsters[0]", "NotoriousMonsters[1]", "NotoriousMonsters[2]", "NotoriousMonsters[3]", "NotoriousMonsters[4]", "NotoriousMonsters[5]", "NotoriousMonsters[6]", "NotoriousMonsters[7]", "NotoriousMonsters[8]", "NotoriousMonsters[9]" };
+
 pub const notorious_monsters_len = 10;
 /// Links to `NotoriousMonster`.
 pub fn notoriousMonsters(self: @This(), n0: usize) excel.Link(sheets.NotoriousMonster) {

@@ -127,3 +127,11 @@ fn snake(comptime name: []const u8) []const u8 {
         return out;
     }
 }
+
+test "column names go by the header's order" {
+    const item = sheets.namedFor("Item").?;
+    try t.expectEqual(sheets.Item.columns_hash, item.columns_hash);
+    // The excel tests read its name from column 9
+    try t.expectEqualStrings("Name", item.column_names[9]);
+    try t.expectEqual(null, sheets.namedFor("item"));
+}

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Behavior);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown6", "Unknown7", "Condition0Target", "Condition0Type", "Unknown1", "Unknown5", "Unknown2", "Unknown3", "Balloon", "Condition1Target", "Condition1Type", "ContentArgument0", "ContentArgument1", "Unknown8", "Unknown9", "Unknown0", "Unknown4" };
+
 pub fn contentArgument0(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Credit);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Roles1", "JapaneseCast1", "EnglishCast1", "FrenchCast1", "GermanCast1", "Roles2", "JapaneseCast2", "EnglishCast2", "FrenchCast2", "GermanCast2" };
+
 /// Links to `CreditCast`.
 pub fn roles1(self: @This()) excel.Link(sheets.CreditCast) {
     return .of(self.row.at(u16, 0));

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(NpcEquip);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ModelMainHand", "DyeMainHand", "Dye2MainHand", "ModelOffHand", "DyeOffHand", "Dye2OffHand", "ModelHead", "DyeHead", "Dye2Head", "Visor", "VisorToggled", "ModelBody", "DyeBody", "Dye2Body", "ModelHands", "DyeHands", "Dye2Hands", "ModelLegs", "DyeLegs", "Dye2Legs", "ModelFeet", "DyeFeet", "Dye2Feet", "ModelEars", "DyeEars", "Dye2Ears", "ModelNeck", "DyeNeck", "Dye2Neck", "ModelWrists", "DyeWrists", "Dye2Wrists", "ModelLeftRing", "DyeLeftRing", "Dye2LeftRing", "ModelRightRing", "DyeRightRing", "Dye2RightRing", "Glasses[0]", "Glasses[1]" };
+
 pub fn modelMainHand(self: @This()) u64 {
     return self.row.at(u64, 0);
 }

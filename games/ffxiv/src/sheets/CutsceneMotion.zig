@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CutsceneMotion);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "WALK_LOOP_SPEED", "RUN_LOOP_SPEED", "SLOWWALK_LOOP_SPEED", "SLOWRUN_LOOP_SPEED", "BATTLEWALK_LOOP_SPEED", "BATTLERUN_LOOP_SPEED", "DASH_LOOP_SPEED", "TURN_CW90_FRAME", "TURN_CCW90_FRAME", "TURN_CW180_FRAME", "TURN_CCW180_FRAME" };
+
 pub fn walk_LOOP_SPEED(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

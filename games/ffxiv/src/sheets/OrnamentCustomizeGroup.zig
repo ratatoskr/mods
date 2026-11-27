@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(OrnamentCustomizeGroup);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "AttachmentPoint", "Customize[0]", "Customize[1]", "Customize[2]", "Customize[3]", "Customize[4]", "Customize[5]", "Customize[6]", "Customize[7]", "Customize[8]", "Customize[9]", "Customize[10]", "Customize[11]", "Customize[12]", "Customize[13]", "Customize[14]", "Customize[15]", "Customize[16]", "Customize[17]", "Customize[18]", "Customize[19]", "Customize[20]" };
+
 pub const customize_len = 21;
 /// Links to `OrnamentCustomize`.
 pub fn customize(self: @This(), n0: usize) excel.Link(sheets.OrnamentCustomize) {

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSFortuneSPPatternUIPlace);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown20", "Unknown1", "Unknown21", "Unknown2", "Unknown22", "Unknown3", "Unknown23", "Unknown4", "Unknown24", "Unknown5", "Unknown25", "Unknown6", "Unknown26", "Unknown7", "Unknown27", "Unknown8", "Unknown28", "Unknown9", "Unknown29", "Unknown10", "Unknown30", "Unknown11", "Unknown31", "Unknown12", "Unknown32", "Unknown13", "Unknown33", "Unknown14", "Unknown34", "Unknown15", "Unknown35", "Unknown16", "Unknown36", "Unknown17", "Unknown37", "Unknown18", "Unknown38", "Unknown19", "Unknown39" };
+
 pub fn unknown0(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

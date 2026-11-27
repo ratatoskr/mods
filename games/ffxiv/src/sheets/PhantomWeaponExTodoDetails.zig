@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(PhantomWeaponExTodoDetails);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "LogMessage", "ExtendedQuestCounter", "DetailText", "ContentFinderCondition", "Unknown5", "TerritoryType" };
+
 /// Links to `LogMessage`.
 pub fn logMessage(self: @This()) excel.Link(sheets.LogMessage) {
     return .of(self.row.at(u32, 0));

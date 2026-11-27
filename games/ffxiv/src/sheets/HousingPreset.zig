@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(HousingPreset);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Singular", "Adjective", "Plural", "PossessivePronoun", "StartsWithVowel", "Countability", "Pronoun", "Article", "PlaceName", "HousingSize", "ExteriorRoof", "ExteriorWall", "ExteriorWindow", "ExteriorDoor", "InteriorWall", "InteriorFlooring", "InteriorLighting", "OtherFloorWall", "OtherFloorFlooring", "OtherFloorLighting", "BasementWall", "BasementFlooring", "BasementLighting", "MansionLighting" };
+
 pub fn singular(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(QuestDerivedClass);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"ClassJob"};
+
 /// Links to `ClassJob`.
 pub fn classJob(self: @This()) excel.Link(sheets.ClassJob) {
     return .of(self.row.at(u8, 0));

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ContentMemberType);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown7", "Unknown0", "AllowAllianceRegistration", "Unknown10", "Unknown1", "AllianceRegistrationMinPlayers", "Unknown3", "MembersPerParty", "PartyCount", "AlliancePartyCount", "Unknown6", "TanksPerParty", "HealersPerParty", "MeleesPerParty", "RangedPerParty", "SeparatedDpsRoles", "RoleIndependent", "Unknown16", "Unknown12", "OnlyPvPTeamMembers", "AllowLimitedJobs" };
+
 pub fn unknown0(self: @This()) u8 {
     return self.row.at(u8, 0);
 }

@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(GatheringItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item", "GatheringItemLevel", "Unknown4", "Unknown5", "PerceptionReq", "RequiredQuest", "IsHidden", "SublimeVariant", "Unknown3", "Unknown2" };
+
 /// Links to `Quest`.
 pub fn requiredQuest(self: @This()) excel.Link(sheets.Quest) {
     return .of(self.row.at(u32, 0));

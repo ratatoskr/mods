@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BenchmarkOverrideEquipment);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown1", "Unknown2", "Unknown3", "Unknown5", "ModelMainHand", "DyeMainHand", "ModelOffHand", "DyeOffHand", "Unknown0", "Unknown4", "ModelHead", "DyeHead", "ModelBody", "DyeBody", "ModelHands", "DyeHands", "ModelLegs", "DyeLegs", "ModelFeet", "DyeFeet", "ModelEars", "DyeEars", "ModelNeck", "DyeNeck", "ModelWrists", "DyeWrists", "ModelLeftRing", "DyeLeftRing", "ModelRightRing", "DyeRightRing" };
+
 pub fn modelMainHand(self: @This()) u64 {
     return self.row.at(u64, 0);
 }

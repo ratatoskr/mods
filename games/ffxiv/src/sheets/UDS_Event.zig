@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(UDS_Event);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Text", "Type", "Property[0]", "Property[1]", "Property[2]", "Property[3]", "Property[4]", "Property[5]", "Property[6]", "Property[7]", "Property[8]", "Property[9]", "Property[10]", "Property[11]", "Property[12]", "Property[13]", "Property[14]", "Property[15]", "Property[16]", "Property[17]", "Property[18]", "Property[19]", "Property[20]", "Property[21]", "Property[22]", "Property[23]", "Property[24]", "Property[25]", "Property[26]", "Property[27]", "Property[28]", "Property[29]", "Property[30]", "Property[31]" };
+
 pub fn text(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

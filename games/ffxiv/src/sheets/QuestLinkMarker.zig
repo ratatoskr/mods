@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(QuestLinkMarker);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "SourceMap", "Level", "TargetMap", "Unknown0", "Unknown1" };
+
 /// Links to `Map`.
 pub fn sourceMap(self: @This()) excel.Link(sheets.Map) {
     return .of(self.row.at(u32, 0));

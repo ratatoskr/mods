@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CustomTalkNestHandlers);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"NestHandler"};
+
 /// Links to `GilShop`, `SpecialShop`, `DisposalShop` or `ContentEntry`, whichever has the row.
 pub fn nestHandler(self: @This()) u32 {
     return self.row.at(u32, 0);

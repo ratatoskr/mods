@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(MJIGathering);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"GatheringObject"};
+
 /// Links to `MJIGatheringObject`.
 pub fn gatheringObject(self: @This()) excel.Link(sheets.MJIGatheringObject) {
     return .of(self.row.at(u8, 0));

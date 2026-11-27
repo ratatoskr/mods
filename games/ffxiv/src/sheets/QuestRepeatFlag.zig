@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(QuestRepeatFlag);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Quest"};
+
 /// Links to `ArrayEventHandler` or `Quest`, whichever has the row.
 pub fn quest(self: @This()) u32 {
     return self.row.at(u32, 0);

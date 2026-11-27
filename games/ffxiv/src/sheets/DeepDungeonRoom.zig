@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(DeepDungeonRoom);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Level[0]", "Level[1]", "Level[2]", "Level[3]", "Level[4]" };
+
 pub const level_len = 5;
 /// Links to `Level`.
 pub fn level(self: @This(), n0: usize) excel.Link(sheets.Level) {

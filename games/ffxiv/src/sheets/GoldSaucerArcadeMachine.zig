@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(GoldSaucerArcadeMachine);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown26", "Timeout", "Unknown28", "Unknown29", "Unknown25", "Unknown30", "FailImage", "Unknown32", "Unknown33", "Unknown34", "Unknown24", "Unknown31", "Unknown35", "Unknown36", "Unknown37", "Unknown1", "Unknown6", "Unknown11", "Unknown16", "Unknown2", "Unknown7", "Unknown12", "Unknown17", "Unknown3", "Unknown8", "Unknown13", "Unknown18", "Unknown0", "Unknown5", "Unknown10", "Unknown15", "Unknown4", "Unknown9", "Unknown14", "Unknown19", "Poor", "Good", "Great", "Excellent", "Name", "PayoutExplanation", "Description", "TotalPayoutText" };
+
 pub fn unknown0(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

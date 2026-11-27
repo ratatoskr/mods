@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ContentTodo);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown1", "Objective", "Unknown2", "Unknown3", "Unknown4" };
+
 /// Links to `InstanceContentTextData`.
 pub fn objective(self: @This()) excel.Link(sheets.InstanceContentTextData) {
     return .of(self.row.at(u32, 0));

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Transformation);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Model", "BNpcName", "BNpcCustomize", "NpcEquip", "ExHotbarEnableConfig[0]", "Action[0]", "ExHotbarEnableConfig[1]", "Action[1]", "ExHotbarEnableConfig[2]", "Action[2]", "ExHotbarEnableConfig[3]", "Action[3]", "ExHotbarEnableConfig[4]", "Action[4]", "ExHotbarEnableConfig[5]", "Action[5]", "ExHotbarEnableConfig[6]", "Action[6]", "RemoveAction", "Unknown11", "Unknown12", "Unknown1", "Unknown13", "Speed", "Scale", "IsPvP", "IsEvent", "PlayerCamera", "Unknown14", "Unknown15", "StartVFX", "EndVFX", "Action6", "Unknown3", "Unknown4", "Action7", "RPParameter", "Unknown16", "Unknown17" };
+
 pub fn speed(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

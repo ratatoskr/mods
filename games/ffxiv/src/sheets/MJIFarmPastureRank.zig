@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MJIFarmPastureRank);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "RankData[0].SGB[0]", "RankData[1].SGB[0]", "RankData[2].SGB[0]", "RankData[3].SGB[0]", "RankData[0].SGB[1]", "RankData[1].SGB[1]", "RankData[2].SGB[1]", "RankData[3].SGB[1]", "RankData[0].SGB[2]", "RankData[1].SGB[2]", "RankData[2].SGB[2]", "RankData[3].SGB[2]", "RankData[0].SGB[3]", "RankData[1].SGB[3]", "RankData[2].SGB[3]", "RankData[3].SGB[3]", "RankData[0].Unknown4", "RankData[1].Unknown4", "RankData[2].Unknown4", "RankData[3].Unknown4", "RankData[0].Unknown5", "RankData[1].Unknown5", "RankData[2].Unknown5", "RankData[3].Unknown5", "RankData[0].Unknown6", "RankData[1].Unknown6", "RankData[2].Unknown6", "RankData[3].Unknown6", "RankData[0].Unknown0", "RankData[1].Unknown0", "RankData[2].Unknown0", "RankData[3].Unknown0", "RankData[0].Unknown1", "RankData[1].Unknown1", "RankData[2].Unknown1", "RankData[3].Unknown1", "RankData[0].Unknown7", "RankData[1].Unknown7", "RankData[2].Unknown7", "RankData[3].Unknown7", "RankData[0].Unknown2", "RankData[1].Unknown2", "RankData[2].Unknown2", "RankData[3].Unknown2", "RankData[0].Unknown3", "RankData[1].Unknown3", "RankData[2].Unknown3", "RankData[3].Unknown3" };
+
 pub const rank_data_len = 4;
 pub fn rankData(self: @This(), n0: usize) RankDataEntry {
     std.debug.assert(n0 < 4);

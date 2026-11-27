@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(McGuffin);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"UIData"};
+
 /// Links to `McGuffinUIData`.
 pub fn uiData(self: @This()) excel.Link(sheets.McGuffinUIData) {
     return .of(self.row.at(u8, 0));

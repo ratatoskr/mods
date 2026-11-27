@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ActionTimelineReplace);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Old", "New" };
+
 /// Links to `ActionTimeline`.
 pub fn old(self: @This()) excel.Link(sheets.ActionTimeline) {
     return .of(self.row.at(u16, 0));

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(LiveMinigamesObjectEvent);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown7", "Unknown39", "Unknown8", "Unknown9", "Unknown40", "Unknown12", "Unknown43", "Unknown15", "Unknown10", "Unknown41", "Unknown13", "Unknown44", "Unknown16", "Unknown11", "Unknown42", "Unknown14", "Unknown45[0]", "Unknown17", "Unknown18[0]", "Unknown0[0]", "Unknown25[0]", "Unknown32[0]", "Unknown45[1]", "Unknown18[1]", "Unknown0[1]", "Unknown25[1]", "Unknown32[1]", "Unknown45[2]", "Unknown18[2]", "Unknown0[2]", "Unknown25[2]", "Unknown32[2]", "Unknown45[3]", "Unknown18[3]", "Unknown0[3]", "Unknown25[3]", "Unknown32[3]", "Unknown45[4]", "Unknown18[4]", "Unknown0[4]", "Unknown25[4]", "Unknown32[4]", "Unknown45[5]", "Unknown18[5]", "Unknown0[5]", "Unknown25[5]", "Unknown32[5]", "Unknown45[6]", "Unknown18[6]", "Unknown0[6]", "Unknown25[6]", "Unknown32[6]", "Unknown52" };
+
 pub const unknown0_len = 7;
 pub fn unknown0(self: @This(), n0: usize) f32 {
     return self.row.at(f32, offsets_1[n0]);

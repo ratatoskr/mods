@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BNpcState);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Slot", "AnimationStates[0]", "AnimationStates[1]", "ModelState", "Idle", "Attribute0", "AttributeFlag0", "Attribute1", "AttributeFlag1", "Attribute2", "AttributeFlag2", "Scale", "ModelScale", "LoopTimeline", "Unknown3" };
+
 pub fn scale(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

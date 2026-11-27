@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(Action);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "Unknown8", "Icon", "ActionCategory", "Unknown1", "AnimationStart", "VFX", "AnimationEnd", "ActionTimelineHit", "Unknown2", "ClassJob", "BehaviourType", "ClassJobLevel", "IsRoleAction", "Unknown28", "Range", "CanTargetSelf", "CanTargetParty", "CanTargetAlliance", "CanTargetHostile", "CanTargetAlly", "Unknown10", "TargetArea", "CanTargetOwnPet", "CanTargetPartyPet", "DeadTargetBehaviour", "RequiresLineOfSight", "NeedToFaceTarget", "CastType", "EffectRange", "XAxisModifier", "Unknown14", "PrimaryCostType", "PrimaryCostValue", "SecondaryCostType", "SecondaryCostValue", "ActionCombo", "PreservesCombo", "Cast100ms", "ExtraCastTime100ms", "Recast100ms", "CooldownGroup", "AdditionalCooldownGroup", "MaxCharges", "AttackType", "Aspect", "ActionProcStatus", "Unknown4", "StatusGainSelf", "UnlockLink", "ClassJobCategory", "AutoAttackBehaviour", "Unknown15", "AffectsPosition", "Omen", "OmenAlt", "IsPvP", "Unknown16", "LogCastMessage", "Unknown18", "LogMissMessage", "LogActionMessage", "Unknown21", "Unknown22", "Unknown23", "EquivalenceGroup", "CanUseWhileMounted", "Unknown25", "IsPlayerAction", "Unknown27", "Unknown_70" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

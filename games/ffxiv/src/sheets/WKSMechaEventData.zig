@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSMechaEventData);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown41", "Name", "Description", "Unknown2", "Unknown3", "Unknown4", "Unknown5", "Unknown6", "Unknown7", "Unknown8", "Unknown9", "Unknown15", "Unknown52", "Unknown50", "Unknown16", "Unknown17", "Unknown18", "Unknown42", "Unknown19", "Unknown20", "Unknown43", "Unknown51", "Unknown44", "Unknown45", "Unknown46", "Unknown47", "Unknown21", "Unknown22", "Unknown23", "Unknown24", "Unknown25", "Unknown26", "Unknown27", "Unknown48", "Unknown49", "Unknown28", "Unknown10", "Unknown11", "Unknown12", "Unknown13", "Unknown14", "Unknown29", "Unknown30", "Unknown31", "Unknown32", "Unknown33", "Unknown34", "Unknown35", "Unknown36", "Unknown37", "Unknown38", "Unknown39", "Unknown40" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

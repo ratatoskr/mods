@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GimmickJump);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "FallDamage", "Height", "LoopMotion", "EndMotion", "StartClient", "Unknown0", "Unknown1", "Unknown2", "Unknown3" };
+
 /// Links to `ActionTimeline`.
 pub fn loopMotion(self: @This()) excel.Link(sheets.ActionTimeline) {
     return .of(self.row.at(u32, 0));

@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ChocoboRaceAbilityType);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"IsActive"};
+
 pub fn isActive(self: @This()) bool {
     return self.row.bitAt(0, 0);
 }

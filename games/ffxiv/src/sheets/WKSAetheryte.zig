@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(WKSAetheryte);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "ObjectGroup" };
+
 /// Links to `PlaceName`.
 pub fn name(self: @This()) excel.Link(sheets.PlaceName) {
     return .of(self.row.at(u32, 0));

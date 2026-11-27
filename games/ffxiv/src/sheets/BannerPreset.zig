@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BannerPreset);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "CameraPositionX", "CameraPositionY", "CameraPositionZ", "CameraTargetX", "CameraTargetY", "CameraTargetZ", "ImageRotation", "CameraZoom", "BannerTimeline", "AnimationProgress", "Expression", "HeadDirectionX", "HeadDirectionY", "EyeDirectionX", "EyeDirectionY", "BannerDesignPreset", "DirectionalLightingColorRed", "DirectionalLightingColorGreen", "DirectionalLightingColorBlue", "DirectionalLightingBrightness", "DirectionalLightingVerticalAngle", "DirectionalLightingHorizontalAngle", "AmbientLightingColorRed", "AmbientLightingColorGreen", "AmbientLightingColorBlue", "AmbientLightingBrightness" };
+
 pub fn cameraPositionX(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

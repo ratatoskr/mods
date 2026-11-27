@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(PresetCamera);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "EID", "PosX", "PosY", "PosZ", "Elezen", "Lalafell", "Miqote", "Roe", "Hrothgar", "Viera", "Unknown0", "Hyur_F", "Elezen_F", "Lalafell_F", "Miqote_F", "Roe_F", "Hrothgar_F", "Viera_F", "Unknown_70" };
+
 pub fn posX(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

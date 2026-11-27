@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Attributive);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "JapaneseDemonstrative", "JapaneseDemonstrativePlural", "EnglishConsonantSingular", "EnglishConsonantGeneric", "EnglishConsonantPlural", "EnglishVowelSingular", "EnglishVowelGeneric", "EnglishVowelPlural", "GermanNominativeMasculine", "GermanNominativeFeminine", "GermanNominativeNeutral", "GermanNominativePlural", "GermanGenitiveMasculine", "GermanGenitiveFeminine", "GermanGenitiveNeutral", "GermanGenitivePlural", "GermanDativeMasculine", "GermanDativeFeminine", "GermanDativeNeutral", "GermanDativePlural", "GermanAccusativeMasculine", "GermanAccusativeFeminine", "GermanAccusativeNeutral", "GermanAccusativePlural", "FrenchMasculineConsonantBase", "FrenchMasculineConsonantSingular", "FrenchMasculineConsonantPlural", "FrenchMasculineConsonantMass", "FrenchMasculineVowelBase", "FrenchMasculineVowelSingular", "FrenchMasculineVowelPlural", "FrenchMasculineVowelMass", "FrenchFeminineConsonantBase", "FrenchFeminineConsonantSingular", "FrenchFeminineConsonantPlural", "FrenchFeminineConsonantMass", "FrenchFeminineVowelBase", "FrenchFeminineVowelSingular", "FrenchFeminineVowelPlural", "FrenchFeminineVowelMass", "Unknown40" };
+
 pub fn japaneseDemonstrative(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

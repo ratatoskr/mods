@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GatheringLeve);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Route[0]", "Route[1]", "Route[2]", "Route[3]", "RequiredItem[0]", "RequiredItemQuantity[0]", "RequiredItem[1]", "RequiredItemQuantity[1]", "RequiredItem[2]", "RequiredItemQuantity[2]", "RequiredItem[3]", "RequiredItemQuantity[3]", "ItemNumber", "Rule", "Varient", "Objective[0]", "Objective[1]", "BNpcEntry", "UseSecondaryTool" };
+
 pub const route_len = 4;
 /// Links to `GatheringLeveRoute`.
 pub fn route(self: @This(), n0: usize) excel.Link(sheets.GatheringLeveRoute) {

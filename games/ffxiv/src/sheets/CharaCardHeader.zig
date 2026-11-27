@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CharaCardHeader);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "TopImage", "BottomImage", "FontColor", "Unknown2", "Unknown1", "Unknown0", "UnlockCondition", "Unknown_70_1", "Unknown_70_2", "Unknown4", "Category", "Unknown5", "Name" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

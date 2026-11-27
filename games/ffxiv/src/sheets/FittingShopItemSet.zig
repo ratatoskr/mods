@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(FittingShopItemSet);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item[0]", "Item[1]", "Item[2]", "Item[3]", "Item[4]", "Item[5]", "Name" };
+
 pub const item_len = 6;
 /// Links to `Item`.
 pub fn item(self: @This(), n0: usize) excel.Link(sheets.Item) {

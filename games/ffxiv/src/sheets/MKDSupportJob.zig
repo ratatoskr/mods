@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(MKDSupportJob);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "NameShort", "NameFemale", "Description", "NameEnglish", "LevelMax", "JobIndex", "LevelUnlock[0]", "Action[0]", "LevelUnlock[1]", "Action[1]", "LevelUnlock[2]", "Action[2]", "LevelUnlock[3]", "Action[3]", "LevelUnlock[4]", "Action[4]" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

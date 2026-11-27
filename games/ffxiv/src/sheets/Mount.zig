@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(Mount);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Singular", "Adjective", "Plural", "PossessivePronoun", "StartsWithVowel", "Countability", "Pronoun", "Article", "ModelChara", "MoveControl", "FlyingCondition", "FlyUpDownAngle", "Unknown6", "Unknown7", "FlyingMoveVfx", "GlideVFX", "MountCustomize", "RideBGM", "WhistlePath", "Unknown2", "DismountSCDPath", "ExitMoveDist", "ExitMoveSpeed", "Unknown12", "IsEmote", "EquipHead", "EquipBody", "EquipLeg", "EquipFoot", "Order", "Icon", "UIPriority", "RadiusRate", "Unknown20", "BaseMotionSpeed_Run", "BaseMotionSpeed_Walk", "BaseMotionSpeed_Swim", "ExtraSeats", "MountAction", "IsAirborne", "ExHotbarEnableConfig", "UseEP", "Unknown13", "IsImmobile", "Unknown10", "Unknown11", "Unknown14", "HideHeadgear", "GroundTiltParam", "FlightSwimTiltParam", "RiderGroundTiltParam", "OwnerGroundTiltEnable", "RiderFlightSwimTiltParam", "OwnerGroundFlySwimEnable" };
+
 pub fn singular(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

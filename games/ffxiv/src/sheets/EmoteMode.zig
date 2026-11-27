@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(EmoteMode);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "StartEmote", "EndEmote", "Move", "Camera", "EndOnRotate", "EndOnEmote", "ConditionMode", "Unknown0" };
+
 /// Links to `Emote`.
 pub fn startEmote(self: @This()) excel.Link(sheets.Emote) {
     return .of(self.row.at(u16, 0));

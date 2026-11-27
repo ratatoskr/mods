@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ContentRewardCondition);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"MaxLevelCondition"};
+
 /// 0 = Always rewarded
 /// 1 = Character has reached current expansions max level
 /// 2 = Character has reached at least 50

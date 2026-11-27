@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MotionTimelineBlendTable);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "DestBlendGroup", "SrcBlendGroup", "BlendFrame_PC", "BlendFram_TypeA", "BlendFram_TypeB", "BlendFram_TypeC" };
+
 pub fn destBlendGroup(self: @This()) u8 {
     return self.row.at(u8, 0);
 }

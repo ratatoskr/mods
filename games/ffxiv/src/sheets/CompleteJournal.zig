@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CompleteJournal);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "RequiredLevel", "Unknown2", "Icon", "Unknown1", "Name", "Cutscene[0]", "Cutscene[1]", "Cutscene[2]", "Cutscene[3]", "Cutscene[4]", "Cutscene[5]", "Cutscene[6]", "Cutscene[7]", "Cutscene[8]", "Cutscene[9]", "Cutscene[10]", "Cutscene[11]", "Cutscene[12]", "Cutscene[13]", "Cutscene[14]", "Cutscene[15]", "Cutscene[16]", "Cutscene[17]", "Cutscene[18]", "Cutscene[19]", "Cutscene[20]", "Cutscene[21]", "Cutscene[22]", "Cutscene[23]" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

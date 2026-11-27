@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WeeklyBingoMultipleOrder);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Content[0]", "Content[1]", "Content[2]", "Content[3]", "Content[4]", "Unknown5", "Unknown6", "Unknown7", "Unknown8", "Unknown9", "Unknown10", "Unknown11", "Unknown12", "Unknown13", "Unknown14", "Unknown15", "Unknown16", "Unknown17", "Unknown18", "Unknown19" };
+
 pub const content_len = 5;
 /// I *think* this is correct? You're welcome MidoriKami :3
 /// Links to `InstanceContent`.

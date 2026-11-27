@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(HWDDevLively);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ENPC", "Unknown0", "Unknown1" };
+
 /// Links to `ENpcBase`.
 pub fn enpc(self: @This()) excel.Link(sheets.ENpcBase) {
     return .of(self.row.at(u32, 0));

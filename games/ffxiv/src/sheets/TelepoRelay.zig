@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(TelepoRelay);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Relays[0].EnterTerritory", "Relays[1].EnterTerritory", "Relays[2].EnterTerritory", "Relays[3].EnterTerritory", "Relays[4].EnterTerritory", "Relays[5].EnterTerritory", "Relays[6].EnterTerritory", "Relays[7].EnterTerritory", "Relays[8].EnterTerritory", "Relays[0].ExitTerritory", "Relays[1].ExitTerritory", "Relays[2].ExitTerritory", "Relays[3].ExitTerritory", "Relays[4].ExitTerritory", "Relays[5].ExitTerritory", "Relays[6].ExitTerritory", "Relays[7].ExitTerritory", "Relays[8].ExitTerritory", "Relays[0].Cost", "Relays[1].Cost", "Relays[2].Cost", "Relays[3].Cost", "Relays[4].Cost", "Relays[5].Cost", "Relays[6].Cost", "Relays[7].Cost", "Relays[8].Cost", "Unknown_70" };
+
 pub const relays_len = 9;
 pub fn relays(self: @This(), n0: usize) RelaysEntry {
     std.debug.assert(n0 < 9);

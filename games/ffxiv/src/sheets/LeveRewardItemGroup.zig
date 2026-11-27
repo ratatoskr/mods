@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(LeveRewardItemGroup);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item[0]", "Count[0]", "IsHQ[0]", "Item[1]", "Count[1]", "IsHQ[1]", "Item[2]", "Count[2]", "IsHQ[2]", "Item[3]", "Count[3]", "IsHQ[3]", "Item[4]", "Count[4]", "IsHQ[4]", "Item[5]", "Count[5]", "IsHQ[5]", "Item[6]", "Count[6]", "IsHQ[6]", "Item[7]", "Count[7]", "IsHQ[7]", "Item[8]", "Count[8]", "IsHQ[8]" };
+
 pub const item_len = 9;
 /// Links to `Item`.
 pub fn item(self: @This(), n0: usize) excel.Link(sheets.Item) {

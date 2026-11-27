@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(QuestRedoChapter);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown1", "Unknown2", "Unknown5", "Unknown3", "Unknown4" };
+
 pub fn unknown3(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

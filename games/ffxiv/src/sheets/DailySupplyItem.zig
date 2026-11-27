@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(DailySupplyItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item[0]", "Quantity[0]", "RecipeLevel[0]", "Item[1]", "Quantity[1]", "RecipeLevel[1]", "Item[2]", "Quantity[2]", "RecipeLevel[2]", "Item[3]", "Quantity[3]", "RecipeLevel[3]", "Item[4]", "Quantity[4]", "RecipeLevel[4]", "Item[5]", "Quantity[5]", "RecipeLevel[5]", "Item[6]", "Quantity[6]", "RecipeLevel[6]", "Item[7]", "Quantity[7]", "RecipeLevel[7]" };
+
 pub const item_len = 8;
 /// Links to `Item`.
 pub fn item(self: @This(), n0: usize) excel.Link(sheets.Item) {

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(QuestEffect);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Effects[0].Type", "Effects[1].Type", "Effects[2].Type", "Effects[3].Type", "Effects[0].Param1", "Effects[1].Param1", "Effects[2].Param1", "Effects[3].Param1", "Effects[0].Param2", "Effects[1].Param2", "Effects[2].Param2", "Effects[3].Param2", "OutOfRangeWarningMessage", "OutOfRangeMessage", "Unknown_70" };
+
 pub const effects_len = 4;
 pub fn effects(self: @This(), n0: usize) EffectsEntry {
     std.debug.assert(n0 < 4);

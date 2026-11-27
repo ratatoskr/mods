@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(AozActionTransient);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Number", "Icon", "Stats", "Description", "LocationKey", "Location", "RequiredForQuest", "PreviousQuest", "TargetsEnemy", "TargetsSelfOrAlly", "CauseSlow", "CausePetrify", "CauseParalysis", "CauseInterrupt", "CauseBlind", "CauseStun", "CauseSleep", "CauseBind", "CauseHeavy", "CauseDeath" };
+
 pub fn stats(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

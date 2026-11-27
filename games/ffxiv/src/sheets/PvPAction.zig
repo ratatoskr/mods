@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(PvPAction);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Action", "Unknown3", "Unknown0", "Unknown1", "Unknown2", "GrandCompany[0]", "GrandCompany[1]", "GrandCompany[2]", "Unknown4" };
+
 /// Links to `Action`.
 pub fn action(self: @This()) excel.Link(sheets.Action) {
     return .of(self.row.at(u16, 0));

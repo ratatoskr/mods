@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(RelicNote);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "EventItem", "MonsterNoteTargetCommon[0]", "MonsterCount[0]", "MonsterNoteTargetCommon[1]", "MonsterCount[1]", "MonsterNoteTargetCommon[2]", "MonsterCount[2]", "MonsterNoteTargetCommon[3]", "MonsterCount[3]", "MonsterNoteTargetCommon[4]", "MonsterCount[4]", "MonsterNoteTargetCommon[5]", "MonsterCount[5]", "MonsterNoteTargetCommon[6]", "MonsterCount[6]", "MonsterNoteTargetCommon[7]", "MonsterCount[7]", "MonsterNoteTargetCommon[8]", "MonsterCount[8]", "MonsterNoteTargetCommon[9]", "MonsterCount[9]", "MonsterNoteTargetNM[0]", "MonsterNoteTargetNM[1]", "MonsterNoteTargetNM[2]", "Unknown0", "Fate[0]", "PlaceNameFate[0]", "Fate[1]", "PlaceNameFate[1]", "Fate[2]", "PlaceNameFate[2]", "Leve[0]", "Leve[1]", "Leve[2]" };
+
 /// Links to `EventItem`.
 pub fn eventItem(self: @This()) excel.Link(sheets.EventItem) {
     return .of(self.row.at(u32, 0));

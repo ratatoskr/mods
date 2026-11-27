@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(McGuffinUIData);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Order", "Icon", "Name" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

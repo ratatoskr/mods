@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(QuestEquipModel);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Slot", "Model" };
+
 /// A model id, packed.
 pub fn model(self: @This()) u64 {
     return self.row.at(u64, 0);

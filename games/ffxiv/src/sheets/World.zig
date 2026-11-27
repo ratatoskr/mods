@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(World);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "InternalName", "Name", "DataCenter", "LogicalDataCenter", "UserType", "IsContent", "Unknown1", "Region", "IsPublic" };
+
 pub fn internalName(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

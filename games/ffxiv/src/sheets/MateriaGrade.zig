@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MateriaGrade);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ReturnRate", "MeldFee", "OvermeldNQPercent[0]", "OvermeldNQPercent[1]", "OvermeldNQPercent[2]", "OvermeldNQPercent[3]", "OvermeldHQPercent[0]", "OvermeldHQPercent[1]", "OvermeldHQPercent[2]", "OvermeldHQPercent[3]" };
+
 pub fn meldFee(self: @This()) u16 {
     return self.row.at(u16, 0);
 }

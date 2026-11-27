@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GcArmyExpeditionMemberBonus);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Race", "ClassJob" };
+
 /// Links to `Race`.
 pub fn race(self: @This()) excel.Link(sheets.Race) {
     return .of(self.row.at(u8, 0));

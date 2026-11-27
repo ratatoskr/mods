@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(MJIStockyardManagementArea);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "RareMaterial", "Unknown0", "Area" };
+
 /// Links to `MJIText`.
 pub fn area(self: @This()) excel.Link(sheets.MJIText) {
     return .of(self.row.at(u16, 0));

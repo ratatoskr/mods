@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(XBMEntrance);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown1", "Unknown2", "UnlockRequirement" };
+
 /// Links to `Quest`.
 pub fn unlockRequirement(self: @This()) excel.Link(sheets.Quest) {
     return .of(self.row.at(u32, 0));

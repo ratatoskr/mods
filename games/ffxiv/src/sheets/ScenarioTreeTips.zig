@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ScenarioTreeTips);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "NextTip", "Tips[0]", "RequiredLevel", "Tips[1]" };
+
 pub const tips_len = 2;
 /// Links to `ScenarioTree` or `Quest`, whichever has the row.
 pub fn tips(self: @This(), n0: usize) u32 {

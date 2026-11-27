@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(MJIDisposalShopUICategory);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Category"};
+
 pub fn category(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

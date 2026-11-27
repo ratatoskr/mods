@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ActionTimeline);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown_70", "Type", "Pause", "Priority", "Stance", "Slot", "Key", "LookAtMode", "WeaponTimeline", "ActionTimelineIDMode", "LoadType", "StartAttach", "KillUpper", "Resident", "IsMotionCanceledByMoving", "ResidentPap", "Unknown2", "Unknown3", "IsLoop", "Unknown6", "Unknown1", "Unknown4" };
+
 pub fn key(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

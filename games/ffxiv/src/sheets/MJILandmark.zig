@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MJILandmark);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown2", "Unknown3", "UnlockLink", "SGB[0]", "SGB[1]", "SGB[2]", "Unknown4", "SGB[3]", "Unknown5", "SGB[4]", "Unknown6", "SGB[5]", "Unknown7", "SGB[6]", "Unknown8", "Unknown9", "Unknown10", "Unknown11", "Unknown12", "Unknown13", "Material[0]", "Material[1]", "Material[2]", "Material[3]", "Material[4]", "Amount[0]", "Amount[1]", "Amount[2]", "Amount[3]", "Amount[4]", "Name", "Unknown1", "Icon" };
+
 /// Links to `MJIText`.
 pub fn name(self: @This()) excel.Link(sheets.MJIText) {
     return .of(self.row.at(u32, 0));

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(HugeCraftworksRank);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "CrafterLevel", "ExpRewardPerItem", "Unknown0" };
+
 pub fn expRewardPerItem(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

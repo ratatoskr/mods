@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(WarpLogic);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Icon", "WarpName", "CanSkipCutscene", "WarpParams[0].Function", "WarpParams[1].Function", "WarpParams[2].Function", "WarpParams[3].Function", "WarpParams[4].Function", "WarpParams[5].Function", "WarpParams[6].Function", "WarpParams[7].Function", "WarpParams[8].Function", "WarpParams[9].Function", "WarpParams[0].Argument", "WarpParams[1].Argument", "WarpParams[2].Argument", "WarpParams[3].Argument", "WarpParams[4].Argument", "WarpParams[5].Argument", "WarpParams[6].Argument", "WarpParams[7].Argument", "WarpParams[8].Argument", "WarpParams[9].Argument", "Question", "ResponseYes", "ResponseNo" };
+
 pub const warp_params_len = 10;
 pub fn warpParams(self: @This(), n0: usize) WarpParamsEntry {
     std.debug.assert(n0 < 10);

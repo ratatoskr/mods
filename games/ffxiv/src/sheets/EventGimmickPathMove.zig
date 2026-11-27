@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(EventGimmickPathMove);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "EventRange", "Unknown1", "Unknown5", "Unknown2", "Unknown3", "Unknown4" };
+
 /// Refers to an instanced game object.
 pub fn eventRange(self: @This()) u32 {
     return self.row.at(u32, 0);

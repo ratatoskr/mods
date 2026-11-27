@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GuildleveAssignmentTalk);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown5", "Unknown11", "Unknown17", "Unknown23", "Unknown29", "Unknown2", "Unknown8", "Unknown14", "Unknown20", "Unknown26", "Unknown0", "Unknown6", "Unknown12", "Unknown18", "Unknown24", "Unknown3", "Unknown9", "Unknown15", "Unknown21", "Unknown27", "Unknown4", "Unknown10", "Unknown16", "Unknown22", "Unknown28", "Unknown1", "Unknown7", "Unknown13", "Unknown19", "Unknown25", "Talk[0]", "Talk[1]", "Talk[2]", "Talk[3]", "Talk[4]", "Talk[5]", "Talk[6]", "Talk[7]" };
+
 pub fn unknown0(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

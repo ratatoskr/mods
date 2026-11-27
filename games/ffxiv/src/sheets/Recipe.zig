@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(Recipe);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Number", "CraftType", "RecipeLevelTable", "MaxAdjustableJobLevel", "ItemResult", "AmountResult", "Ingredient[0]", "AmountIngredient[0]", "Ingredient[1]", "AmountIngredient[1]", "Ingredient[2]", "AmountIngredient[2]", "Ingredient[3]", "AmountIngredient[3]", "Ingredient[4]", "AmountIngredient[4]", "Ingredient[5]", "AmountIngredient[5]", "Ingredient[6]", "AmountIngredient[6]", "Ingredient[7]", "AmountIngredient[7]", "RecipeNotebookList", "DisplayPriority", "IsSecondary", "MaterialQualityFactor", "DifficultyFactor", "QualityFactor", "DurabilityFactor", "RequiredQuality", "RequiredCraftsmanship", "RequiredControl", "QuickSynthCraftsmanship", "QuickSynthControl", "SecretRecipeBook", "Quest", "CanQuickSynth", "CanHq", "ExpRewarded", "Unknown1", "StatusRequired", "ItemRequired", "IsSpecializationRequired", "IsExpert", "CollectableMetadataKey", "CollectableMetadata", "PatchNumber" };
+
 pub fn requiredQuality(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

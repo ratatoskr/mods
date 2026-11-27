@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CompanyCraftDraftCategory);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "CompanyCraftType[0]", "CompanyCraftType[1]", "CompanyCraftType[2]", "CompanyCraftType[3]", "CompanyCraftType[4]", "CompanyCraftType[5]", "CompanyCraftType[6]", "CompanyCraftType[7]", "CompanyCraftType[8]", "CompanyCraftType[9]" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

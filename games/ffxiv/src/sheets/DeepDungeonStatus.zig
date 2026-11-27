@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(DeepDungeonStatus);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ScreenImage", "LogMessage", "FloorEffectUI" };
+
 /// Links to `ScreenImage`.
 pub fn screenImage(self: @This()) excel.Link(sheets.ScreenImage) {
     return .of(self.row.at(u16, 0));

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ContentsNote);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ContentType", "Icon", "MenuOrder", "RequiredAmount", "Reward0", "ExpMultiplier", "Reward1", "GilRward", "LevelUnlock", "HowTo", "ReqUnlock", "Name", "Description", "ExpCap" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

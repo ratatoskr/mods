@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(XBMContentStageEventMap);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4" };
+
 pub fn unknown0(self: @This()) u8 {
     return self.row.at(u8, 0);
 }

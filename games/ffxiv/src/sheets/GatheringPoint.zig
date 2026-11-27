@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GatheringPoint);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Type", "Unknown0", "Unknown1", "GatheringPointBase", "Count", "GatheringPointBonus[0]", "GatheringPointBonus[1]", "TerritoryType", "PlaceName", "GatheringSubCategory" };
+
 /// Links to `GatheringPointBase`.
 pub fn gatheringPointBase(self: @This()) excel.Link(sheets.GatheringPointBase) {
     return .of(self.row.at(i32, 0));

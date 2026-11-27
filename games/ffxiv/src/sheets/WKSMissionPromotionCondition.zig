@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSMissionPromotionCondition);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown2", "Unknown3" };
+
 pub fn unknown2(self: @This()) u8 {
     return self.row.at(u8, 0);
 }

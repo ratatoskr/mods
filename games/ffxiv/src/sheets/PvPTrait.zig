@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(PvPTrait);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Trait1", "Trait2", "Trait3" };
+
 /// Links to `Trait`.
 pub fn trait1(self: @This()) excel.Link(sheets.Trait) {
     return .of(self.row.at(u16, 0));

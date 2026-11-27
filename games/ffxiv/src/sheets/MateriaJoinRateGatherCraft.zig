@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MateriaJoinRateGatherCraft);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "NQOvermeldPercentSlot[0]", "NQOvermeldPercentSlot[1]", "NQOvermeldPercentSlot[2]", "NQOvermeldPercentSlot[3]", "HQOvermeldPercentSlot[0]", "HQOvermeldPercentSlot[1]", "HQOvermeldPercentSlot[2]", "HQOvermeldPercentSlot[3]" };
+
 pub const nq_overmeld_percent_slot_len = 4;
 pub fn nqOvermeldPercentSlot(self: @This(), n0: usize) f32 {
     return self.row.at(f32, offsets_1[n0]);

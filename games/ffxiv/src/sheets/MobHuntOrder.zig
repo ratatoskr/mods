@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MobHuntOrder);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Target", "NeededKills", "Type", "Rank", "MobHuntReward" };
+
 /// Links to `MobHuntTarget`.
 pub fn target(self: @This()) excel.Link(sheets.MobHuntTarget) {
     return .of(self.row.at(u16, 0));

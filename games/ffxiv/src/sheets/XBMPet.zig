@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(XBMPet);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Pet", "Classification", "ParamGrow", "SatietyMax", "Icon", "Action", "LocationKey", "Location", "Description", "TrickDescription", "TemperedDescription", "InflictsSlow", "InflictsPetrify", "InflictsParalysis", "InflictsInterrupt", "InflictsBlind", "InflictsPoison", "InflictsStun", "InflictsSleep", "InflictsBind", "InflictsHeavy", "InflictsDeath", "Unknown12[0]", "Unknown12[1]", "Unknown12[2]", "Unknown12[3]", "Unknown12[4]" };
+
 pub fn description(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

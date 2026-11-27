@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GuidePage);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Key", "Unknown_70", "Output" };
+
 /// Links by `Key`: 1 to `GuidePageString`, 2 to `GuidePageString`, 4 to `GuidePageString`, 5 to `GuidePageString`, 6 to `GuidePageString`.
 pub fn output(self: @This()) u32 {
     return self.row.at(u32, 0);

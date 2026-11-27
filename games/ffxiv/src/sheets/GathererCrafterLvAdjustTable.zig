@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GathererCrafterLvAdjustTable);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "RecipeLevel", "Unknown1", "CrafterLevel", "GathererLevel", "FisherLevel" };
+
 /// Links to `RecipeLevelTable`.
 pub fn recipeLevel(self: @This()) excel.Link(sheets.RecipeLevelTable) {
     return .of(self.row.at(u16, 0));

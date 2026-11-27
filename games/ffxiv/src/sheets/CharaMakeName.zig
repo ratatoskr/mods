@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CharaMakeName);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "HyurMidlanderMale", "HyurMidlanderFemale", "HyurMidlanderLastName", "HyurHighlanderMale", "HyurHighlanderFemale", "HyurHighlanderLastName", "ElezenMale", "ElezenFemale", "ElezenWildwoodLastName", "ElezenDuskwightLastName", "MiqoteSunMale", "MiqoteSunFemale", "MiqoteSunMaleLastName", "MiqoteSunFemaleLastName", "MiqoteMoonMale", "MiqoteMoonFemale", "MiqoteMoonLastname", "LalafellPlainsfolkFirstNameStart", "LalafellPlainsfolkLastNameStart", "LalafellPlainsfolkEndOfNames", "LalafellDunesfolkMale", "LalafellDunesfolkMaleLastName", "LalafellDunesfolkFemale", "LalafellDunesfolkFemaleLastName", "RoegadynSeaWolfMale", "RoegadynSeaWolfMaleLastName", "RoegadynSeaWolfFemale", "RoegadynSeaWolfFemaleLastName", "RoegadynHellsguardFirstName", "RoegadynHellsguardMaleLastName", "RoegadynHellsguardFemaleLastName", "AuRaRaenMale", "AuRaRaenFemale", "AuRaRaenLastName", "AuRaXaelaMale", "AuRaXaelaFemale", "AuRaXaelaLastName", "HrothgarHellionsFirstName", "HrothgarHellionsLastName", "HrothgarLostFirstName", "HrothgarLostLastName", "Unknown0", "Unknown1", "Unknown2", "VieraFirstName", "VieraRavaLastName", "VieraVeenaLastName", "Unknown_70_1", "Unknown_70_2", "Unknown_70_3" };
+
 pub fn hyurMidlanderMale(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

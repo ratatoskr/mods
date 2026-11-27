@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(MacroIcon);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Icon", "Unknown0" };
+
 /// An icon's id, like 132122 for `ui/icon/132000/132122.tex`.
 pub fn icon(self: @This()) i32 {
     return self.row.at(i32, 0);

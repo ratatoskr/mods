@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(GroupPoseStamp);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "StampIcon", "Unknown1", "Category", "SortKey", "UnlockType", "UnlockCriteria", "Festival", "Unknown5", "Unknown6", "Unknown7", "Name" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

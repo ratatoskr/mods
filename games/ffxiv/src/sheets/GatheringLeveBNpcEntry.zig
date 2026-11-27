@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GatheringLeveBNpcEntry);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown1", "Unknown4", "Unknown7", "Unknown10", "Unknown2", "Unknown5", "Unknown8", "Unknown11", "Unknown0", "Unknown3", "Unknown6", "Unknown9" };
+
 pub fn unknown0(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

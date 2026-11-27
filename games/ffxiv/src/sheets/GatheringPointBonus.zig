@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GatheringPointBonus);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Condition", "ConditionValue", "Unknown1", "BonusType", "BonusValue", "Unknown2", "Unknown3", "Unknown0" };
+
 pub fn conditionValue(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

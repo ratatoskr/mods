@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ContentAttributeRect);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown2", "Unknown6", "Unknown10", "Unknown14", "Unknown18", "Unknown22", "Unknown26", "Unknown30", "Unknown34", "Unknown38", "Unknown42", "Unknown46", "Unknown50", "Unknown54", "Unknown58", "Unknown62", "Unknown66", "Unknown70", "Unknown74", "Unknown78", "Unknown82", "Unknown86", "Unknown90", "Unknown94", "Unknown98", "Unknown102", "Unknown106", "Unknown110", "Unknown114", "Unknown118", "Unknown122", "Unknown126", "Unknown0", "Unknown4", "Unknown8", "Unknown12", "Unknown16", "Unknown20", "Unknown24", "Unknown28", "Unknown32", "Unknown36", "Unknown40", "Unknown44", "Unknown48", "Unknown52", "Unknown56", "Unknown60", "Unknown64", "Unknown68", "Unknown72", "Unknown76", "Unknown80", "Unknown84", "Unknown88", "Unknown92", "Unknown96", "Unknown100", "Unknown104", "Unknown108", "Unknown112", "Unknown116", "Unknown120", "Unknown124", "Unknown1", "Unknown5", "Unknown9", "Unknown13", "Unknown17", "Unknown21", "Unknown25", "Unknown29", "Unknown33", "Unknown37", "Unknown41", "Unknown45", "Unknown49", "Unknown53", "Unknown57", "Unknown61", "Unknown65", "Unknown69", "Unknown73", "Unknown77", "Unknown81", "Unknown85", "Unknown89", "Unknown93", "Unknown97", "Unknown101", "Unknown105", "Unknown109", "Unknown113", "Unknown117", "Unknown121", "Unknown125", "Unknown3", "Unknown7", "Unknown11", "Unknown15", "Unknown19", "Unknown23", "Unknown27", "Unknown31", "Unknown35", "Unknown39", "Unknown43", "Unknown47", "Unknown51", "Unknown55", "Unknown59", "Unknown63", "Unknown67", "Unknown71", "Unknown75", "Unknown79", "Unknown83", "Unknown87", "Unknown91", "Unknown95", "Unknown99", "Unknown103", "Unknown107", "Unknown111", "Unknown115", "Unknown119", "Unknown123", "Unknown127" };
+
 pub fn unknown0(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

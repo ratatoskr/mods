@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CompanyCraftProcess);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "SupplyItem[0]", "SetQuantity[0]", "SetsRequired[0]", "SupplyItem[1]", "SetQuantity[1]", "SetsRequired[1]", "SupplyItem[2]", "SetQuantity[2]", "SetsRequired[2]", "SupplyItem[3]", "SetQuantity[3]", "SetsRequired[3]", "SupplyItem[4]", "SetQuantity[4]", "SetsRequired[4]", "SupplyItem[5]", "SetQuantity[5]", "SetsRequired[5]", "SupplyItem[6]", "SetQuantity[6]", "SetsRequired[6]", "SupplyItem[7]", "SetQuantity[7]", "SetsRequired[7]", "SupplyItem[8]", "SetQuantity[8]", "SetsRequired[8]", "SupplyItem[9]", "SetQuantity[9]", "SetsRequired[9]", "SupplyItem[10]", "SetQuantity[10]", "SetsRequired[10]", "SupplyItem[11]", "SetQuantity[11]", "SetsRequired[11]" };
+
 pub const supply_item_len = 12;
 /// Links to `CompanyCraftSupplyItem`.
 pub fn supplyItem(self: @This(), n0: usize) excel.Link(sheets.CompanyCraftSupplyItem) {

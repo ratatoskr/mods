@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(AnimaWeapon5SpiritTalk);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Dialogue"};
+
 /// Links to `AnimaWeapon5SpiritTalkParam`.
 pub fn dialogue(self: @This()) excel.Link(sheets.AnimaWeapon5SpiritTalkParam) {
     return .of(self.row.at(i32, 0));

@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ContentFinderCondition);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ShortCode", "TerritoryType", "ContentLinkType", "Content", "PvP", "Unknown_70_2", "RequiredExVersion", "Unknown29", "ContentCloseCycle", "AcceptClassJobCategory", "ContentMemberType", "Unknown34", "QueueMaxPlayers", "UnlockType", "UnlockCriteria", "UnlockType2", "UnlockCriteria2", "ClassJobLevelRequired", "ClassJobLevelSync", "ItemLevelRequired", "ItemLevelSync", "FixedItemLevelSync", "AllowUndersized", "NeedsMemberInEveryParty", "Unknown57", "AllowReplacement", "AllowMinimumIL", "AllowExplorerMode", "RatedMatch", "Rated", "LootModeType", "Unknown47", "IsInDutyFinder", "HighEndDuty", "Unknown49", "RaidFinderParam", "HasOnePlayerPerJobDetails", "Unknown51", "DutyRecorderAllowed", "Unknown52", "IsRegistrationHomeWorldLimited", "Unknown54", "Unknown55", "Name", "NameShort", "ContentType", "ContentUICategory", "JournalGenre", "Unknown59", "SortKey", "Image", "Icon", "Unknown41", "Unknown32", "Unknown56", "IsRegistrationAllowedFromAnyDataCenter", "Unknown58", "PenaltyTimestampArrayIndex", "LevelingRoulette", "HighLevelRoulette", "MSQRoulette", "GuildHestRoulette", "ExpertRoulette", "TrialRoulette", "DailyFrontlineChallenge", "LevelCapRoulette", "MentorRoulette", "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4", "AllianceRoulette", "FeastTeamRoulette", "NormalRaidRoulette", "Unknown5", "Unknown6", "Unknown7", "Unknown8", "Unknown9", "Unknown10", "Unknown11", "Unknown12", "Unknown13", "Unknown14", "Unknown15", "Unknown16", "Unknown17", "Unknown18", "Unknown19", "Unknown20", "Unknown21", "Unknown22", "Unknown23", "Unknown24", "Unknown25", "Unknown26", "CrystallineConflictCasualRoulette", "CrystallineConflictRankedRoulette" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Relic3Materia);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4", "Unknown5", "Unknown6", "Unknown7", "Unknown8" };
+
 pub fn unknown0(self: @This()) u16 {
     return self.row.at(u16, 0);
 }

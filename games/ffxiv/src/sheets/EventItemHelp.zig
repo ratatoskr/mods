@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(EventItemHelp);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Description", "Unknown0" };
+
 pub fn description(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

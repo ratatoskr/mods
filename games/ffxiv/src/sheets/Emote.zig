@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(Emote);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "ActionTimeline[0]", "ActionTimeline[1]", "ActionTimeline[2]", "ActionTimeline[3]", "ActionTimeline[4]", "ActionTimeline[5]", "ActionTimeline[6]", "UsableWhenMounted", "UsableWhenSwimming", "UsableWhenDiving", "EmoteCategory", "EmoteMode", "DontSetEmoteMode", "Unknown5", "UsableWhenFishing", "DrawsWeapon", "SheathesWeapon", "Order", "TextCommand", "Icon", "LogMessageTargeted", "LogMessageUntargeted", "UnlockLink", "Patch" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

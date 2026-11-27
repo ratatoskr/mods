@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(PatchMark);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Category", "SubCategoryType", "SubCategory", "RequirementType", "Requirement", "MarkID", "Version", "Unknown1" };
+
 /// Links by `RequirementType`: 3 to `Quest`.
 pub fn requirement(self: @This()) u32 {
     return self.row.at(u32, 0);

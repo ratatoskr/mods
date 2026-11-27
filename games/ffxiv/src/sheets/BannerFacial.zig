@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BannerFacial);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Emote", "UnlockCondition", "Unknown_70_1", "Unknown_70_2", "Unknown0", "SortKey" };
+
 /// Links to `Emote`.
 pub fn emote(self: @This()) excel.Link(sheets.Emote) {
     return .of(self.row.at(u16, 0));

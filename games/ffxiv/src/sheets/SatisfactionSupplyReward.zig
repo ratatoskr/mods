@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(SatisfactionSupplyReward);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "BonusMultiplier", "SatisfactionSupplyRewardData[0].RewardCurrency", "SatisfactionSupplyRewardData[0].QuantityLow", "SatisfactionSupplyRewardData[0].QuantityMid", "SatisfactionSupplyRewardData[0].QuantityHigh", "SatisfactionSupplyRewardData[1].RewardCurrency", "SatisfactionSupplyRewardData[1].QuantityLow", "SatisfactionSupplyRewardData[1].QuantityMid", "SatisfactionSupplyRewardData[1].QuantityHigh", "MinLevelForSecondReward", "SatisfactionLow", "SatisfactionMid", "SatisfactionHigh", "GilLow", "GilMid", "GilHigh" };
+
 pub const satisfaction_supply_reward_data_len = 2;
 pub fn satisfactionSupplyRewardData(self: @This(), n0: usize) SatisfactionSupplyRewardDataEntry {
     std.debug.assert(n0 < 2);

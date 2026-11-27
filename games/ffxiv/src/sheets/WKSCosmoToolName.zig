@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(WKSCosmoToolName);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "Unknown2", "Unknown1", "Unknown3", "Unknown4", "Unknown5", "Unknown6", "Unknown7" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

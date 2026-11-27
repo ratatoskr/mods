@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(OpenContent);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "OpenContentData[0].Content", "OpenContentData[1].Content", "OpenContentData[2].Content", "OpenContentData[3].Content", "OpenContentData[4].Content", "OpenContentData[5].Content", "OpenContentData[6].Content", "OpenContentData[7].Content", "OpenContentData[8].Content", "OpenContentData[9].Content", "OpenContentData[10].Content", "OpenContentData[11].Content", "OpenContentData[12].Content", "OpenContentData[13].Content", "OpenContentData[14].Content", "OpenContentData[15].Content", "OpenContentData[0].CandidateName", "OpenContentData[1].CandidateName", "OpenContentData[2].CandidateName", "OpenContentData[3].CandidateName", "OpenContentData[4].CandidateName", "OpenContentData[5].CandidateName", "OpenContentData[6].CandidateName", "OpenContentData[7].CandidateName", "OpenContentData[8].CandidateName", "OpenContentData[9].CandidateName", "OpenContentData[10].CandidateName", "OpenContentData[11].CandidateName", "OpenContentData[12].CandidateName", "OpenContentData[13].CandidateName", "OpenContentData[14].CandidateName", "OpenContentData[15].CandidateName" };
+
 pub const open_content_data_len = 16;
 pub fn openContentData(self: @This(), n0: usize) OpenContentDataEntry {
     std.debug.assert(n0 < 16);

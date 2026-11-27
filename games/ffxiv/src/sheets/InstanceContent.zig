@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(InstanceContent);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "InstanceContentType", "WeekRestriction", "TimeLimitmin", "Unknown14", "BGM", "WinBGM", "Cutscene", "LGBEventRange", "ContentFinderCondition", "Unknown15", "InstanceContentTextDataBossStart", "InstanceContentTextDataBossEnd", "BNpcBaseBoss", "InstanceContentTextDataObjectiveStart", "InstanceContentTextDataObjectiveEnd", "SortKey", "NewPlayerBonusGil", "NewPlayerBonusExp", "NewPlayerBonusA", "NewPlayerBonusB", "FinalBossExp", "Unknown8", "Unknown0", "FinalBossCurrencyA", "FinalBossCurrencyB", "FinalBossCurrencyC", "BossExp[0]", "BossExp[1]", "BossExp[2]", "BossExp[3]", "BossExp[4]", "BossCurrencyA[0]", "BossCurrencyA[1]", "BossCurrencyA[2]", "BossCurrencyA[3]", "BossCurrencyA[4]", "BossCurrencyB[0]", "BossCurrencyB[1]", "BossCurrencyB[2]", "BossCurrencyB[3]", "BossCurrencyB[4]", "BossCurrencyC[0]", "BossCurrencyC[1]", "BossCurrencyC[2]", "BossCurrencyC[3]", "BossCurrencyC[4]", "InstanceClearExp", "InstanceClearGil", "InstanceContentRewardItem", "Unknown1", "LimitedTimeBonus", "Unknown2", "InstanceContentBuff", "Unknown16", "ReqInstance", "PartyCondition", "Unknown9", "QTE1", "QTE2", "Unknown12", "ContentAttributeRect", "Unknown17", "ContentRoute", "ContentDirectorManagedSG", "ContentTodo", "Unknown13", "Unknown6", "LookupIndex", "Unknown18", "ContentEventItem", "ContentDirectorBattleTalk", "AllowPhoenixDown" };
+
 pub fn newPlayerBonusGil(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

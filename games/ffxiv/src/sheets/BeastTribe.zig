@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(BeastTribe);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "MinLevel", "BeastRankBonus", "IconReputation", "Icon", "MaxRank", "Expansion", "IntersocietalQuest", "Level", "CurrencyItem", "DisplayOrder", "Name", "Adjective", "Plural", "PossessivePronoun", "StartsWithVowel", "Pronoun", "Article", "DEF", "NameRelation" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(FGSStageUI);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown5", "Unknown6", "Unknown7", "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4" };
+
 /// An icon's id, like 132122 for `ui/icon/132000/132122.tex`.
 pub fn unknown0(self: @This()) i32 {
     return self.row.at(i32, 0);

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(RacingChocoboNameInfo);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "RacingChocoboNameCategory", "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Name[0]", "Name[1]", "Name[2]", "Unknown4" };
+
 pub const name_len = 3;
 /// Links to `RacingChocoboName`.
 pub fn name(self: @This(), n0: usize) excel.Link(sheets.RacingChocoboName) {

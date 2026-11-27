@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(OnlineStatus);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown1", "List", "Unknown2", "Priority", "Icon", "TextIcon", "Name" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BehaviorPath);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "IsTurnTransition", "IsFadeOut", "IsFadeIn", "IsWalking", "Unknown0", "Speed" };
+
 pub fn speed(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

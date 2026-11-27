@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BeastRankBonus);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Neutral", "Recognized", "Friendly", "Trusted", "Respected", "Honored", "Sworn", "AlliedBloodsworn", "Item", "ItemQuantity[0]", "ItemQuantity[1]", "ItemQuantity[2]", "ItemQuantity[3]", "ItemQuantity[4]", "ItemQuantity[5]", "ItemQuantity[6]", "ItemQuantity[7]" };
+
 /// Links to `Item`.
 pub fn item(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(u32, 0));

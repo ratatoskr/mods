@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(TofuPreset);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown13", "Category", "Unknown12", "Name", "Objects[0]", "Objects[1]", "Objects[2]", "Objects[3]", "Objects[4]", "Objects[5]", "Objects[6]", "Objects[7]", "Unknown10", "Unknown11" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

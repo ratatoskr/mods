@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Spectator);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Spot[0].X", "Spot[1].X", "Spot[2].X", "Spot[3].X", "Spot[4].X", "Spot[5].X", "Spot[6].X", "Spot[7].X", "Spot[0].Y", "Spot[1].Y", "Spot[2].Y", "Spot[3].Y", "Spot[4].Y", "Spot[5].Y", "Spot[6].Y", "Spot[7].Y", "Spot[0].Z", "Spot[1].Z", "Spot[2].Z", "Spot[3].Z", "Spot[4].Z", "Spot[5].Z", "Spot[6].Z", "Spot[7].Z", "Spot[0].DirH", "Spot[1].DirH", "Spot[2].DirH", "Spot[3].DirH", "Spot[4].DirH", "Spot[5].DirH", "Spot[6].DirH", "Spot[7].DirH", "Spot[0].DirV", "Spot[1].DirV", "Spot[2].DirV", "Spot[3].DirV", "Spot[4].DirV", "Spot[5].DirV", "Spot[6].DirV", "Spot[7].DirV", "Unknown40" };
+
 pub const spot_len = 8;
 pub fn spot(self: @This(), n0: usize) SpotEntry {
     std.debug.assert(n0 < 8);

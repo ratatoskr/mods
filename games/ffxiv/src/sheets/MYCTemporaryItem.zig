@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(MYCTemporaryItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Category", "Type", "Action", "Max", "Weight", "Order" };
+
 /// Links to `Action`.
 pub fn action(self: @This()) excel.Link(sheets.Action) {
     return .of(self.row.at(u32, 0));

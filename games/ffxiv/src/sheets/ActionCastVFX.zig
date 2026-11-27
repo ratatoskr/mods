@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ActionCastVFX);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"VFX"};
+
 /// Links to `VFX`.
 pub fn vfx(self: @This()) excel.Link(sheets.VFX) {
     return .of(self.row.at(u16, 0));

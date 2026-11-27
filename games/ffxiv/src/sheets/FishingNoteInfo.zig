@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(FishingNoteInfo);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Size", "AquariumWater", "WeatherRestriction", "TimeRestriction", "SpecialConditions", "IsCollectable", "Item" };
+
 /// Links to `EventItem` or `Item`, whichever has the row.
 pub fn item(self: @This()) i32 {
     return self.row.at(i32, 0);

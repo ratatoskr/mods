@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSMissionRecipe);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Recipe[0]", "Recipe[1]", "Recipe[2]", "Recipe[3]", "Recipe[4]", "Unknown0" };
+
 pub const recipe_len = 5;
 /// Links to `Recipe`.
 pub fn recipe(self: @This(), n0: usize) excel.Link(sheets.Recipe) {

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MJIVillageDevelopment);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ENPC", "Unknown5", "Unknown6", "Unknown7", "Unknown0", "Unknown8", "Unknown1", "Unknown9", "Unknown2", "Behavior0", "Unknown3", "Behavior1", "Unknown4", "Unknown10", "Unknown11" };
+
 /// Links to `ENpcResident`.
 pub fn enpc(self: @This()) excel.Link(sheets.ENpcResident) {
     return .of(self.row.at(u32, 0));

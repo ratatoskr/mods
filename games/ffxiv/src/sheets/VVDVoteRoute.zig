@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(VVDVoteRoute);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Title", "Options[0]", "Options[1]", "Options[2]", "Options[3]" };
+
 /// Links to `VVDVoteRouteLabel`.
 pub fn title(self: @This()) excel.Link(sheets.VVDVoteRouteLabel) {
     return .of(self.row.at(i32, 0));

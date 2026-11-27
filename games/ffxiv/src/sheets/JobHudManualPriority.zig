@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(JobHudManualPriority);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "JobHudManual[0]", "JobHudManual[1]", "JobHudManual[2]", "JobHudManual[3]", "JobHudManual[4]", "JobHudManual[5]", "JobHudManual[6]", "JobHudManual[7]" };
+
 pub const job_hud_manual_len = 8;
 /// Links to `JobHudManual`.
 pub fn jobHudManual(self: @This(), n0: usize) excel.Link(sheets.JobHudManual) {

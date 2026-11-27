@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ChocoboRaceTutorial);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "NpcYell[0]", "NpcYell[1]", "NpcYell[2]", "NpcYell[3]", "NpcYell[4]", "NpcYell[5]", "NpcYell[6]", "NpcYell[7]", "Unknown0", "Unknown1" };
+
 pub const npc_yell_len = 8;
 /// Links to `NpcYell`.
 pub fn npcYell(self: @This(), n0: usize) excel.Link(sheets.NpcYell) {

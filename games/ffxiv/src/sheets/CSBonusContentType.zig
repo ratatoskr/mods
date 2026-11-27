@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CSBonusContentType);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ContentType", "Dialogue[0]", "Dialogue[1]", "Dialogue[2]", "Dialogue[3]", "Image", "Level", "Unknown6", "UnlockQuest", "UnlockLink", "ContentFinderCondition" };
+
 pub const dialogue_len = 4;
 /// Links to `Addon`.
 pub fn dialogue(self: @This(), n0: usize) excel.Link(sheets.Addon) {

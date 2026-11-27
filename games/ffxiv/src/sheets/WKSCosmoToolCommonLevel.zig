@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSCosmoToolCommonLevel);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"IsCommon"};
+
 pub fn isCommon(self: @This()) bool {
     return self.row.bitAt(0, 0);
 }

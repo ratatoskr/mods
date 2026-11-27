@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GrandCompanyRank);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Tier", "Order", "MaxSeals", "RequiredSeals", "IconMaelstrom", "IconSerpents", "IconFlames", "QuestMaelstrom", "QuestSerpents", "QuestFlames", "RequiredHuntingLogRank" };
+
 pub fn maxSeals(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

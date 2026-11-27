@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(EventCustomIconType);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Icons[0].AnnounceQuest", "Icons[1].AnnounceQuest", "Icons[2].AnnounceQuest", "Icons[3].AnnounceQuest", "Icons[4].AnnounceQuest", "Icons[5].AnnounceQuest", "Icons[6].AnnounceQuest", "Icons[7].AnnounceQuest", "Icons[8].AnnounceQuest", "Icons[9].AnnounceQuest", "Icons[0].AnnounceQuestLocked", "Icons[1].AnnounceQuestLocked", "Icons[2].AnnounceQuestLocked", "Icons[3].AnnounceQuestLocked", "Icons[4].AnnounceQuestLocked", "Icons[5].AnnounceQuestLocked", "Icons[6].AnnounceQuestLocked", "Icons[7].AnnounceQuestLocked", "Icons[8].AnnounceQuestLocked", "Icons[9].AnnounceQuestLocked", "Icons[0].MapAnnounceQuest1", "Icons[1].MapAnnounceQuest1", "Icons[2].MapAnnounceQuest1", "Icons[3].MapAnnounceQuest1", "Icons[4].MapAnnounceQuest1", "Icons[5].MapAnnounceQuest1", "Icons[6].MapAnnounceQuest1", "Icons[7].MapAnnounceQuest1", "Icons[8].MapAnnounceQuest1", "Icons[9].MapAnnounceQuest1", "Icons[0].MapAnnounceQuestLocked", "Icons[1].MapAnnounceQuestLocked", "Icons[2].MapAnnounceQuestLocked", "Icons[3].MapAnnounceQuestLocked", "Icons[4].MapAnnounceQuestLocked", "Icons[5].MapAnnounceQuestLocked", "Icons[6].MapAnnounceQuestLocked", "Icons[7].MapAnnounceQuestLocked", "Icons[8].MapAnnounceQuestLocked", "Icons[9].MapAnnounceQuestLocked", "Icons[0].MapAnnounceQuest2", "Icons[1].MapAnnounceQuest2", "Icons[2].MapAnnounceQuest2", "Icons[3].MapAnnounceQuest2", "Icons[4].MapAnnounceQuest2", "Icons[5].MapAnnounceQuest2", "Icons[6].MapAnnounceQuest2", "Icons[7].MapAnnounceQuest2", "Icons[8].MapAnnounceQuest2", "Icons[9].MapAnnounceQuest2", "Unknown0" };
+
 pub const icons_len = 10;
 pub fn icons(self: @This(), n0: usize) IconsEntry {
     std.debug.assert(n0 < 10);

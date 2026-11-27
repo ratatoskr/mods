@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(EmjVoiceNpc);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "UnlockLink", "EmjCostume", "VoLines[0]", "VoLines[1]", "VoLines[2]", "VoLines[3]", "VoLines[4]", "VoLines[5]", "VoLines[6]", "VoLines[7]", "VoLines[8]", "VoLines[9]", "VoLines[10]", "VoLines[11]", "VoLines[12]", "VoLines[13]", "VoLines[14]", "VoLines[15]", "VoLines[16]", "VoLines[17]", "VoLines[18]", "VoLines[19]", "VoLines[20]", "VoLines[21]", "VoLines[22]", "VoLines[23]", "VoLines[24]", "Name", "NameJapanese", "Unknown0" };
+
 pub const vo_lines_len = 25;
 pub fn voLines(self: @This(), n0: usize) u32 {
     return self.row.at(u32, offsets_1[n0]);

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BannerCondition);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "UnlockType1", "UnlockCriteria1[0]", "UnlockCriteria1[1]", "UnlockType2", "UnlockCriteria2", "UnlockCriteria3", "UnlockCriteria4", "Unknown1", "PrerequisiteType", "Prerequisite", "UnlockHint", "Unknown0" };
+
 pub const unlock_criteria1_len = 2;
 /// Links by `UnlockType1`: 1 to `Quest`, 3 to `InstanceContent`, 4 to `InstanceContent`, 5 to `Emote`, 6 to `Companion`, 7 to `Mount`, 8 to `Ornament`.
 pub fn unlockCriteria1(self: @This(), n0: usize) u32 {

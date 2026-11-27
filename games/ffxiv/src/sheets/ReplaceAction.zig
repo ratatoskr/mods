@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ReplaceAction);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Action", "Type1", "Param1", "ReplaceActions[0]", "Type2", "Param2", "ReplaceActions[1]", "Type3", "Param3", "ReplaceActions[2]", "Type4", "Param4", "ReplaceActions[3]", "ReplaceSettable", "Unknown_70" };
+
 /// Links to `Action`.
 pub fn action(self: @This()) excel.Link(sheets.Action) {
     return .of(self.row.at(i32, 0));

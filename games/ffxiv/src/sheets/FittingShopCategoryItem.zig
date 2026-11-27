@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(FittingShopCategoryItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item", "DisplayId", "Unknown2" };
+
 /// Links to `FittingShopItemSet` or `Item`, whichever has the row.
 pub fn item(self: @This()) i32 {
     return self.row.at(i32, 0);

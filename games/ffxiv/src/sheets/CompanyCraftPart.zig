@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CompanyCraftPart);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown1", "CompanyCraftType", "CompanyCraftProcess[0]", "CompanyCraftProcess[1]", "CompanyCraftProcess[2]", "Unknown0" };
+
 pub const company_craft_process_len = 3;
 /// Links to `CompanyCraftProcess`.
 pub fn companyCraftProcess(self: @This(), n0: usize) excel.Link(sheets.CompanyCraftProcess) {

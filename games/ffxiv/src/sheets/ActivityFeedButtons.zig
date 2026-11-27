@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ActivityFeedButtons);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "BannerURL", "Description", "Language", "PictureURL" };
+
 pub fn bannerURL(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

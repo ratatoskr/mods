@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(TerritoryType);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "Bg", "BattalionMode", "PlaceNameRegion", "PlaceNameZone", "PlaceName", "Map", "LoadingImage", "ExclusiveType", "TerritoryIntendedUse", "ContentFinderCondition", "Unknown6", "WeatherRate", "Unknown7", "Unknown1", "PCSearch", "Stealth", "Mount", "Unknown8", "BGM", "PlaceNameRegionIcon", "PlaceNameIcon", "ArrayEventHandler", "QuestBattle", "Aetheryte", "FixedTime", "Resident", "AchievementIndex", "IsPvpZone", "ExVersion", "Unknown2", "ZoneSharedGroup", "AetherCurrentCompFlgSet", "MountSpeed", "Unknown9", "IsInUse", "IndividualWeather", "Unknown11", "Unknown12", "Unknown13", "Unknown14", "Unknown15", "Unknown16", "NotoriousMonsterTerritory", "Unknown17", "Unknown18" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(HousingExterior);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "Unknown1", "PlaceName", "HousingSize", "Model" };
+
 pub fn model(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

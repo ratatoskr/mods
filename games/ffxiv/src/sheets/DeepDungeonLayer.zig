@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(DeepDungeonLayer);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "DeepDungeon", "FloorSet", "RoomA", "RoomB", "RoomC", "WepMinLv", "ArmourMinLv", "Unknown0" };
+
 /// Links to `DeepDungeonMap5X`.
 pub fn roomA(self: @This()) excel.Link(sheets.DeepDungeonMap5X) {
     return .of(self.row.at(u16, 0));

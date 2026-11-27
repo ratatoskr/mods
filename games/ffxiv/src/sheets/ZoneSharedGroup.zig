@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ZoneSharedGroup);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "LGBSharedGroup", "RequirementType[0]", "RequirementRow[0]", "RequirementQuestSequence[0]", "Unknown9", "RequirementType[1]", "RequirementRow[1]", "RequirementQuestSequence[1]", "Unknown10", "RequirementType[2]", "RequirementRow[2]", "RequirementQuestSequence[2]", "Unknown11", "RequirementType[3]", "RequirementRow[3]", "RequirementQuestSequence[3]", "Unknown12", "RequirementType[4]", "RequirementRow[4]", "RequirementQuestSequence[4]", "Unknown13", "RequirementType[5]", "RequirementRow[5]", "RequirementQuestSequence[5]", "Unknown14", "Unknown8", "Unknown0", "Unknown1", "Unknown15" };
+
 pub fn lgbSharedGroup(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

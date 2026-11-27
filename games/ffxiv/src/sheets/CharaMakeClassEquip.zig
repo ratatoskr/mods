@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CharaMakeClassEquip);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Helmet", "Top", "Glove", "Down", "Shoes", "Weapon", "SubWeapon", "Class" };
+
 /// A model id, packed.
 pub fn helmet(self: @This()) u64 {
     return self.row.at(u64, 0);

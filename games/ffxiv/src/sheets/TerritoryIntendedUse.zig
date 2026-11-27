@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(TerritoryIntendedUse);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "EnableCrafting", "EnableGathering", "EnableRepairs", "EnableClassJobChange", "EnableClassJobChangeCombatJobCheck", "EnableJobChangeToLimitedJob", "EnableCompanion", "EnablePets", "EnableRidePillion", "DisableLogoutTimer", "EnableTeleport", "EnableReturn", "EnableMinions", "EnableOrnaments", "EnableRevive", "EnableRecommendedDuties", "Unknown20", "DisableMapDiscovery", "DisableFieldMarkers", "Unknown0", "GayaSoundId", "Unknown23", "EnableActions", "EnableConsumableItems", "Unknown26", "EnableTripleTriadMatches", "EnableTripleTriadMatchesAnywhere", "Unknown29", "Unknown30", "EnableIdleCamLineOfSightCheck", "CanPauseTimeWeather", "Unknown33", "EnablePvPQuickChat", "ChatRule", "Unknown35", "EnablePerform", "Unknown3", "CanApplyGlamourPlatesAnywhere", "Unknown38", "EnableFieldMarkerPresets", "IgnoreCombatFlagForMarkers", "Unknown41", "Unknown42" };
+
 pub fn unknown0(self: @This()) u16 {
     return self.row.at(u16, 0);
 }

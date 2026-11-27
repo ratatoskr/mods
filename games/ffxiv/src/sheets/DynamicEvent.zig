@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(DynamicEvent);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "EventType", "EnemyType", "MaxParticipants", "Duration", "Unknown8", "LGBEventObject", "LGBMapRange", "Quest", "Unknown5", "SingleBattle", "Announce", "Name", "Description", "Unknown6", "Unknown7", "Unknown2", "IconObjective0", "IconObjective1", "Unknown9" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

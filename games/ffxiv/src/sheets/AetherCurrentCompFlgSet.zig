@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(AetherCurrentCompFlgSet);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Territory", "AetherCurrents[0]", "AetherCurrents[1]", "AetherCurrents[2]", "AetherCurrents[3]", "AetherCurrents[4]", "AetherCurrents[5]", "AetherCurrents[6]", "AetherCurrents[7]", "AetherCurrents[8]", "AetherCurrents[9]", "AetherCurrents[10]", "AetherCurrents[11]", "AetherCurrents[12]", "AetherCurrents[13]", "AetherCurrents[14]" };
+
 /// Links to `TerritoryType`.
 pub fn territory(self: @This()) excel.Link(sheets.TerritoryType) {
     return .of(self.row.at(i32, 0));

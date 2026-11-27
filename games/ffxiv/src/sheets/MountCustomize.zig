@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MountCustomize);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown4", "Scale[0]", "Scale[1]", "Scale[2]", "Scale[3]", "Scale[4]", "Scale[5]", "Scale[6]", "Scale[7]", "Scale[8]", "Scale[9]", "Scale[10]", "Scale[11]", "Scale[12]", "Scale[13]", "Scale[14]", "Scale[15]", "Scale[16]", "Scale[17]", "Scale[18]", "Scale[19]", "Scale[20]", "CameraHeight[0]", "CameraHeight[1]", "CameraHeight[2]", "CameraHeight[3]", "CameraHeight[4]", "CameraHeight[5]", "CameraHeight[6]", "CameraHeight[7]", "CameraHeight[8]", "CameraHeight[9]", "CameraHeight[10]", "CameraHeight[11]", "CameraHeight[12]", "CameraHeight[13]", "CameraHeight[14]", "CameraHeight[15]", "CameraHeight[16]", "CameraHeight[17]", "CameraHeight[18]", "CameraHeight[19]", "CameraHeight[20]" };
+
 pub const scale_len = 21;
 pub fn scale(self: @This(), n0: usize) u16 {
     return self.row.at(u16, offsets_1[n0]);

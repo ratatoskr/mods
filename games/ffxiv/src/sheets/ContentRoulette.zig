@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ContentRoulette);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "Category", "Unknown0", "Description", "DutyType", "RequiredExVersion", "Unknown1", "IsGoldSaucer", "IsInDutyFinder", "OpenRule", "IsPvP", "RequiredLevel", "SyncedFromLevel", "ItemLevelRequired", "AppliesHighestAverageDutyItemLevel", "ItemLevelSync", "Image", "ContentRouletteRoleBonus", "RewardTomeA", "RewardTomeB", "RewardTomeC", "RewardPvPExp", "RewardWolfMarks", "RewardSeriesExp", "SortKey", "ClassJobCategory", "ContentMemberType", "Unknown9", "QueueMaxPlayers", "CompletionArrayIndex", "Unknown18", "ContentType", "UICategory", "TimeLimit", "TimeLimitMax", "AllowConsumableItems", "AllowPhoenixDown", "AllowReplacement", "RatedMatch", "Rated", "LootModeType", "InstanceContent", "Unknown22", "Unknown15", "Unknown23", "Unknown24", "IsRegistrationAllowedFromAnyDataCenter", "Region", "PenaltyTimestampArrayIndex" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

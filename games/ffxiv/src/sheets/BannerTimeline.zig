@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BannerTimeline);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Type", "AdditionalData", "AcceptClassJobCategory", "Category", "UnlockCondition", "Unknown_70_1", "Unknown_70_2", "Unknown0", "SortKey", "Icon", "Name" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

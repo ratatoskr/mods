@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(FishingSpot);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "GatheringLevel", "BigFishOnReach", "BigFishOnEnd", "BigFishOnRefresh", "FishingSpotCategory", "Rare", "TerritoryType", "PlaceNameMain", "PlaceNameSub", "X", "Z", "Radius", "Unknown0", "Item[0]", "Item[1]", "Item[2]", "Item[3]", "Item[4]", "Item[5]", "Item[6]", "Item[7]", "Item[8]", "Item[9]", "PlaceName", "Order" };
+
 pub fn bigFishOnReach(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

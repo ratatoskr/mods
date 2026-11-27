@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(WKSPioneeringTrailString);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "DevelopmentLogText", "DevelopmentLogName", "DevelopmentLogDescription" };
+
 pub fn developmentLogText(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

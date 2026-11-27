@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(IKDFishParam);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Fish", "PartyBonus", "IndividualBonus" };
+
 /// Links to `FishParameter`.
 pub fn fish(self: @This()) excel.Link(sheets.FishParameter) {
     return .of(self.row.at(u32, 0));

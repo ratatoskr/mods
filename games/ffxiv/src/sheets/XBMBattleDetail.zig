@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(XBMBattleDetail);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "Strength", "Intelligence", "PhysResistance", "MagResistance", "Constitution", "Action1", "Action2", "Weakness", "Resist", "Icon" };
+
 /// Links to `BNpcName`.
 pub fn name(self: @This()) excel.Link(sheets.BNpcName) {
     return .of(self.row.at(u32, 0));

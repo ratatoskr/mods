@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(HousingFurniture);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ModelKey", "HousingItemCategory", "UsageType", "UsageParameter", "PlaceLimitType", "AquariumTier", "CustomTalk", "Item", "DestroyOnRemoval", "Unknown4", "Placement", "Unplacement", "UnplacementStorage", "Unknown5", "Unknown6" };
+
 pub fn usageParameter(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

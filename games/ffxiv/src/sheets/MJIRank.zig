@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MJIRank);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ExpToNext", "Unknown0", "LogMessage[0]", "LogMessage[1]", "LogMessage[2]" };
+
 pub fn expToNext(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

@@ -3,7 +3,7 @@
 //! to a dump in Wraith's folder. Then ticks Wraith on the game thread through `ProcessEvent`, does
 //! game speed with the world's time dilation, gives the game a console, hands its camera to Wraith's
 //! free camera and its characters to posing, tells Wraith when the game's drawing HDR, and gives
-//! the Workbench a Scene panel of the world's actors and a Classes panel.
+//! the Workbench an Unreal tab, with the world's actors in Scene and every class in Classes.
 
 const std = @import("std");
 const sdk = @import("wraith_sdk");
@@ -219,7 +219,7 @@ pub const Plugin = struct {
         } else |err| log.info("Can't ask the game about HDR, since this Unreal's missing {s}: {t}", .{ missing, err });
         if (self.explorer.start(ue, world, &self.loop, self.camera.tools)) {
             self.explorer_on = true;
-        } else |err| log.warn("No Scene or Classes panel: {t}", .{err});
+        } else |err| log.warn("No Unreal tab in the Workbench: {t}", .{err});
         try self.loop.start(pe, .{ .context = self, .func = tick });
         self.service.start(ue, &self.loop);
 

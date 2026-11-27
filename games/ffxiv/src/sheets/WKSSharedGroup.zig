@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSSharedGroup);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown2", "Unknown0", "Unknown1", "Unknown3", "Unknown4", "Unknown5", "Unknown6" };
+
 pub fn unknown0(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

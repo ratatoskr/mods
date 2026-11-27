@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ArrayEventHandler);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Data[0]", "Data[1]", "Data[2]", "Data[3]", "Data[4]", "Data[5]", "Data[6]", "Data[7]", "Data[8]", "Data[9]", "Data[10]", "Data[11]", "Data[12]", "Data[13]", "Data[14]", "Data[15]" };
+
 pub const data_len = 16;
 /// Links to `InstanceContentGuide`, `Story`, `Opening`, `CustomTalk`, `DefaultTalk`, `GilShop`, `Warp` or `Quest`, whichever has the row.
 pub fn data(self: @This(), n0: usize) u32 {

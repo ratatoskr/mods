@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(Race);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Masculine", "Feminine", "RSEMBody", "RSEMHands", "RSEMLegs", "RSEMFeet", "RSEFBody", "RSEFHands", "RSEFLegs", "RSEFFeet", "Unknown0", "ExPac" };
+
 pub fn masculine(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

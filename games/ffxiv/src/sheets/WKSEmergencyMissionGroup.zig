@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSEmergencyMissionGroup);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"WKSMissionUnit"};
+
 /// Links to `WKSMissionUnit`.
 pub fn wksMissionUnit(self: @This()) excel.Link(sheets.WKSMissionUnit) {
     return .of(self.row.at(u16, 0));

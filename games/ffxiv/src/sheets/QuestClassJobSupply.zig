@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(QuestClassJobSupply);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ClassJobCategory", "Unknown0", "ENpcResident", "Item", "AmountRequired", "ItemHQ", "Unknown_70_2", "Unknown_70_3", "Unknown1", "Unknown2", "Unknown3", "Unknown_70_1" };
+
 pub fn unknown_70_1(self: @This()) u8 {
     return self.row.at(u8, 0);
 }

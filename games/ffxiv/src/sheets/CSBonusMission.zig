@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CSBonusMission);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Content0", "Content1" };
+
 /// Links to `CSBonusContent`.
 pub fn content0(self: @This()) excel.Link(sheets.CSBonusContent) {
     return .of(self.row.at(u16, 0));

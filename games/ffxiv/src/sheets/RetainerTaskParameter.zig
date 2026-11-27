@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(RetainerTaskParameter);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ItemLevelDoW[0]", "ItemLevelDoW[1]", "ItemLevelDoW[2]", "ItemLevelDoW[3]", "PerceptionDoL[0]", "PerceptionDoL[1]", "PerceptionDoL[2]", "PerceptionDoL[3]", "PerceptionFSH[0]", "PerceptionFSH[1]", "PerceptionFSH[2]", "PerceptionFSH[3]" };
+
 pub const item_level_do_w_len = 4;
 pub fn itemLevelDoW(self: @This(), n0: usize) i16 {
     return self.row.at(i16, offsets_1[n0]);

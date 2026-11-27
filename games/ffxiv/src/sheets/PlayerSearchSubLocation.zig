@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(PlayerSearchSubLocation);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "SortKey", "PlaceName", "Location", "Name0", "Name1", "Name2" };
+
 pub fn name0(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

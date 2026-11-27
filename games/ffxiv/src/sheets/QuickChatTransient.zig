@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(QuickChatTransient);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"TextOutput"};
+
 pub fn textOutput(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

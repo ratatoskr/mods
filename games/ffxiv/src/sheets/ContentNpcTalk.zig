@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ContentNpcTalk);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Type", "ContentTalk[0]", "ContentTalk[1]", "ContentTalk[2]", "ContentTalk[3]", "ContentTalk[4]", "ContentTalk[5]", "ContentTalk[6]", "ContentTalk[7]" };
+
 pub const content_talk_len = 8;
 /// Links to `ContentTalk`.
 pub fn contentTalk(self: @This(), n0: usize) excel.Link(sheets.ContentTalk) {

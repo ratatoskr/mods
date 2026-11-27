@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MovieStaffList);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Image", "StartTime", "EndTime", "Unknown0" };
+
 pub fn startTime(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

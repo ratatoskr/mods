@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Carry);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Model", "Timeline", "Unknown0", "Unknown1" };
+
 pub fn model(self: @This()) u64 {
     return self.row.at(u64, 0);
 }

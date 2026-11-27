@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ItemRetainerLevelUp);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item", "RetainerLevel" };
+
 /// Links to `Item`.
 pub fn item(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(u32, 0));

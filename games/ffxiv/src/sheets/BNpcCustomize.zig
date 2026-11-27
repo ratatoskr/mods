@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BNpcCustomize);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Race", "Gender", "BodyType", "Height", "Tribe", "Face", "HairStyle", "HairHighlight", "SkinColor", "EyeHeterochromia", "HairColor", "HairHighlightColor", "FacialFeature", "FacialFeatureColor", "Eyebrows", "EyeColor", "EyeShape", "Nose", "Jaw", "Mouth", "LipColor", "BustOrTone1", "ExtraFeature1", "ExtraFeature2OrBust", "FacePaint", "FacePaintColor" };
+
 /// Links to `Race`.
 pub fn race(self: @This()) excel.Link(sheets.Race) {
     return .of(self.row.at(u8, 0));

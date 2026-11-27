@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(HousingUnitedExterior);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "PlotSize", "Roof", "Walls", "Windows", "Door", "OptionalRoof", "OptionalWall", "OptionalSignboard", "Fence" };
+
 /// Links to `HousingExterior`.
 pub fn roof(self: @This()) excel.Link(sheets.HousingExterior) {
     return .of(self.row.at(u32, 0));

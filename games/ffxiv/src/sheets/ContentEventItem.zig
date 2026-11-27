@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ContentEventItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"EventItem"};
+
 /// Links to `EventItem`.
 pub fn eventItem(self: @This()) excel.Link(sheets.EventItem) {
     return .of(self.row.at(u32, 0));

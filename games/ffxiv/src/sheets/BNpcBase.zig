@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BNpcBase);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Behavior", "Battalion", "LinkRace", "Rank", "Scale", "ModelChara", "BNpcCustomize", "NpcEquip", "Special", "SEPack", "IsOmnidirectional", "ArrayEventHandler", "Unknown0", "BNpcParts", "Unknown1", "Unknown6", "IsTargetLine", "IsDisplayLevel", "Unknown7", "Unknown2", "Unknown3", "Unknown10", "Unknown9", "Unknown4", "Unknown_70", "Unknown8", "Unknown11" };
+
 pub fn scale(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ContentRouletteRoleBonus);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "BaseExperience", "GilMultiplier", "GCSealsMultiplier", "CurrencyA", "CurrencyB", "CurrencyC", "Item[0]", "ItemQuantity[0]", "ItemMaxLevelCondition[0]", "Item[1]", "ItemQuantity[1]", "ItemMaxLevelCondition[1]" };
+
 pub const item_len = 2;
 /// Links to `Item`.
 pub fn item(self: @This(), n0: usize) excel.Link(sheets.Item) {

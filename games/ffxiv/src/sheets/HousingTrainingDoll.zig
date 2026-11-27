@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(HousingTrainingDoll);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Base"};
+
 /// Links to `BNpcBase`.
 pub fn base(self: @This()) excel.Link(sheets.BNpcBase) {
     return .of(self.row.at(u32, 0));

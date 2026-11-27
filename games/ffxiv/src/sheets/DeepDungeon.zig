@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(DeepDungeon);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "AetherpoolArm", "AetherpoolArmor", "PomanderSlot[0]", "PomanderSlot[1]", "PomanderSlot[2]", "PomanderSlot[3]", "PomanderSlot[4]", "PomanderSlot[5]", "PomanderSlot[6]", "PomanderSlot[7]", "PomanderSlot[8]", "PomanderSlot[9]", "PomanderSlot[10]", "PomanderSlot[11]", "PomanderSlot[12]", "PomanderSlot[13]", "PomanderSlot[14]", "PomanderSlot[15]", "DeepDungeonType", "Unknown10", "MagiciteSlot[0]", "Unknown2", "Unknown6", "Unknown11", "MagiciteSlot[1]", "Unknown3", "Unknown7", "Unknown12", "MagiciteSlot[2]", "Unknown4", "Unknown8", "Unknown13", "MagiciteSlot[3]", "Unknown5", "Unknown9", "Name", "Unknown14" };
+
 pub const pomander_slot_len = 16;
 /// Links to `DeepDungeonItem`.
 pub fn pomanderSlot(self: @This(), n0: usize) excel.Link(sheets.DeepDungeonItem) {

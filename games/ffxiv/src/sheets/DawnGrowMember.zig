@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(DawnGrowMember);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "SelectImage[0]", "SelectImage[1]", "SelectImage[2]", "SelectImage[3]", "PortraitImage[0]", "PortraitImage[1]", "PortraitImage[2]", "PortraitImage[3]", "Class" };
+
 pub const select_image_len = 4;
 /// An icon's id, like 132122 for `ui/icon/132000/132122.tex`.
 pub fn selectImage(self: @This(), n0: usize) u32 {

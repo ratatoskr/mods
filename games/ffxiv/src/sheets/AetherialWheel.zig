@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(AetherialWheel);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ItemUnprimed", "ItemPrimed", "Grade", "HoursRequired" };
+
 /// Links to `Item`.
 pub fn itemUnprimed(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(i32, 0));

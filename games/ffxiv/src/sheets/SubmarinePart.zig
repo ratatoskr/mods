@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(SubmarinePart);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Slot", "Rank", "Components", "Surveillance", "Retrieval", "Speed", "Range", "Favor", "Class", "RepairMaterials" };
+
 pub fn class(self: @This()) u16 {
     return self.row.at(u16, 0);
 }

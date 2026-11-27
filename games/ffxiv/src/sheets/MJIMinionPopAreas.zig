@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MJIMinionPopAreas);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "RequiredFunction", "X", "Y", "Text", "Unknown4" };
+
 /// Links to `MJIText`.
 pub fn text(self: @This()) excel.Link(sheets.MJIText) {
     return .of(self.row.at(i32, 0));

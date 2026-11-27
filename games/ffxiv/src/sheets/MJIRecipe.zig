@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(MJIRecipe);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "LogMessage", "KeyItem", "ItemPouch", "Yield", "Material[0]", "Amount[0]", "Material[1]", "Amount[1]", "Material[2]", "Amount[2]", "Material[3]", "Amount[3]", "Material[4]", "Amount[4]", "Order" };
+
 /// Links to `LogMessage`.
 pub fn logMessage(self: @This()) excel.Link(sheets.LogMessage) {
     return .of(self.row.at(u32, 0));

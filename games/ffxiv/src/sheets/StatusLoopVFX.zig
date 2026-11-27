@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(StatusLoopVFX);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "VFX[0]", "Unknown0", "VFX[1]", "Unknown1", "VFX[2]", "VFX[3]", "Unknown2", "Unknown3", "Unknown4", "Unknown5", "Unknown6" };
+
 pub const vfx_len = 4;
 /// Links to `VFX`.
 pub fn vfx(self: @This(), n0: usize) excel.Link(sheets.VFX) {

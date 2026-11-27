@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(CutScreenImage);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Type", "Image", "Unknown0", "Unknown1" };
+
 pub fn image(self: @This()) i32 {
     return self.row.at(i32, 0);
 }

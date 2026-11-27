@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(LiveMinigamesTerritoryType);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "TerritoryType", "Unknown4", "Unknown5", "Unknown1", "Unknown2", "Unknown3" };
+
 /// Links to `TerritoryType`.
 pub fn territoryType(self: @This()) excel.Link(sheets.TerritoryType) {
     return .of(self.row.at(u32, 0));

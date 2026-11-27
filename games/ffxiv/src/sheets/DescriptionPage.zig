@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(DescriptionPage);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown1", "Quest", "Unknown2", "Text[0]", "Image[0]", "Text[1]", "Image[1]", "Text[2]", "Image[2]", "Text[3]", "Image[3]", "Text[4]", "Image[4]", "Text[5]", "Image[5]", "Text[6]", "Image[6]", "Text[7]", "Image[7]", "Text[8]", "Image[8]", "Text[9]", "Image[9]", "Text[10]", "Image[10]", "Unknown0" };
+
 /// Links to `Quest`.
 pub fn quest(self: @This()) excel.Link(sheets.Quest) {
     return .of(self.row.at(u32, 0));

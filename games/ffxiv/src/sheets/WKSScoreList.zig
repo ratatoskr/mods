@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSScoreList);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ClassJob", "Unknown3", "Achievement50k", "Achievement150k", "Achievement500k", "MasteryAchievement", "ScoreItemId" };
+
 /// Links to `Item`.
 pub fn scoreItemId(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(u32, 0));

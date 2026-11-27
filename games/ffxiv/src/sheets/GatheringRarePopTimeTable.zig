@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(GatheringRarePopTimeTable);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "StartTime[0]", "Duration[0]", "StartTime[1]", "Duration[1]", "StartTime[2]", "Duration[2]" };
+
 pub const start_time_len = 3;
 pub fn startTime(self: @This(), n0: usize) u16 {
     return self.row.at(u16, offsets_1[n0]);

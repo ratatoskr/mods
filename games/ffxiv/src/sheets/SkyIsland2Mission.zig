@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(SkyIsland2Mission);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item1", "Item2", "PlaceName", "Unknown9", "Objective1", "PopRange0", "RequiredAmount1", "Unknown5", "Unknown11", "Objective2", "PopRange1", "RequiredAmount2", "Unknown6", "Unknown12", "Objective3", "PopRange2", "Unknown10", "Unknown7", "Unknown13", "Unknown8", "Image", "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4" };
+
 pub fn unknown0(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

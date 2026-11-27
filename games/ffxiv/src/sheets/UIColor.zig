@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(UIColor);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Dark", "Light", "ClassicFF", "ClearBlue", "ClearWhite", "ClearGreen", "ClearGrey", "ClearPink" };
+
 /// An RGB color, 0xRRGGBB.
 pub fn dark(self: @This()) u32 {
     return self.row.at(u32, 0);

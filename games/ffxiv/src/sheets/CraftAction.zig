@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(CraftAction);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "Description", "AnimationStart", "AnimationEnd", "Icon", "ClassJob", "ClassJobCategory", "ClassJobLevel", "QuestRequirement", "Specialist", "RequiredStatus", "Cost", "CRP", "BSM", "ARM", "GSM", "LTW", "WVR", "ALC", "CUL" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

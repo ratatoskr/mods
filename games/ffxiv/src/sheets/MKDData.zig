@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(MKDData);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown14", "Unknown9", "ZoneName", "CurrencyItem[0]", "CurrencyName[0]", "Unknown11", "CurrencyItem[1]", "CurrencyName[1]", "Unknown12", "CipherItem", "CipherName", "Quest", "Unknown10", "Unknown8", "Unknown13" };
+
 /// Links to `Addon`.
 pub fn zoneName(self: @This()) excel.Link(sheets.Addon) {
     return .of(self.row.at(u32, 0));

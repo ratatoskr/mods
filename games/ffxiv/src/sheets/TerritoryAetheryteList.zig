@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(TerritoryAetheryteList);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "PlaceName", "AetheryteObject", "DisplayIndex", "Unknown4", "Unknown5", "UnlockIndex" };
+
 /// Links to `PlaceName`.
 pub fn placeName(self: @This()) excel.Link(sheets.PlaceName) {
     return .of(self.row.at(u32, 0));

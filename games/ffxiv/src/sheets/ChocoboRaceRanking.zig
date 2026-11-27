@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ChocoboRaceRanking);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"BGM"};
+
 /// Links to `BGM`.
 pub fn bgm(self: @This()) excel.Link(sheets.BGM) {
     return .of(self.row.at(u16, 0));

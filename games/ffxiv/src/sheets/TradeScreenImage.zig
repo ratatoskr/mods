@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(TradeScreenImage);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Items[0]", "Items[1]", "ItemIcons[0]", "ItemIcons[1]", "ItemValues[0]", "ItemValues[1]", "BannerType" };
+
 pub const items_len = 2;
 /// Links to `EventItem`.
 pub fn items(self: @This(), n0: usize) excel.Link(sheets.EventItem) {

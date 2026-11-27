@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WKSEmergencyProblem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "EmergencyInfoTeleportText1", "EmergencyInfoTeleportText2", "EventLayout", "Unknown2", "RequiredProgress" };
+
 /// The first option to teleport
 /// Links to `WKSEmergencyInfoText`.
 pub fn emergencyInfoTeleportText1(self: @This()) excel.Link(sheets.WKSEmergencyInfoText) {

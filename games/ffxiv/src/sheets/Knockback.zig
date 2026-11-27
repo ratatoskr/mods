@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Knockback);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Distance", "Speed", "Motion", "NearDistance", "Direction", "DirectionArg", "CancelMove" };
+
 pub fn distance(self: @This()) u8 {
     return self.row.at(u8, 0);
 }

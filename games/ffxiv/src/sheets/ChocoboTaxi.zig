@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(ChocoboTaxi);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Location", "TimeRequired", "Fare", "Unknown0", "Unknown1" };
+
 /// Links to `ChocoboTaxiStand`.
 pub fn location(self: @This()) excel.Link(sheets.ChocoboTaxiStand) {
     return .of(self.row.at(u32, 0));

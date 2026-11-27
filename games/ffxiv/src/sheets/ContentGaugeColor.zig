@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ContentGaugeColor);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "AndroidColor1", "AndroidColor2", "AndroidColor3" };
+
 /// An RGB color, 0xRRGGBB.
 pub fn androidColor1(self: @This()) u32 {
     return self.row.at(u32, 0);

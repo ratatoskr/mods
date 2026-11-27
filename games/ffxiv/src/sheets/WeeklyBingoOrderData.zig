@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(WeeklyBingoOrderData);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Type", "Data", "Unknown2", "Unknown0", "Text", "Icon", "ContentCategory" };
+
 pub fn @"type"(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

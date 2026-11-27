@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(HowToPage);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Type", "IconType", "Image", "TextType", "Text[0]", "Text[1]", "Text[2]" };
+
 pub const text_len = 3;
 pub fn text(self: @This(), n0: usize) []const u8 {
     return self.row.stringAt(offsets_1[n0]);

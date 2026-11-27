@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(GoldSaucerTalk);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown23", "Unknown24", "Unknown26", "NextTalk", "Unknown25", "ActionTimeline", "Unknown27", "ChoicesTalk[0]", "ChoicesTalk[1]", "ChoicesTalk[2]", "ChoicesTalk[3]", "ChoicesTalk[4]", "ChoicesTalk[5]", "ChoicesTalk[6]", "ChoicesTalk[7]", "ChoicesTalk[8]", "ChoicesTalk[9]", "Message", "ChoicesText[0]", "ChoicesText[1]", "ChoicesText[2]", "ChoicesText[3]", "ChoicesText[4]", "ChoicesText[5]", "ChoicesText[6]", "ChoicesText[7]", "ChoicesText[8]", "ChoicesText[9]" };
+
 pub fn message(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

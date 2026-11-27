@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(ActivityFeedGroupCaptions);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "JA", "EN", "DE", "FR" };
+
 pub fn ja(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(SkyIslandSubject);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown6", "Unknown12", "Unknown0", "Unknown7", "Unknown13", "Unknown1", "Unknown8", "Unknown14", "Unknown2", "Unknown9", "Unknown15", "Unknown3", "Unknown10", "Unknown16", "Unknown4", "Unknown11", "Unknown17", "Unknown5" };
+
 pub fn unknown0(self: @This()) u32 {
     return self.row.at(u32, 0);
 }

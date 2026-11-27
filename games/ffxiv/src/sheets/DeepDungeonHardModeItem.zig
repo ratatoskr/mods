@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(DeepDungeonHardModeItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown2", "Item", "Unknown0" };
+
 pub fn unknown0(self: @This()) u64 {
     return self.row.at(u64, 0);
 }

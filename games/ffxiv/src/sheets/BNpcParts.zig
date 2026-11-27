@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(BNpcParts);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown36", "BNpcBase1", "PartSlot1", "Unknown12", "Unknown18", "Unknown24", "Unknown30", "X1", "Y1", "Z1", "Unknown6", "Scale1", "BNpcBase2", "PartSlot2", "Unknown13", "Unknown19", "Unknown25", "Unknown31", "X2", "Y2", "Z2", "Unknown7", "Scale2", "BNpcBase3", "PartSlot3", "Unknown14", "Unknown20", "Unknown26", "Unknown32", "X3", "Y3", "Z3", "Scale3", "Unknown3", "BNpcBase4", "PartSlot4", "Unknown15", "Unknown21", "Unknown27", "Unknown33", "X4", "Y4", "Z4", "Unknown8", "Scale4", "BNpcBase5", "PartSlot5", "Unknown16", "Unknown22", "Unknown28", "Unknown34", "X5", "Y5", "Z5", "Unknown9", "Scale5", "Unknown5", "Unknown11", "Unknown17", "Unknown23", "Unknown29", "Unknown35", "Unknown0", "Unknown1", "Unknown2", "Unknown10", "Unknown4" };
+
 pub fn x1(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

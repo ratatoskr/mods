@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(RelicItem);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown5", "GladiatorItem", "PugilistItem", "MarauderItem", "LancerItem", "ArcherItem", "ConjurerItem", "ThaumaturgeItem", "ArcanistSMNItem", "ArcanistSCHItem", "ShieldItem", "RogueItem", "Unknown0", "Unknown1", "Unknown2", "Unknown3", "Unknown4" };
+
 /// Links to `Item`.
 pub fn gladiatorItem(self: @This()) excel.Link(sheets.Item) {
     return .of(self.row.at(u32, 0));

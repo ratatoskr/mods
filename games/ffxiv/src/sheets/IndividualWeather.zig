@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(IndividualWeather);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "IndividualWeatherData[0].Weather", "IndividualWeatherData[1].Weather", "IndividualWeatherData[2].Weather", "IndividualWeatherData[3].Weather", "IndividualWeatherData[4].Weather", "IndividualWeatherData[5].Weather", "IndividualWeatherData[6].Weather", "IndividualWeatherData[0].Unknown1", "IndividualWeatherData[1].Unknown1", "IndividualWeatherData[2].Unknown1", "IndividualWeatherData[3].Unknown1", "IndividualWeatherData[4].Unknown1", "IndividualWeatherData[5].Unknown1", "IndividualWeatherData[6].Unknown1", "IndividualWeatherData[0].Quest", "IndividualWeatherData[1].Quest", "IndividualWeatherData[2].Quest", "IndividualWeatherData[3].Quest", "IndividualWeatherData[4].Quest", "IndividualWeatherData[5].Quest", "IndividualWeatherData[6].Quest", "IndividualWeatherData[0].Unknown0", "IndividualWeatherData[1].Unknown0", "IndividualWeatherData[2].Unknown0", "IndividualWeatherData[3].Unknown0", "IndividualWeatherData[4].Unknown0", "IndividualWeatherData[5].Unknown0", "IndividualWeatherData[6].Unknown0" };
+
 pub const individual_weather_data_len = 7;
 pub fn individualWeatherData(self: @This(), n0: usize) IndividualWeatherDataEntry {
     std.debug.assert(n0 < 7);

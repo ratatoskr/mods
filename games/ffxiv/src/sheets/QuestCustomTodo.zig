@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(QuestCustomTodo);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "DataType", "Index[0]", "MaxValue[0]", "Index[1]", "MaxValue[1]", "Index[2]", "MaxValue[2]", "Index[3]", "MaxValue[3]", "Index[4]", "MaxValue[4]", "Index[5]", "MaxValue[5]", "Index[6]", "MaxValue[6]" };
+
 pub const index_len = 7;
 /// 65535 if unused. Index in the CustomTodoManager.
 pub fn index(self: @This(), n0: usize) u16 {

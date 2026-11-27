@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(VVDData);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Series", "Sequence", "ContentFinderCondition", "CurrencyItem", "ContentExAction", "UnlockQuest", "RouteData" };
+
 /// Links to `ContentFinderCondition`.
 pub fn contentFinderCondition(self: @This()) excel.Link(sheets.ContentFinderCondition) {
     return .of(self.row.at(u32, 0));

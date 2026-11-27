@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(PetMirage);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Scale", "ModelChara", "Name", "Unknown0", "Unknown4", "Unknown8", "Unknown12", "Unknown16", "Unknown20", "Unknown24", "Unknown28", "Unknown32", "Unknown36", "Unknown40", "Unknown44", "Unknown48", "Unknown52", "Unknown56", "Unknown3", "Unknown7", "Unknown11", "Unknown15", "Unknown19", "Unknown23", "Unknown27", "Unknown31", "Unknown35", "Unknown39", "Unknown43", "Unknown47", "Unknown51", "Unknown55", "Unknown59", "Unknown1", "Unknown5", "Unknown9", "Unknown13", "Unknown17", "Unknown21", "Unknown25", "Unknown29", "Unknown33", "Unknown37", "Unknown41", "Unknown45", "Unknown49", "Unknown53", "Unknown57", "Unknown2", "Unknown6", "Unknown10", "Unknown14", "Unknown18", "Unknown22", "Unknown26", "Unknown30", "Unknown34", "Unknown38", "Unknown42", "Unknown46", "Unknown50", "Unknown54", "Unknown58" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

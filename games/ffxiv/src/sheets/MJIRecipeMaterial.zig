@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(MJIRecipeMaterial);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "ItemPouch", "Unknown0" };
+
 /// Links to `MJIItemPouch`.
 pub fn itemPouch(self: @This()) excel.Link(sheets.MJIItemPouch) {
     return .of(self.row.at(i32, 0));

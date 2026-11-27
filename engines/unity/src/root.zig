@@ -134,7 +134,7 @@ pub const Plugin = struct {
             log.err("Can't tell when Unity renders: {t}", .{err});
             return err;
         };
-        if (self.scene) |*s| self.explorer.start(&self.engine, s, managed, self.camera.tools, self.ticks) catch |err| log.warn("No Scene panel in the Workbench: {t}", .{err});
+        if (self.scene) |*s| self.explorer.start(&self.engine, s, managed, self.camera.tools, self.ticks) catch |err| log.warn("No Unity tab in the Workbench: {t}", .{err});
         log.info("Ready", .{});
         // If neither fires, this Unity renders some other way, which is worth knowing
         try io.sleep(.fromSeconds(10), .awake);

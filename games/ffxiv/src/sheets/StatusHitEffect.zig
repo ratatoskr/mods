@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(StatusHitEffect);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{"Location"};
+
 /// Links to `VFX`.
 pub fn location(self: @This()) excel.Link(sheets.VFX) {
     return .of(self.row.at(u16, 0));

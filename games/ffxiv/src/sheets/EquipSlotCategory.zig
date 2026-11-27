@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(EquipSlotCategory);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "MainHand", "OffHand", "Head", "Body", "Gloves", "Waist", "Legs", "Feet", "Ears", "Neck", "Wrists", "FingerL", "FingerR", "SoulCrystal" };
+
 pub fn mainHand(self: @This()) i8 {
     return self.row.at(i8, 0);
 }

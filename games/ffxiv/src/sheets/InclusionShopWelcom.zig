@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(InclusionShopWelcom);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Unknown0", "ShopName", "WelcomeText" };
+
 pub fn unknown0(self: @This()) u8 {
     return self.row.at(u8, 0);
 }

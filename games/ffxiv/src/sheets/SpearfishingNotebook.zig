@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(SpearfishingNotebook);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "GatheringLevel", "IsShadowNode", "TerritoryType", "X", "Y", "Radius", "Unknown2", "PlaceName", "Unknown3", "GatheringPointBase", "Unknown0", "Unknown1" };
+
 /// Links to `TerritoryType`.
 pub fn territoryType(self: @This()) excel.Link(sheets.TerritoryType) {
     return .of(self.row.at(i32, 0));

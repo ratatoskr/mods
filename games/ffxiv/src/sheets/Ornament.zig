@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(Ornament);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Model", "CustomizeGroup", "Unknown3", "Unknown4", "Action", "Order", "Icon", "Transient", "Singular", "Adjective", "Plural", "PossessivePronoun", "StartsWithVowel", "Countability", "Pronoun", "Article" };
+
 pub fn singular(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

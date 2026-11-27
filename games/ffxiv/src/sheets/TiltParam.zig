@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(TiltParam);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "RotationOrigin", "TiltAngle", "ReverseRotation", "TiltSpeed", "Unknown3", "Unknown4" };
+
 pub fn tiltSpeed(self: @This()) f32 {
     return self.row.at(f32, 0);
 }

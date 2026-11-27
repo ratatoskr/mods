@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(TripleTriad);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "TripleTriadCardFixed[0]", "TripleTriadCardFixed[1]", "TripleTriadCardFixed[2]", "TripleTriadCardFixed[3]", "TripleTriadCardFixed[4]", "TripleTriadCardVariable[0]", "TripleTriadCardVariable[1]", "TripleTriadCardVariable[2]", "TripleTriadCardVariable[3]", "TripleTriadCardVariable[4]", "TripleTriadRule[0]", "TripleTriadRule[1]", "UsesRegionalRules", "Fee", "PreviousQuestJoin", "PreviousQuest[0]", "PreviousQuest[1]", "PreviousQuest[2]", "StartTime", "EndTime", "DefaultTalkChallenge", "DefaultTalkUnavailable", "DefaultTalkNPCWin", "DefaultTalkDraw", "DefaultTalkPCWin", "Unknown0", "ItemPossibleReward[0]", "ItemPossibleReward[1]", "ItemPossibleReward[2]", "ItemPossibleReward[3]" };
+
 pub const item_possible_reward_len = 4;
 /// Links to `Item`.
 pub fn itemPossibleReward(self: @This(), n0: usize) excel.Link(sheets.Item) {

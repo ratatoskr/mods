@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(VVDNotebookSeries);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Name", "Contents[0]", "Contents[1]", "Contents[2]", "Contents[3]", "Contents[4]", "Contents[5]", "Contents[6]", "Contents[7]", "Contents[8]", "Contents[9]", "Contents[10]", "Contents[11]", "Contents[12]" };
+
 pub fn name(self: @This()) []const u8 {
     return self.row.stringAt(0);
 }

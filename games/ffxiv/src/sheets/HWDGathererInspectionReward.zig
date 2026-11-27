@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(HWDGathererInspectionReward);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Scrips", "Points" };
+
 pub fn scrips(self: @This()) u16 {
     return self.row.at(u16, 0);
 }

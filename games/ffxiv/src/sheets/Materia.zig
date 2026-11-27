@@ -13,6 +13,9 @@ pub const Sheet = excel.Typed(Materia);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Item[0]", "Item[1]", "Item[2]", "Item[3]", "Item[4]", "Item[5]", "Item[6]", "Item[7]", "Item[8]", "Item[9]", "Item[10]", "Item[11]", "Item[12]", "Item[13]", "Item[14]", "Item[15]", "BaseParam", "Value[0]", "Value[1]", "Value[2]", "Value[3]", "Value[4]", "Value[5]", "Value[6]", "Value[7]", "Value[8]", "Value[9]", "Value[10]", "Value[11]", "Value[12]", "Value[13]", "Value[14]", "Value[15]" };
+
 pub const item_len = 16;
 /// Links to `Item`.
 pub fn item(self: @This(), n0: usize) excel.Link(sheets.Item) {

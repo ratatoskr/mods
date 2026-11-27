@@ -14,6 +14,9 @@ pub const Sheet = excel.Typed(PartyContentCutscene);
 
 row: excel.Row,
 
+/// Each column's name, in the header's order, like `Item[2].Count`.
+pub const column_names = [_][]const u8{ "Cutscene", "Unknown0" };
+
 /// Links to `Cutscene`.
 pub fn cutscene(self: @This()) excel.Link(sheets.Cutscene) {
     return .of(self.row.at(u32, 0));
