@@ -4,6 +4,7 @@
   "kind": "plugin",
   "version": "0.0.17",
   "apiVersion": 3,
+  "provider": "native",
   "title": "Trails Horizon",
   "summary": "The free camera, posing, game speed and pause, and money, item and script tweaks for Trails beyond the Horizon.",
   "author": "Asgard",

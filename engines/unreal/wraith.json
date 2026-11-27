@@ -4,6 +4,7 @@
   "kind": "plugin",
   "version": "0.0.15",
   "apiVersion": 3,
+  "provider": "native",
   "title": "Unreal Engine Support",
   "summary": "The free camera, posing, game speed, pause and the console in Unreal Engine 4 and 5 games, with plugins' ticks on Unreal's game thread.",
   "author": "Asgard",

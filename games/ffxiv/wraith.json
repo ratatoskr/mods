@@ -4,6 +4,7 @@
   "kind": "plugin",
   "version": "0.0.0",
   "apiVersion": 3,
+  "provider": "native",
   "title": "FFXIV Support",
   "summary": "FFXIV, a Wraith plugin",
   "author": "Asgard",

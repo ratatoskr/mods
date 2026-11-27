@@ -4,6 +4,7 @@
   "kind": "plugin",
   "version": "0.0.5",
   "apiVersion": 3,
+  "provider": "native",
   "title": "Granblue Relink",
   "summary": "The free camera, posing, and game speed and pause for Granblue Fantasy: Relink.",
   "author": "Asgard",
