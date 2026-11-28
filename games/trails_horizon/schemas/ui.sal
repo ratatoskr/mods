@@ -1,0 +1,7 @@
+// fdk::ui::Manager, the engine's side of the HUD and menus: their layouts, drawn a render layer at a time.
+struct UiLayers {
+    // Draws its items on render layer `layer` into the command list `commands`. Each frame's 2D pass
+    // asks for the HUD's and menus' layers in turn; others draw into textures, like portraits.
+    [Sig("48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 50 48 6B 41 40 58 48 8B 59 38")]
+    void drawLayer(usize commands, i32 layer);
+}

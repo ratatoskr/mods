@@ -5,6 +5,7 @@ For The Legend of Heroes: Trails beyond the Horizon (Kai no Kiseki).
 - Wraith's free camera moves the game's camera.
 - Wraith's posing works for the characters in the game, listed by their names from the game's name table.
 - Wraith's game speed controls how fast the game runs, allowing you to speed it up, slow it down, or pause it.
+- **Clean shot**, on Photo mode's toolbar, hides the HUD and menus, and the names and markers over people, for screenshots.
 - Other plugins' `threads.onTick` runs on the game's own thread, while you're playing.
 - Tweaks, under headings in the Tweaks window:
   - **Money & points**: change Mira, G-Tokens, Medals, Sepith and gourmet points, and see play time.
