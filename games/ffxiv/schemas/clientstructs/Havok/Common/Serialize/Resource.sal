@@ -1,9 +1,0 @@
-// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
-// since this is written again.
-
-namespace Havok.Common.Serialize.Resource;
-
-[Size(0x10)]
-struct hkResource : Base.Object.hkReferencedObject {
-    [Virtual(7)] void* getContentsPointer(cstring class_name, Base.Reflection.Registry.hkTypeInfoRegistry* type_info_registry);
-}

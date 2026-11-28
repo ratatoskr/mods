@@ -1,8 +1,0 @@
-// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
-// since this is written again.
-
-namespace Havok.Common.SceneData.Mesh;
-
-[Size(0x10)]
-struct hkxMesh : Base.Object.hkReferencedObject {
-}

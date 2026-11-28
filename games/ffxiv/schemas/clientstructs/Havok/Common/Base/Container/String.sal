@@ -1,9 +1,0 @@
-// Made from FFXIVClientStructs by tools/ClientStructsSal. Change that and run `zig build client-structs`,
-// since this is written again.
-
-namespace Havok.Common.Base.Container.String;
-
-[Size(0x8)]
-struct hkStringPtr {
-    [0x0] u8* string_and_flag;
-}
