@@ -2,7 +2,7 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "trails_horizon",
   "kind": "plugin",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "apiVersion": 3,
   "provider": "native",
   "title": "Trails Horizon",

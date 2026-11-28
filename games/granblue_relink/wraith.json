@@ -2,7 +2,7 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "granblue_relink",
   "kind": "plugin",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "apiVersion": 3,
   "provider": "native",
   "title": "Granblue Relink",

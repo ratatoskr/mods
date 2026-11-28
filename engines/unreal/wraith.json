@@ -2,7 +2,7 @@
   "$schema": "https://hub.wraith.io/schema/v1/wraith.json",
   "id": "unreal",
   "kind": "plugin",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "apiVersion": 3,
   "provider": "native",
   "title": "Unreal Engine Support",
