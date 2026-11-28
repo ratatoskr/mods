@@ -1,6 +1,6 @@
 .{
     .name = .trails_horizon,
-    .version = "0.0.0",
+    .version = "0.0.19",
     .dependencies = .{
         .wraith = .{
             .url = "git+https://github.com/ratatoskr/wraith#a835b2dbd2769875897dba28cf37e8bc1bf7e509",
