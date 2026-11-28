@@ -1,0 +1,93 @@
+// The global that holds the renderer, among much else.
+[Instance("48 8B 0D ?? ?? ?? ?? B3", Rip)]
+struct Graphics {
+    [0x668]
+    Renderer* renderer;
+}
+
+// The game's renderer, with each screen effect its post pass runs.
+struct Renderer {
+    [0xA28]
+    DepthOfField* depth_of_field;
+
+    // Black and white, which scripts fade in for flashbacks
+    [0xA70]
+    MonotoneFilter* monotone;
+
+    [0xA78]
+    ScreenFilter* negative;
+
+    // Blurs the whole screen
+    [0xAA0]
+    ScreenFilter* bokeh;
+}
+
+// A value easing from `from` to `to` over `time` seconds, which `now` is. The game's setters start
+// one; setting all of it to one value holds it there.
+[Size(0x18)]
+struct Ease {
+    f32 from;
+    f32 to;
+    f32 now;
+    f32 time;
+    f32 elapsed;
+    i32 curve;
+}
+
+// fdk's depth of field. Sharp `sharp.now` either side of the focus, blurring to full by `falloff.now`.
+struct DepthOfField {
+    // 0 focuses on what the camera looks at, 1 on `target`, 2 on `focus`
+    [0x18]
+    i32 focus_mode;
+
+    // How big the blur gets, by the screen's size
+    [0x1C]
+    Ease blur;
+
+    // How far either side of the focus stays sharp, in metres
+    [0x34]
+    Ease sharp;
+
+    // How far from the focus it's fully blurred, in metres
+    [0x4C]
+    Ease falloff;
+
+    // The actor it follows in mode 1, and its node
+    [0x98]
+    usize target;
+
+    [0xA0]
+    usize target_node;
+
+    // Where it's focused in the world, easing from `focus_from` to `focus_to`
+    [0x1BC]
+    Vec3 focus_from;
+
+    [0x1CC]
+    Vec3 focus_to;
+
+    [0x1DC]
+    Vec3 focus;
+
+    [0x1EC]
+    f32 focus_time;
+
+    [0x1F0]
+    f32 focus_elapsed;
+
+    // Asked for by a script. The game's graphics setting can still keep it off
+    [0x1F8]
+    u8 on;
+}
+
+// A screen filter with a strength, like the negative and bokeh ones. On while it's above 0.
+struct ScreenFilter {
+    [0x10]
+    Ease amount;
+}
+
+// Black and white, tinted. On while it's above 0.
+struct MonotoneFilter {
+    [0x30]
+    Ease amount;
+}

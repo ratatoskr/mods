@@ -11,6 +11,7 @@ const Camera = @import("camera.zig").Camera;
 const Posing = @import("posing.zig").Posing;
 const Speed = @import("speed.zig").Speed;
 const Clean = @import("clean.zig").Clean;
+const Look = @import("look.zig").Look;
 
 pub const std_options: std.Options = .{ .logFn = sdk.logFn };
 pub const panic = sdk.panic;
@@ -29,6 +30,7 @@ pub const Plugin = struct {
     posing: Posing = .{},
     speed: Speed = .{},
     clean: Clean = .{},
+    look: Look = .{},
     /// The parts of the game it handles, see `sdk.Lease`. A game's own plugin can hold them instead,
     /// and then what this does for them doesn't count.
     camera_lease: ?sdk.Lease = null,
@@ -55,6 +57,8 @@ pub const Plugin = struct {
         self.camera.start() catch |err| log.err("Can't hook the camera, so there's no free camera or view of the game: {t}", .{err});
         self.posing.start() catch |err| log.err("No posing: {t}", .{err});
         self.clean.start() catch |err| log.err("No clean shot: {t}", .{err});
+        self.look.start();
+        self.camera.look = &self.look;
         self.speed.start(ctx.wraith.game()) catch |err| log.err("Can't find the game's time scale, so Wraith can only speed it up: {t}", .{err});
         // Party changes need the game's thread
         if (self.speed.ticks != null) self.party.start(ctx) catch |err| log.err("No Party window: {t}", .{err});
@@ -62,6 +66,8 @@ pub const Plugin = struct {
 
     pub fn stop(self: *Plugin) void {
         self.clean.stop();
+        self.look.stop();
+        self.camera.stop();
         self.party.stop();
         // Its `tick` does nothing once it's let go, so the game's update can still call it
         if (self.speed.ticks) |t| t.release();

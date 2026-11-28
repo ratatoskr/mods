@@ -49,6 +49,13 @@ struct Camera {
     [0x198] 
     f32 roll;
 
+    // Off-axis shift, added to the projection: across and up, in screen halves
+    [0x19C]
+    f32 shift_x;
+
+    [0x1A0]
+    f32 shift_y;
+
     // Builds view, proj and view_proj from the fields above
     [Virtual(2)] void updateMatrices();
 }
